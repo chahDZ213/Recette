@@ -37,14 +37,14 @@
     La recette,<br>sans le bouton pause.
   </h1>
   <p style="font-size:17px;color:var(--muted);line-height:1.5;margin-bottom:32px;max-width:460px">
-    Colle le lien d'une vidéo de recette YouTube. Tu récupères les ingrédients, les portions ajustables et un mode cuisson étape par étape.
+    Colle le lien d'une vidéo de recette (YouTube, Shorts, Instagram, TikTok, Facebook). Tu récupères les ingrédients, les portions ajustables et un mode cuisson étape par étape.
   </p>
 
-  <label style="display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:8px">LIEN YOUTUBE</label>
-  <input id="url" placeholder="https://youtube.com/watch?v=…" style="margin-bottom:14px" />
+  <label style="display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:8px">LIEN VIDÉO</label>
+  <input id="url" placeholder="YouTube, Instagram, TikTok, Facebook…" style="margin-bottom:14px" />
   <div id="preview" class="hidden rise" style="display:flex;gap:12px;align-items:center;margin-bottom:16px;padding:10px;background:#fff;border-radius:12px;border:1px solid var(--line)">
     <img id="thumb" alt="" style="width:96px;height:54px;object-fit:cover;border-radius:8px;flex-shrink:0" />
-    <span style="font-size:14px;color:var(--green);font-weight:600">Vidéo détectée ✓</span>
+    <span id="detectLabel" style="font-size:14px;color:var(--green);font-weight:600">Vidéo détectée ✓</span>
   </div>
 
   <button id="decodeBtn" class="press" style="width:100%;font-size:17px;font-weight:600;padding:16px;border-radius:12px;border:none;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;gap:10px">
@@ -113,6 +113,15 @@ function videoId(url){
   for(const p of pats){ const m=url.match(p); if(m) return m[1]; }
   return null;
 }
+function detectPlatform(url){
+  if(!url) return null;
+  const yt=videoId(url);
+  if(yt) return {platform:"YouTube", ytId:yt};
+  if(/instagram\.com\/(reel|reels|p|tv)\//i.test(url)) return {platform:"Instagram"};
+  if(/(tiktok\.com|vm\.tiktok\.com)\//i.test(url)) return {platform:"TikTok"};
+  if(/(facebook\.com|fb\.watch)\//i.test(url)) return {platform:"Facebook"};
+  return null;
+}
 function fmtAmount(a){
   if(a==null) return "";
   const r=Math.round(a*100)/100;
@@ -129,9 +138,20 @@ function setError(msg){ const e=$("error"); if(!msg){e.classList.add("hidden");r
 
 // ---- aperçu lien ----
 $("url").addEventListener("input", ()=>{
-  const id=videoId($("url").value);
-  if(id){ $("thumb").src=`https://img.youtube.com/vi/${id}/mqdefault.jpg`; $("preview").classList.remove("hidden"); $("url").style.borderColor=GREEN; }
-  else{ $("preview").classList.add("hidden"); $("url").style.borderColor=LINE; }
+  const d=detectPlatform($("url").value);
+  if(d){
+    if(d.ytId){
+      $("thumb").src=`https://img.youtube.com/vi/${d.ytId}/mqdefault.jpg`;
+      $("thumb").style.display="block";
+      $("detectLabel").textContent="Vidéo YouTube détectée ✓";
+    } else {
+      $("thumb").style.display="none";
+      $("detectLabel").textContent=`Vidéo ${d.platform} détectée ✓`;
+    }
+    $("preview").classList.remove("hidden"); $("url").style.borderColor=GREEN;
+  } else {
+    $("preview").classList.add("hidden"); $("url").style.borderColor=LINE;
+  }
 });
 
 // ---- appels backend ----
@@ -146,8 +166,8 @@ function loading(on){
 }
 $("decodeBtn").addEventListener("click", async ()=>{
   setError("");
-  const id=videoId($("url").value);
-  if(!id){ setError("Ce lien n'a pas l'air d'être une vidéo YouTube. Colle l'URL complète."); return; }
+  const d=detectPlatform($("url").value);
+  if(!d){ setError("Lien non reconnu. Colle un lien YouTube, Instagram, TikTok ou Facebook complet."); return; }
   loading(true);
   try{
     const r=await callBackend({url:$("url").value});
