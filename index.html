@@ -23,9 +23,11 @@
 
   /* ---- recette ---- */
   #recipe{ max-width:620px; margin:0 auto; padding-bottom:120px; }
-  #hero{ position:relative; height:240px; overflow:hidden; border-radius:0 0 26px 26px;
-    background:linear-gradient(135deg,var(--accent),var(--accent2)); }
-  #heroImg{ width:100%; height:100%; object-fit:cover; display:block; }
+  #hero{ position:relative; height:210px; overflow:hidden; border-radius:0 0 26px 26px;
+    background:
+      radial-gradient(circle at 78% 22%, rgba(255,255,255,.16), transparent 44%),
+      radial-gradient(circle at 12% 92%, rgba(20,18,15,.25), transparent 50%),
+      linear-gradient(135deg,var(--accent),var(--accent2)); }
   .hero-shade{ position:absolute; inset:0; background:linear-gradient(to top, rgba(20,18,15,.88) 0%, rgba(20,18,15,.15) 48%, rgba(20,18,15,.35) 100%); }
   .hero-top{ position:absolute; top:0; left:0; right:0; display:flex; justify-content:space-between; align-items:center; padding:16px; }
   .hero-btn{ width:40px; height:40px; border-radius:50%; border:none; background:rgba(20,18,15,.4);
@@ -54,12 +56,21 @@
   .ing-qty .u{ font-size:11px; font-weight:500; margin-left:1px; }
   .ing-name{ font-size:16px; line-height:1.35; flex:1; }
 
+  .cat-block{ margin-bottom:20px; }
+  .cat-head{ display:flex; align-items:center; gap:8px; margin-bottom:9px; padding-left:2px; }
+  .cat-dot{ width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+  .cat-name{ font-size:12px; font-weight:700; color:var(--muted); letter-spacing:.06em; }
+
   .cook-cta{ position:fixed; left:20px; right:20px; bottom:20px; max-width:580px; margin:0 auto; font-size:17px; font-weight:600; padding:17px; border-radius:15px; border:none; background:var(--accent); color:#fff; box-shadow:0 8px 24px rgba(232,83,58,.34); }
+
+  .play-badge{ width:42px; height:42px; border-radius:12px; flex-shrink:0; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,var(--accent),var(--accent2)); }
 
   /* ---- mes recettes (accueil) ---- */
   .saved-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:14px; }
   .saved-card{ position:relative; border-radius:16px; overflow:hidden; cursor:pointer; background:#fff; box-shadow:0 1px 3px rgba(26,24,23,.06); }
-  .saved-card .sc-thumb{ height:96px; background:linear-gradient(135deg,var(--accent),var(--accent2)); background-size:cover; background-position:center; }
+  .saved-card .sc-thumb{ height:96px; background:
+      radial-gradient(circle at 75% 25%, rgba(255,255,255,.16), transparent 50%),
+      linear-gradient(135deg,var(--accent),var(--accent2)); }
   .saved-card .sc-label{ padding:10px 12px 12px; font-size:14px; font-weight:600; line-height:1.25; }
   .saved-card .sc-del{ position:absolute; top:7px; right:7px; width:26px; height:26px; border-radius:50%; background:rgba(20,18,15,.55); color:#fff; border:none; font-size:14px; display:flex; align-items:center; justify-content:center; }
 
@@ -83,8 +94,8 @@
 
   <label style="display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:8px">LIEN VIDÉO</label>
   <input id="url" placeholder="YouTube, Instagram, TikTok, Facebook…" style="margin-bottom:14px" />
-  <div id="preview" class="hidden rise" style="display:flex;gap:12px;align-items:center;margin-bottom:16px;padding:10px;background:#fff;border-radius:12px;border:1px solid var(--line)">
-    <img id="thumb" alt="" style="width:96px;height:54px;object-fit:cover;border-radius:8px;flex-shrink:0" />
+  <div id="preview" class="hidden rise" style="display:flex;gap:13px;align-items:center;margin-bottom:16px;padding:11px 14px;background:#fff;border-radius:14px;border:1px solid var(--line)">
+    <span class="play-badge"><svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg></span>
     <span id="detectLabel" style="font-size:14px;color:var(--green);font-weight:600">Vidéo détectée ✓</span>
   </div>
 
@@ -112,7 +123,6 @@
 <!-- RECETTE -->
 <section id="recipe" class="hidden">
   <div id="hero">
-    <img id="heroImg" alt="" />
     <div class="hero-shade"></div>
     <div class="hero-top">
       <button id="backBtn" class="hero-btn press" aria-label="retour">←</button>
@@ -140,7 +150,7 @@
     </div>
 
     <div class="eyebrow">INGRÉDIENTS</div>
-    <div id="ingList" class="ing-card"></div>
+    <div id="ingList"></div>
   </div>
 
   <button id="cookBtn" class="cook-cta press">Lancer le mode cuisson →</button>
@@ -201,14 +211,7 @@ function esc(s){ return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").repla
 $("url").addEventListener("input", ()=>{
   const d=detectPlatform($("url").value);
   if(d){
-    if(d.ytId){
-      $("thumb").src=`https://img.youtube.com/vi/${d.ytId}/mqdefault.jpg`;
-      $("thumb").style.display="block";
-      $("detectLabel").textContent="Vidéo YouTube détectée ✓";
-    } else {
-      $("thumb").style.display="none";
-      $("detectLabel").textContent=`Vidéo ${d.platform} détectée ✓`;
-    }
+    $("detectLabel").textContent=`Vidéo ${d.platform} détectée ✓`;
     $("preview").classList.remove("hidden"); $("url").style.borderColor=GREEN;
   } else {
     $("preview").classList.add("hidden"); $("url").style.borderColor=LINE;
@@ -256,33 +259,44 @@ function loadRecipe(r){
   recipe=r; base=r.baseServings||4; servings=base; checked={};
   $("rTitle").textContent=r.title;
   $("rPlatform").textContent=r.platform||"";
-  // image hero
-  const hero=$("hero"), img=$("heroImg");
-  if(r.image){
-    img.src=r.image; img.style.display="block";
-    img.onerror=()=>{ img.style.display="none"; };
-  } else {
-    img.style.display="none"; img.removeAttribute("src");
-  }
   $("servings").textContent=servings;
   $("servLabel").textContent=servings>1?"personnes":"personne";
   renderIngredients(false);
   refreshSaveBtn();
   show("recipe"); window.scrollTo(0,0);
 }
+const CAT_ORDER=["Frais","Viandes & poissons","Crémerie","Épicerie","Épices","Autre"];
+const CAT_COLOR={"Frais":"#4F6F52","Viandes & poissons":"#C0492F","Crémerie":"#D9A53B","Épicerie":"#A9743B","Épices":"#E8533A","Autre":"#8A847A"};
+function normCat(c){ return CAT_ORDER.includes(c)?c:"Autre"; }
+
 function renderIngredients(flash){
   const wrap=$("ingList"); wrap.innerHTML="";
+  // grouper en gardant l'index d'origine
+  const groups={};
   recipe.ingredients.forEach((ing,i)=>{
-    const val=ing.amount==null?null:(ing.amount*servings)/base;
-    const on=checked[i];
-    const row=document.createElement("div");
-    row.className="ing-row"+(on?" done":"");
-    const qty = val==null
-      ? `<span class="ing-qty empty"></span>`
-      : `<span class="ing-qty${flash?" flash":""}">${fmtAmount(val)}${ing.unit?`<span class="u">${esc(ing.unit)}</span>`:""}</span>`;
-    row.innerHTML=`<span class="ing-check">${on?"✓":""}</span>${qty}<span class="ing-name">${esc(ing.name)}</span>`;
-    row.addEventListener("click",()=>{ checked[i]=!checked[i]; renderIngredients(false); });
-    wrap.appendChild(row);
+    const cat=normCat(ing.category);
+    (groups[cat]=groups[cat]||[]).push({ing,i});
+  });
+  CAT_ORDER.forEach(cat=>{
+    const items=groups[cat];
+    if(!items||!items.length) return;
+    const block=document.createElement("div");
+    block.className="cat-block";
+    block.innerHTML=`<div class="cat-head"><span class="cat-dot" style="background:${CAT_COLOR[cat]}"></span><span class="cat-name">${cat.toUpperCase()}</span></div><div class="ing-card"></div>`;
+    const card=block.querySelector(".ing-card");
+    items.forEach(({ing,i})=>{
+      const val=ing.amount==null?null:(ing.amount*servings)/base;
+      const on=checked[i];
+      const row=document.createElement("div");
+      row.className="ing-row"+(on?" done":"");
+      const qty = val==null
+        ? `<span class="ing-qty empty"></span>`
+        : `<span class="ing-qty${flash?" flash":""}">${fmtAmount(val)}${ing.unit?`<span class="u">${esc(ing.unit)}</span>`:""}</span>`;
+      row.innerHTML=`<span class="ing-check">${on?"✓":""}</span>${qty}<span class="ing-name">${esc(ing.name)}</span>`;
+      row.addEventListener("click",()=>{ checked[i]=!checked[i]; renderIngredients(false); });
+      card.appendChild(row);
+    });
+    wrap.appendChild(block);
   });
   if(flash) setTimeout(()=>renderIngredients(false),350);
 }
@@ -323,9 +337,8 @@ function renderSaved(){
   list.forEach(r=>{
     const card=document.createElement("div");
     card.className="saved-card press";
-    const thumb = r.image ? `style="background-image:url('${r.image}')"` : "";
     card.innerHTML=`
-      <div class="sc-thumb" ${thumb}></div>
+      <div class="sc-thumb"></div>
       <div class="sc-label">${esc(r.title)}</div>
       <button class="sc-del" aria-label="supprimer">✕</button>`;
     card.addEventListener("click",(e)=>{
