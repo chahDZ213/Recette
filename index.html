@@ -4,6 +4,13 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>mise.</title>
+<link rel="manifest" href="/manifest.json" />
+<meta name="theme-color" content="#1A1A17" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="mise." />
+<link rel="apple-touch-icon" href="/icon-192.png" />
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
 <style>
   :root{ --accent:#E8533A; --accent2:#B83A22; --ink:#1A1A17; --paper:#FBF8F3; --muted:#8A847A; --line:#E7E1D6; --green:#4F6F52; --cream:#F2EDE4; }
@@ -443,6 +450,7 @@ function alarm(){
 
 // init
 renderSaved();
+if("serviceWorker" in navigator){ navigator.serviceWorker.register("/sw.js").catch(()=>{}); }
 </script>
 </body>
 </html>
