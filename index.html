@@ -34,7 +34,9 @@
     backdrop-filter:blur(6px); color:#fff; display:flex; align-items:center; justify-content:center; font-size:18px; }
   .hero-title{ position:absolute; left:0; right:0; bottom:0; padding:20px; }
   .hero-title h1{ color:#fff; font-size:28px; font-weight:700; letter-spacing:-.02em; line-height:1.08; font-family:'Space Grotesk',monospace; }
-  .hero-plat{ display:inline-block; color:#fff; opacity:.85; font-size:13px; font-weight:600; letter-spacing:.04em; margin-bottom:8px; text-transform:uppercase; }
+  .hero-plat{ display:inline-flex; align-items:center; gap:7px; color:#fff; font-size:12px; font-weight:700; letter-spacing:.05em; margin-bottom:9px; text-transform:uppercase; }
+  .hero-plat-badge{ width:22px; height:22px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .hero-plat-badge svg{ width:13px; height:13px; }
   .recipe-body{ padding:22px 20px 0; }
 
   .servings-card{ background:var(--ink); border-radius:18px; padding:16px 20px; display:flex; align-items:center; justify-content:space-between; margin-bottom:26px; }
@@ -64,15 +66,18 @@
   .cook-cta{ position:fixed; left:20px; right:20px; bottom:20px; max-width:580px; margin:0 auto; font-size:17px; font-weight:600; padding:17px; border-radius:15px; border:none; background:var(--accent); color:#fff; box-shadow:0 8px 24px rgba(232,83,58,.34); }
 
   .play-badge{ width:42px; height:42px; border-radius:12px; flex-shrink:0; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,var(--accent),var(--accent2)); }
+  .plat-badge{ width:42px; height:42px; border-radius:12px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+  .plat-badge svg{ width:22px; height:22px; }
 
   /* ---- mes recettes (accueil) ---- */
-  .saved-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:14px; }
-  .saved-card{ position:relative; border-radius:16px; overflow:hidden; cursor:pointer; background:#fff; box-shadow:0 1px 3px rgba(26,24,23,.06); }
-  .saved-card .sc-thumb{ height:96px; background:
-      radial-gradient(circle at 75% 25%, rgba(255,255,255,.16), transparent 50%),
-      linear-gradient(135deg,var(--accent),var(--accent2)); }
-  .saved-card .sc-label{ padding:10px 12px 12px; font-size:14px; font-weight:600; line-height:1.25; }
-  .saved-card .sc-del{ position:absolute; top:7px; right:7px; width:26px; height:26px; border-radius:50%; background:rgba(20,18,15,.55); color:#fff; border:none; font-size:14px; display:flex; align-items:center; justify-content:center; }
+  .saved-list{ margin-top:14px; background:#fff; border-radius:16px; overflow:hidden; box-shadow:0 1px 3px rgba(26,24,23,.06); }
+  .saved-row{ display:flex; align-items:center; gap:12px; padding:15px 16px; border-bottom:1px solid var(--line); cursor:pointer; transition:background .15s; }
+  .saved-row:last-child{ border-bottom:none; }
+  .saved-row:active{ background:#FAF7F1; }
+  .saved-row .sr-name{ flex:1; font-size:16px; font-weight:500; line-height:1.3; }
+  .saved-row .sr-del{ width:28px; height:28px; border-radius:8px; background:transparent; color:var(--muted); border:none; font-size:15px; flex-shrink:0; }
+  .saved-row .sr-del:active{ background:var(--cream); }
+  .saved-row .sr-go{ color:var(--muted); font-size:16px; }
 
   @media (prefers-reduced-motion:reduce){ .rise{animation:none;} .ing-qty{transition:none;} }
 </style>
@@ -95,7 +100,7 @@
   <label style="display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:8px">LIEN VIDÉO</label>
   <input id="url" placeholder="YouTube, Instagram, TikTok, Facebook…" style="margin-bottom:14px" />
   <div id="preview" class="hidden rise" style="display:flex;gap:13px;align-items:center;margin-bottom:16px;padding:11px 14px;background:#fff;border-radius:14px;border:1px solid var(--line)">
-    <span class="play-badge"><svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg></span>
+    <span id="platIcon" class="plat-badge"></span>
     <span id="detectLabel" style="font-size:14px;color:var(--green);font-weight:600">Vidéo détectée ✓</span>
   </div>
 
@@ -116,7 +121,7 @@
   <!-- Mes recettes -->
   <div id="savedSection" class="hidden" style="margin-top:40px">
     <div class="eyebrow">MES RECETTES</div>
-    <div id="savedGrid" class="saved-grid"></div>
+    <div id="savedList" class="saved-list"></div>
   </div>
 </section>
 
@@ -192,6 +197,13 @@ function detectPlatform(url){
   if(/(facebook\.com|fb\.watch)\//i.test(url)) return {platform:"Facebook"};
   return null;
 }
+function platBadge(p){
+  if(p==="YouTube") return {bg:"#FF0000", svg:`<svg viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg>`};
+  if(p==="Instagram") return {bg:"radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%)", svg:`<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5.5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.3" fill="#fff" stroke="none"/></svg>`};
+  if(p==="TikTok") return {bg:"#111", svg:`<svg viewBox="0 0 24 24" fill="#fff"><path d="M9 17.5a3 3 0 1 1-3-3c.35 0 .7.05 1 .15V4.2h2c0 2.2 1.8 4 4 4v2c-1.5 0-2.9-.5-4-1.4v8.7z"/></svg>`};
+  if(p==="Facebook") return {bg:"#1877F2", svg:`<svg viewBox="0 0 24 24" fill="#fff"><path d="M14.5 8.5h2.2V5.4c-.4 0-1.6-.1-3-.1-3 0-4.2 1.8-4.2 4v1.9H7v3.1h2.5V22h3.2v-7.6h2.5l.4-3.1h-2.9V9.6c0-.9.3-1.1 1.3-1.1z"/></svg>`};
+  return {bg:"linear-gradient(135deg,var(--accent),var(--accent2))", svg:`<svg viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg>`};
+}
 function fmtAmount(a){
   if(a==null) return "";
   const r=Math.round(a*100)/100;
@@ -211,6 +223,9 @@ function esc(s){ return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").repla
 $("url").addEventListener("input", ()=>{
   const d=detectPlatform($("url").value);
   if(d){
+    const b=platBadge(d.platform);
+    $("platIcon").style.background=b.bg;
+    $("platIcon").innerHTML=b.svg;
     $("detectLabel").textContent=`Vidéo ${d.platform} détectée ✓`;
     $("preview").classList.remove("hidden"); $("url").style.borderColor=GREEN;
   } else {
@@ -258,7 +273,8 @@ $("manualBtn").addEventListener("click", async ()=>{
 function loadRecipe(r){
   recipe=r; base=r.baseServings||4; servings=base; checked={};
   $("rTitle").textContent=r.title;
-  $("rPlatform").textContent=r.platform||"";
+  if(r.platform){ const b=platBadge(r.platform); $("rPlatform").innerHTML=`<span class="hero-plat-badge" style="background:${b.bg}">${b.svg}</span>${r.platform}`; }
+  else { $("rPlatform").innerHTML=""; }
   $("servings").textContent=servings;
   $("servLabel").textContent=servings>1?"personnes":"personne";
   renderIngredients(false);
@@ -333,21 +349,19 @@ function renderSaved(){
   const list=getSaved();
   if(!list.length){ $("savedSection").classList.add("hidden"); return; }
   $("savedSection").classList.remove("hidden");
-  const grid=$("savedGrid"); grid.innerHTML="";
-  list.forEach(r=>{
-    const card=document.createElement("div");
-    card.className="saved-card press";
-    card.innerHTML=`
-      <div class="sc-thumb"></div>
-      <div class="sc-label">${esc(r.title)}</div>
-      <button class="sc-del" aria-label="supprimer">✕</button>`;
-    card.addEventListener("click",(e)=>{
-      if(e.target.classList.contains("sc-del")){
+  const sorted=[...list].sort((a,b)=>(a.title||"").localeCompare(b.title||"","fr",{sensitivity:"base"}));
+  const box=$("savedList"); box.innerHTML="";
+  sorted.forEach(r=>{
+    const row=document.createElement("div");
+    row.className="saved-row";
+    row.innerHTML=`<span class="sr-name">${esc(r.title)}</span><button class="sr-del" aria-label="supprimer">✕</button><span class="sr-go">→</span>`;
+    row.addEventListener("click",(e)=>{
+      if(e.target.classList.contains("sr-del")){
         setSaved(getSaved().filter(x=>x._id!==r._id)); renderSaved(); return;
       }
       loadRecipe({...r});
     });
-    grid.appendChild(card);
+    box.appendChild(row);
   });
 }
 
