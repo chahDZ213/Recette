@@ -6,7 +6,7 @@
 <title>mise.</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
 <style>
-  :root{ --accent:#E8533A; --ink:#1A1A17; --paper:#FBF8F3; --muted:#8A847A; --line:#E7E1D6; --green:#4F6F52; }
+  :root{ --accent:#E8533A; --accent2:#B83A22; --ink:#1A1A17; --paper:#FBF8F3; --muted:#8A847A; --line:#E7E1D6; --green:#4F6F52; --cream:#F2EDE4; }
   *{ box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
   body{ font-family:Inter,system-ui,sans-serif; background:var(--paper); color:var(--ink); }
   .mono{ font-family:'Space Grotesk',monospace; }
@@ -20,16 +20,57 @@
   @keyframes spin{ to{ transform:rotate(360deg); } }
   @keyframes rise{ from{ opacity:0; transform:translateY(8px);} to{ opacity:1; transform:none;} }
   .rise{ animation:rise .4s ease both; }
-  .flash{ color:var(--accent) !important; }
-  .num{ transition:color .35s ease; }
-  @media (prefers-reduced-motion:reduce){ .rise{animation:none;} .num{transition:none;} }
+
+  /* ---- recette ---- */
+  #recipe{ max-width:620px; margin:0 auto; padding-bottom:120px; }
+  #hero{ position:relative; height:240px; overflow:hidden; border-radius:0 0 26px 26px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); }
+  #heroImg{ width:100%; height:100%; object-fit:cover; display:block; }
+  .hero-shade{ position:absolute; inset:0; background:linear-gradient(to top, rgba(20,18,15,.88) 0%, rgba(20,18,15,.15) 48%, rgba(20,18,15,.35) 100%); }
+  .hero-top{ position:absolute; top:0; left:0; right:0; display:flex; justify-content:space-between; align-items:center; padding:16px; }
+  .hero-btn{ width:40px; height:40px; border-radius:50%; border:none; background:rgba(20,18,15,.4);
+    backdrop-filter:blur(6px); color:#fff; display:flex; align-items:center; justify-content:center; font-size:18px; }
+  .hero-title{ position:absolute; left:0; right:0; bottom:0; padding:20px; }
+  .hero-title h1{ color:#fff; font-size:28px; font-weight:700; letter-spacing:-.02em; line-height:1.08; font-family:'Space Grotesk',monospace; }
+  .hero-plat{ display:inline-block; color:#fff; opacity:.85; font-size:13px; font-weight:600; letter-spacing:.04em; margin-bottom:8px; text-transform:uppercase; }
+  .recipe-body{ padding:22px 20px 0; }
+
+  .servings-card{ background:var(--ink); border-radius:18px; padding:16px 20px; display:flex; align-items:center; justify-content:space-between; margin-bottom:26px; }
+  .step-btn{ width:46px; height:46px; border-radius:13px; border:1.5px solid rgba(255,255,255,.22); background:transparent; color:#fff; font-size:26px; line-height:1; display:flex; align-items:center; justify-content:center; }
+
+  .eyebrow{ font-size:12px; font-weight:700; color:var(--muted); letter-spacing:.08em; margin-bottom:12px; }
+
+  .ing-card{ background:#fff; border-radius:18px; overflow:hidden; box-shadow:0 1px 3px rgba(26,24,23,.06); margin-bottom:32px; }
+  .ing-row{ display:flex; align-items:center; gap:13px; padding:14px 16px; border-bottom:1px solid var(--line); cursor:pointer; transition:background .15s; }
+  .ing-row:last-child{ border-bottom:none; }
+  .ing-row:active{ background:#FAF7F1; }
+  .ing-row.done{ opacity:.42; }
+  .ing-row.done .ing-name{ text-decoration:line-through; }
+  .ing-check{ width:22px; height:22px; border-radius:7px; border:1.5px solid var(--line); flex-shrink:0; display:flex; align-items:center; justify-content:center; color:#fff; font-size:13px; transition:all .15s; }
+  .ing-row.done .ing-check{ background:var(--green); border-color:var(--green); }
+  .ing-qty{ font-family:'Space Grotesk',monospace; font-weight:700; font-size:14px; background:var(--cream); color:var(--ink); padding:5px 9px; border-radius:8px; white-space:nowrap; min-width:50px; text-align:center; transition:background .35s,color .35s; }
+  .ing-qty.empty{ background:transparent; }
+  .ing-qty.flash{ background:var(--accent); color:#fff; }
+  .ing-qty .u{ font-size:11px; font-weight:500; margin-left:1px; }
+  .ing-name{ font-size:16px; line-height:1.35; flex:1; }
+
+  .cook-cta{ position:fixed; left:20px; right:20px; bottom:20px; max-width:580px; margin:0 auto; font-size:17px; font-weight:600; padding:17px; border-radius:15px; border:none; background:var(--accent); color:#fff; box-shadow:0 8px 24px rgba(232,83,58,.34); }
+
+  /* ---- mes recettes (accueil) ---- */
+  .saved-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:14px; }
+  .saved-card{ position:relative; border-radius:16px; overflow:hidden; cursor:pointer; background:#fff; box-shadow:0 1px 3px rgba(26,24,23,.06); }
+  .saved-card .sc-thumb{ height:96px; background:linear-gradient(135deg,var(--accent),var(--accent2)); background-size:cover; background-position:center; }
+  .saved-card .sc-label{ padding:10px 12px 12px; font-size:14px; font-weight:600; line-height:1.25; }
+  .saved-card .sc-del{ position:absolute; top:7px; right:7px; width:26px; height:26px; border-radius:50%; background:rgba(20,18,15,.55); color:#fff; border:none; font-size:14px; display:flex; align-items:center; justify-content:center; }
+
+  @media (prefers-reduced-motion:reduce){ .rise{animation:none;} .ing-qty{transition:none;} }
 </style>
 </head>
 <body>
 
 <!-- ACCUEIL -->
 <section id="home" class="wrap">
-  <div style="display:flex;align-items:baseline;gap:2px;margin-bottom:48px">
+  <div style="display:flex;align-items:baseline;gap:2px;margin-bottom:44px">
     <span class="mono" style="font-size:26px;font-weight:700;letter-spacing:-.02em">mise</span>
     <span class="mono" style="font-size:26px;font-weight:700;color:var(--accent)">.</span>
   </div>
@@ -60,29 +101,49 @@
       <button id="manualBtn" class="press" style="margin-top:10px;font-size:15px;font-weight:600;padding:12px 20px;border-radius:10px;border:1.5px solid var(--ink);background:transparent;color:var(--ink)">Structurer ce texte</button>
     </div>
   </div>
+
+  <!-- Mes recettes -->
+  <div id="savedSection" class="hidden" style="margin-top:40px">
+    <div class="eyebrow">MES RECETTES</div>
+    <div id="savedGrid" class="saved-grid"></div>
+  </div>
 </section>
 
 <!-- RECETTE -->
-<section id="recipe" class="wrap hidden">
-  <button id="backBtn" class="press" style="background:none;border:none;color:var(--muted);font-size:15px;padding:4px 0;margin-bottom:8px">← Nouvelle recette</button>
-  <h1 id="rTitle" class="mono rise" style="font-size:30px;font-weight:700;letter-spacing:-.02em;line-height:1.1;margin-bottom:24px"></h1>
-
-  <div style="background:var(--ink);border-radius:16px;padding:18px 20px;display:flex;align-items:center;justify-content:space-between;margin-bottom:28px">
-    <span style="color:#fff;font-size:14px;font-weight:500;opacity:.7">Pour</span>
-    <div style="display:flex;align-items:center;gap:18px">
-      <button id="minus" class="press" aria-label="moins" style="width:44px;height:44px;border-radius:12px;border:1.5px solid rgba(255,255,255,.25);background:transparent;color:#fff;font-size:24px;line-height:1">−</button>
-      <div style="text-align:center;min-width:70px">
-        <div id="servings" class="mono" style="color:#fff;font-size:40px;font-weight:700;line-height:1">4</div>
-        <div id="servLabel" style="color:#fff;font-size:12px;opacity:.6;margin-top:2px">personnes</div>
-      </div>
-      <button id="plus" class="press" aria-label="plus" style="width:44px;height:44px;border-radius:12px;border:1.5px solid rgba(255,255,255,.25);background:transparent;color:#fff;font-size:24px;line-height:1">+</button>
+<section id="recipe" class="hidden">
+  <div id="hero">
+    <img id="heroImg" alt="" />
+    <div class="hero-shade"></div>
+    <div class="hero-top">
+      <button id="backBtn" class="hero-btn press" aria-label="retour">←</button>
+      <button id="saveBtn" class="hero-btn press" aria-label="sauvegarder">
+        <svg id="saveIcon" width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M6 4h12v16l-6-4-6 4V4z" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+    <div class="hero-title">
+      <span id="rPlatform" class="hero-plat"></span>
+      <h1 id="rTitle"></h1>
     </div>
   </div>
 
-  <h2 style="font-size:13px;font-weight:600;color:var(--muted);letter-spacing:.05em;margin-bottom:14px">INGRÉDIENTS</h2>
-  <div id="ingList" style="margin-bottom:32px"></div>
+  <div class="recipe-body">
+    <div class="servings-card">
+      <span style="color:#fff;font-size:14px;font-weight:500;opacity:.7">Pour</span>
+      <div style="display:flex;align-items:center;gap:18px">
+        <button id="minus" class="step-btn press" aria-label="moins">−</button>
+        <div style="text-align:center;min-width:70px">
+          <div id="servings" class="mono" style="color:#fff;font-size:40px;font-weight:700;line-height:1">4</div>
+          <div id="servLabel" style="color:#fff;font-size:12px;opacity:.6;margin-top:2px">personnes</div>
+        </div>
+        <button id="plus" class="step-btn press" aria-label="plus">+</button>
+      </div>
+    </div>
 
-  <button id="cookBtn" class="press" style="position:fixed;left:20px;right:20px;bottom:20px;max-width:580px;margin:0 auto;font-size:17px;font-weight:600;padding:17px;border-radius:14px;border:none;background:var(--accent);color:#fff;box-shadow:0 8px 24px rgba(232,83,58,.32)">Lancer le mode cuisson →</button>
+    <div class="eyebrow">INGRÉDIENTS</div>
+    <div id="ingList" class="ing-card"></div>
+  </div>
+
+  <button id="cookBtn" class="cook-cta press">Lancer le mode cuisson →</button>
 </section>
 
 <!-- MODE CUISSON -->
@@ -100,8 +161,7 @@
 </section>
 
 <script>
-const BACKEND_URL = "/api/extract"; // change si ton backend est ailleurs
-
+const BACKEND_URL = "/api/extract";
 const ACCENT="#E8533A", INK="#1A1A17", GREEN="#4F6F52", LINE="#E7E1D6", PAPER="#FBF8F3";
 const $ = (id) => document.getElementById(id);
 let recipe=null, servings=4, base=4, checked={}, cookStep=0, timerState=null;
@@ -126,15 +186,16 @@ function fmtAmount(a){
   if(a==null) return "";
   const r=Math.round(a*100)/100;
   if(Number.isInteger(r)) return ""+r;
-  const f=r-Math.floor(r), base=Math.floor(r);
-  if(Math.abs(f-.5)<.05) return base===0?"½":base+"½";
-  if(Math.abs(f-.25)<.05) return base===0?"¼":base+"¼";
-  if(Math.abs(f-.75)<.05) return base===0?"¾":base+"¾";
+  const f=r-Math.floor(r), bs=Math.floor(r);
+  if(Math.abs(f-.5)<.05) return bs===0?"½":bs+"½";
+  if(Math.abs(f-.25)<.05) return bs===0?"¼":bs+"¼";
+  if(Math.abs(f-.75)<.05) return bs===0?"¾":bs+"¾";
   return ""+(r<10?Math.round(r*10)/10:Math.round(r));
 }
 function fmtTime(s){ const m=Math.floor(s/60); return m+":"+String(s%60).padStart(2,"0"); }
 function show(id){ ["home","recipe","cook"].forEach(s=>$(s).classList.toggle("hidden", s!==id)); }
 function setError(msg){ const e=$("error"); if(!msg){e.classList.add("hidden");return;} e.textContent=msg; e.classList.remove("hidden"); }
+function esc(s){ return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
 
 // ---- aperçu lien ----
 $("url").addEventListener("input", ()=>{
@@ -154,7 +215,7 @@ $("url").addEventListener("input", ()=>{
   }
 });
 
-// ---- appels backend ----
+// ---- backend ----
 async function callBackend(payload){
   const r=await fetch(BACKEND_URL,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(payload)});
   return r.json();
@@ -172,7 +233,7 @@ $("decodeBtn").addEventListener("click", async ()=>{
   try{
     const r=await callBackend({url:$("url").value});
     if(!r.found){ setError(r.error||"Recette introuvable. Colle la description ci-dessous."); $("manualBox").classList.remove("hidden"); }
-    else loadRecipe(r);
+    else { r.platform=d.platform; loadRecipe(r); }
   }catch(e){ setError("Le serveur n'a pas répondu. Vérifie que /api/extract est déployé."); }
   loading(false);
 });
@@ -194,8 +255,19 @@ $("manualBtn").addEventListener("click", async ()=>{
 function loadRecipe(r){
   recipe=r; base=r.baseServings||4; servings=base; checked={};
   $("rTitle").textContent=r.title;
+  $("rPlatform").textContent=r.platform||"";
+  // image hero
+  const hero=$("hero"), img=$("heroImg");
+  if(r.image){
+    img.src=r.image; img.style.display="block";
+    img.onerror=()=>{ img.style.display="none"; };
+  } else {
+    img.style.display="none"; img.removeAttribute("src");
+  }
   $("servings").textContent=servings;
+  $("servLabel").textContent=servings>1?"personnes":"personne";
   renderIngredients(false);
+  refreshSaveBtn();
   show("recipe"); window.scrollTo(0,0);
 }
 function renderIngredients(flash){
@@ -203,12 +275,12 @@ function renderIngredients(flash){
   recipe.ingredients.forEach((ing,i)=>{
     const val=ing.amount==null?null:(ing.amount*servings)/base;
     const on=checked[i];
-    const row=document.createElement("button");
-    row.style.cssText=`width:100%;display:flex;align-items:baseline;gap:12px;padding:12px 4px;border-bottom:1px solid ${LINE};background:none;border-top:none;border-left:none;border-right:none;text-align:left;opacity:${on?.4:1}`;
-    row.innerHTML=`
-      <span style="width:18px;height:18px;border-radius:6px;border:1.5px solid ${on?GREEN:LINE};background:${on?GREEN:"transparent"};flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;transform:translateY(3px)">${on?"✓":""}</span>
-      <span class="mono num" style="font-size:17px;font-weight:700;min-width:62px;color:${flash?ACCENT:INK};text-decoration:${on?"line-through":"none"}">${fmtAmount(val)}${ing.unit?`<span style="font-size:13px;font-weight:500;margin-left:1px">${ing.unit}</span>`:""}</span>
-      <span style="font-size:16px;line-height:1.4;text-decoration:${on?"line-through":"none"}">${ing.name}</span>`;
+    const row=document.createElement("div");
+    row.className="ing-row"+(on?" done":"");
+    const qty = val==null
+      ? `<span class="ing-qty empty"></span>`
+      : `<span class="ing-qty${flash?" flash":""}">${fmtAmount(val)}${ing.unit?`<span class="u">${esc(ing.unit)}</span>`:""}</span>`;
+    row.innerHTML=`<span class="ing-check">${on?"✓":""}</span>${qty}<span class="ing-name">${esc(ing.name)}</span>`;
     row.addEventListener("click",()=>{ checked[i]=!checked[i]; renderIngredients(false); });
     wrap.appendChild(row);
   });
@@ -223,7 +295,48 @@ function changeServings(d){
 }
 $("minus").addEventListener("click",()=>changeServings(-1));
 $("plus").addEventListener("click",()=>changeServings(1));
-$("backBtn").addEventListener("click",()=>{ show("home"); });
+$("backBtn").addEventListener("click",()=>{ renderSaved(); show("home"); });
+
+// ---- sauvegarde (localStorage) ----
+function getSaved(){ try{ return JSON.parse(localStorage.getItem("mise_recipes")||"[]"); }catch(e){ return []; } }
+function setSaved(a){ try{ localStorage.setItem("mise_recipes", JSON.stringify(a)); }catch(e){} }
+function currentIsSaved(){ return recipe && recipe._id && getSaved().some(x=>x._id===recipe._id); }
+function refreshSaveBtn(){
+  const path=$("saveIcon").querySelector("path");
+  if(currentIsSaved()){ path.setAttribute("fill","#fff"); }
+  else { path.setAttribute("fill","none"); }
+}
+$("saveBtn").addEventListener("click",()=>{
+  if(!recipe) return;
+  let list=getSaved();
+  if(!recipe._id) recipe._id="r"+Date.now();
+  const idx=list.findIndex(x=>x._id===recipe._id);
+  if(idx>=0){ list.splice(idx,1); }   // déjà sauvée -> on retire
+  else { list.unshift({...recipe}); }  // on ajoute en tête
+  setSaved(list); refreshSaveBtn();
+});
+function renderSaved(){
+  const list=getSaved();
+  if(!list.length){ $("savedSection").classList.add("hidden"); return; }
+  $("savedSection").classList.remove("hidden");
+  const grid=$("savedGrid"); grid.innerHTML="";
+  list.forEach(r=>{
+    const card=document.createElement("div");
+    card.className="saved-card press";
+    const thumb = r.image ? `style="background-image:url('${r.image}')"` : "";
+    card.innerHTML=`
+      <div class="sc-thumb" ${thumb}></div>
+      <div class="sc-label">${esc(r.title)}</div>
+      <button class="sc-del" aria-label="supprimer">✕</button>`;
+    card.addEventListener("click",(e)=>{
+      if(e.target.classList.contains("sc-del")){
+        setSaved(getSaved().filter(x=>x._id!==r._id)); renderSaved(); return;
+      }
+      loadRecipe({...r});
+    });
+    grid.appendChild(card);
+  });
+}
 
 // ---- mode cuisson ----
 $("cookBtn").addEventListener("click",()=>{ cookStep=0; show("cook"); renderCook(); });
@@ -239,8 +352,8 @@ function renderCook(){
   $("stepCount").textContent=`${cookStep+1} / ${total}`;
   $("progress").innerHTML=steps.map((_,i)=>`<div style="flex:1;height:4px;border-radius:2px;background:${i<=cookStep?ACCENT:"rgba(251,248,243,.15)"};transition:background .3s"></div>`).join("");
   let html=`<div class="rise"><div class="mono" style="font-size:14px;color:${ACCENT};font-weight:500;margin-bottom:14px;letter-spacing:.04em">ÉTAPE ${cookStep+1}</div>`;
-  if(s.title) html+=`<h2 class="mono" style="font-size:26px;font-weight:700;letter-spacing:-.02em;margin-bottom:18px;line-height:1.15">${s.title}</h2>`;
-  html+=`<p style="font-size:22px;line-height:1.45">${s.content}</p>`;
+  if(s.title) html+=`<h2 class="mono" style="font-size:26px;font-weight:700;letter-spacing:-.02em;margin-bottom:18px;line-height:1.15">${esc(s.title)}</h2>`;
+  html+=`<p style="font-size:22px;line-height:1.45">${esc(s.content)}</p>`;
   if(s.timerSeconds) html+=`<div id="timerSlot"></div>`;
   html+=`</div>`;
   $("stepBody").innerHTML=html;
@@ -252,11 +365,7 @@ function renderCook(){
 }
 
 // ---- minuteur ----
-function mountTimer(sec){
-  const slot=$("timerSlot");
-  timerState={left:sec,total:sec,running:false,done:false,handle:null};
-  renderTimer(slot);
-}
+function mountTimer(sec){ const slot=$("timerSlot"); timerState={left:sec,total:sec,running:false,done:false,handle:null}; renderTimer(slot); }
 function renderTimer(slot){
   const t=timerState;
   slot.innerHTML=`<div style="margin-top:32px;display:flex;align-items:center;gap:16px;padding:16px 18px;background:${t.done?"rgba(79,111,82,.2)":"rgba(251,248,243,.06)"};border-radius:14px;border:1px solid ${t.done?GREEN:"rgba(251,248,243,.12)"}">
@@ -292,6 +401,9 @@ function alarm(){
     o.start(); o.stop(ctx.currentTime+.8);
   }catch(e){}
 }
+
+// init
+renderSaved();
 </script>
 </body>
 </html>
