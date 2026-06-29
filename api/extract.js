@@ -101,12 +101,14 @@ export default async function handler(req, res) {
   try {
     const { url, text } = req.body || {};
     let source = "";
+    let image = null;
 
     if (text && text.trim().length > 20) {
       source = text;
     } else {
       if (!isSupportedUrl(url)) return res.status(400).json({ found: false, error: "Lien non supporté (YouTube, Instagram, TikTok, Facebook)" });
       const ytId = extractVideoId(url); // non-null seulement pour YouTube
+      if (ytId) image = `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`;
       const [transcript, description] = await Promise.all([
         getTranscript(url),
         ytId ? getDescription(ytId) : Promise.resolve(""),
@@ -121,6 +123,7 @@ export default async function handler(req, res) {
     }
 
     const recipe = await askClaude(source);
+    if (recipe && recipe.found !== false) recipe.image = image;
     return res.status(200).json(recipe);
   } catch (e) {
     return res.status(200).json({ found: false, error: "Extraction impossible. Réessaie ou colle la description." });
