@@ -223,6 +223,33 @@ function fmtAmount(a){
   if(Math.abs(f-.75)<.05) return bs===0?"¾":bs+"¾";
   return ""+(r<10?Math.round(r*10)/10:Math.round(r));
 }
+// fraction lisible la plus proche — précis ET simple (⅛ ¼ ⅓ ⅜ ½ ⅝ ⅔ ¾ ⅞)
+const FRACS=[[0,""],[0.125,"⅛"],[0.25,"¼"],[1/3,"⅓"],[0.375,"⅜"],[0.5,"½"],[0.625,"⅝"],[2/3,"⅔"],[0.75,"¾"],[0.875,"⅞"],[1,""]];
+function niceFrac(a){
+  if(a==null) return "";
+  let w=Math.floor(a), f=a-w;
+  let best=FRACS[0], bd=Infinity;
+  for(const fr of FRACS){ const d=Math.abs(f-fr[0]); if(d<bd){ bd=d; best=fr; } }
+  let v=best[0], s=best[1];
+  if(v===1){ w+=1; s=""; }                 // la frac arrondit à l'entier supérieur
+  if(w===0 && s==="" && a>0) return "⅛";   // très petit mais non nul
+  if(w===0) return s || "0";
+  return s ? w+s : String(w);
+}
+// arrondi par palier (pour g, ml, kg, l…)
+function stepRound(a,u){
+  if(u==="kg"||u==="l"||u==="litre"||u==="litres") return String(Math.round(a*10)/10);
+  let step;
+  if(a<20) step=1; else if(a<100) step=5; else if(a<1000) step=10; else step=50;
+  return String(Math.round(a/step)*step);
+}
+// quantité lisible : g/ml arrondis en paliers, le reste en fractions lisibles
+function smartVal(amount, unit){
+  if(amount==null) return "";
+  const u=(unit||"").toLowerCase().trim();
+  if(/^(g|gr|gramme|grammes|ml|cl|kg|l|litre|litres)$/.test(u)) return stepRound(amount,u);
+  return niceFrac(amount);
+}
 function fmtTime(s){ const m=Math.floor(s/60); return m+":"+String(s%60).padStart(2,"0"); }
 function show(id){ ["home","recipe","cook"].forEach(s=>$(s).classList.toggle("hidden", s!==id)); }
 function setError(msg){ const e=$("error"); if(!msg){e.classList.add("hidden");return;} e.textContent=msg; e.classList.remove("hidden"); }
@@ -316,7 +343,7 @@ function renderIngredients(flash){
       row.className="ing-row"+(on?" done":"");
       const qty = val==null
         ? `<span class="ing-qty empty"></span>`
-        : `<span class="ing-qty${flash?" flash":""}">${fmtAmount(val)}${ing.unit?`<span class="u">${esc(ing.unit)}</span>`:""}</span>`;
+        : `<span class="ing-qty${flash?" flash":""}">${smartVal(val, ing.unit)}${ing.unit?`<span class="u">${esc(ing.unit)}</span>`:""}</span>`;
       row.innerHTML=`<span class="ing-check">${on?"✓":""}</span>${qty}<span class="ing-name">${esc(ing.name)}</span>`;
       row.addEventListener("click",()=>{ checked[i]=!checked[i]; renderIngredients(false); });
       card.appendChild(row);
