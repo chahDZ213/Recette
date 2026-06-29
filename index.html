@@ -75,9 +75,11 @@
   .saved-row:last-child{ border-bottom:none; }
   .saved-row:active{ background:#FAF7F1; }
   .saved-row .sr-name{ flex:1; font-size:16px; font-weight:500; line-height:1.3; }
+  .saved-row .sr-fav{ width:32px; height:32px; border-radius:9px; background:transparent; border:none; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; }
+  .saved-row .sr-fav svg{ width:20px; height:20px; }
+  .saved-row .sr-fav:active{ background:var(--cream); }
   .saved-row .sr-del{ width:28px; height:28px; border-radius:8px; background:transparent; color:var(--muted); border:none; font-size:15px; flex-shrink:0; }
   .saved-row .sr-del:active{ background:var(--cream); }
-  .saved-row .sr-go{ color:var(--muted); font-size:16px; }
 
   @media (prefers-reduced-motion:reduce){ .rise{animation:none;} .ing-qty{transition:none;} }
 </style>
@@ -200,7 +202,7 @@ function detectPlatform(url){
 function platBadge(p){
   if(p==="YouTube") return {bg:"#FF0000", svg:`<svg viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg>`};
   if(p==="Instagram") return {bg:"radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%)", svg:`<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5.5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.3" fill="#fff" stroke="none"/></svg>`};
-  if(p==="TikTok") return {bg:"#111", svg:`<svg viewBox="0 0 24 24" fill="#fff"><path d="M9 17.5a3 3 0 1 1-3-3c.35 0 .7.05 1 .15V4.2h2c0 2.2 1.8 4 4 4v2c-1.5 0-2.9-.5-4-1.4v8.7z"/></svg>`};
+  if(p==="TikTok") return {bg:"#111", svg:`<svg viewBox="0 0 24 24" fill="#fff"><path d="M16.6 5.82A4.28 4.28 0 0 1 15.54 3h-3.09v12.4a2.59 2.59 0 1 1-2.59-2.6c.27 0 .53.04.78.12v-3.2a5.7 5.7 0 0 0-.78-.06c-3.14 0-5.69 2.55-5.69 5.7s2.55 5.69 5.69 5.69 5.69-2.55 5.69-5.69V9.01a7.33 7.33 0 0 0 4.28 1.37V7.3a4.28 4.28 0 0 1-3.23-1.48z"/></svg>`};
   if(p==="Facebook") return {bg:"#1877F2", svg:`<svg viewBox="0 0 24 24" fill="#fff"><path d="M14.5 8.5h2.2V5.4c-.4 0-1.6-.1-3-.1-3 0-4.2 1.8-4.2 4v1.9H7v3.1h2.5V22h3.2v-7.6h2.5l.4-3.1h-2.9V9.6c0-.9.3-1.1 1.3-1.1z"/></svg>`};
   return {bg:"linear-gradient(135deg,var(--accent),var(--accent2))", svg:`<svg viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg>`};
 }
@@ -349,20 +351,30 @@ function renderSaved(){
   const list=getSaved();
   if(!list.length){ $("savedSection").classList.add("hidden"); return; }
   $("savedSection").classList.remove("hidden");
-  const sorted=[...list].sort((a,b)=>(a.title||"").localeCompare(b.title||"","fr",{sensitivity:"base"}));
+  const sorted=[...list].sort((a,b)=>{
+    if(!!a.fav!==!!b.fav) return a.fav?-1:1;                       // favoris en haut
+    return (a.title||"").localeCompare(b.title||"","fr",{sensitivity:"base"}); // puis alphabétique
+  });
   const box=$("savedList"); box.innerHTML="";
   sorted.forEach(r=>{
     const row=document.createElement("div");
     row.className="saved-row";
-    row.innerHTML=`<span class="sr-name">${esc(r.title)}</span><button class="sr-del" aria-label="supprimer">✕</button><span class="sr-go">→</span>`;
+    const heart = r.fav
+      ? `<svg viewBox="0 0 24 24" fill="#E5484D"><path d="M12 20.8s-6.6-4.2-9-8.4C1.6 9.3 3 6 6.2 6c1.9 0 3 1.2 5.8 3.8C14.9 7.2 16 6 17.9 6c3.2 0 4.6 3.3 3.1 6.4-2.4 4.2-9 8.4-9 8.4z"/></svg>`
+      : `<svg viewBox="0 0 24 24" fill="none" stroke="#C9C2B6" stroke-width="2"><path d="M12 20.3s-6.4-4.1-8.7-8.2C1.8 9.2 3.1 6 6.2 6c1.8 0 2.9 1.1 5.8 3.7C14.9 7.1 16 6 17.8 6c3.1 0 4.4 3.2 2.9 6.1C18.4 16.2 12 20.3 12 20.3z"/></svg>`;
+    row.innerHTML=`<span class="sr-name">${esc(r.title)}</span><button class="sr-fav" aria-label="favori">${heart}</button><button class="sr-del" aria-label="supprimer">✕</button>`;
     row.addEventListener("click",(e)=>{
-      if(e.target.classList.contains("sr-del")){
-        setSaved(getSaved().filter(x=>x._id!==r._id)); renderSaved(); return;
-      }
+      if(e.target.closest(".sr-fav")){ toggleFav(r._id); return; }
+      if(e.target.closest(".sr-del")){ setSaved(getSaved().filter(x=>x._id!==r._id)); renderSaved(); return; }
       loadRecipe({...r});
     });
     box.appendChild(row);
   });
+}
+function toggleFav(id){
+  const list=getSaved();
+  const r=list.find(x=>x._id===id);
+  if(r){ r.fav=!r.fav; setSaved(list); renderSaved(); }
 }
 
 // ---- mode cuisson ----
