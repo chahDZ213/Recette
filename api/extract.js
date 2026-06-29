@@ -36,6 +36,10 @@ function extractVideoId(url) {
   return null;
 }
 
+function isSupportedUrl(url) {
+  return /(?:youtube\.com|youtu\.be|instagram\.com|tiktok\.com|vm\.tiktok\.com|facebook\.com|fb\.watch)/i.test(url || "");
+}
+
 // --- Transcript via Supadata (prend l'URL complète) ---
 async function getTranscript(url) {
   if (!SUPADATA_KEY) return "";
@@ -101,9 +105,12 @@ export default async function handler(req, res) {
     if (text && text.trim().length > 20) {
       source = text;
     } else {
-      const id = extractVideoId(url);
-      if (!id) return res.status(400).json({ found: false, error: "Lien YouTube invalide" });
-      const [transcript, description] = await Promise.all([getTranscript(url), getDescription(id)]);
+      if (!isSupportedUrl(url)) return res.status(400).json({ found: false, error: "Lien non supporté (YouTube, Instagram, TikTok, Facebook)" });
+      const ytId = extractVideoId(url); // non-null seulement pour YouTube
+      const [transcript, description] = await Promise.all([
+        getTranscript(url),
+        ytId ? getDescription(ytId) : Promise.resolve(""),
+      ]);
       source = `${description}\n\nTRANSCRIPTION:\n${transcript}`.trim();
       if (source.replace("TRANSCRIPTION:", "").trim().length < 40) {
         return res.status(200).json({
