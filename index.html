@@ -236,19 +236,20 @@ function niceFrac(a){
   if(w===0) return s || "0";
   return s ? w+s : String(w);
 }
-// arrondi par palier (pour g, ml, kg, l…)
-function stepRound(a,u){
-  if(u==="kg"||u==="l"||u==="litre"||u==="litres") return String(Math.round(a*10)/10);
+// arrondi par palier en nombre ENTIER — UNIQUEMENT pour g, ml, cl (poids/volume métrique)
+function stepRound(a){
   let step;
-  if(a<20) step=1; else if(a<100) step=5; else if(a<1000) step=10; else step=50;
+  if(a<10) step=1; else if(a<100) step=5; else if(a<1000) step=10; else step=50;
   return String(Math.round(a/step)*step);
 }
-// quantité lisible : g/ml arrondis en paliers, le reste en fractions lisibles
+// quantité lisible :
+//  - poids/volume métriques (g, ml, cl, grammes) -> nombre entier rond, jamais de fraction
+//  - tout le reste (tasse, brique, verre, cuillères, et ce qui se compte) -> fractions lisibles
 function smartVal(amount, unit){
   if(amount==null) return "";
   const u=(unit||"").toLowerCase().trim();
-  if(/^(g|gr|gramme|grammes|ml|cl|kg|l|litre|litres)$/.test(u)) return stepRound(amount,u);
-  return niceFrac(amount);
+  const noFraction = /^(g|gr|gramme|grammes|ml|cl)$/.test(u);
+  return noFraction ? stepRound(amount) : niceFrac(amount);
 }
 function fmtTime(s){ const m=Math.floor(s/60); return m+":"+String(s%60).padStart(2,"0"); }
 function show(id){ ["home","recipe","cook"].forEach(s=>$(s).classList.toggle("hidden", s!==id)); }
