@@ -110,6 +110,7 @@
 
   @media (prefers-reduced-motion:reduce){ .rise{animation:none;} .ing-qty{transition:none;} }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -426,27 +427,54 @@ $("minus").addEventListener("click",()=>changeServings(-1));
 $("plus").addEventListener("click",()=>changeServings(1));
 $("backBtn").addEventListener("click",()=>{ renderSaved(); show("home"); });
 
-// ---- sauvegarde (localStorage, par compte) ----
-function recipesKey(){ return "mise_recipes__"+(currentUser||"_guest"); }
-function getSaved(){ try{ return JSON.parse(localStorage.getItem(recipesKey())||"[]"); }catch(e){ return []; } }
-function setSaved(a){ try{ localStorage.setItem(recipesKey(), JSON.stringify(a)); }catch(e){} }
-function currentIsSaved(){ return recipe && recipe._id && getSaved().some(x=>x._id===recipe._id); }
+// ---- Supabase ----
+const SB_URL="https://hpejfttwocclmqdtdiok.supabase.co";
+const SB_KEY="sb_publishable_vXQvAJWpR0kKwQ-Fo9aWLw__0x3B7k5";
+let sb=null;
+try{ sb=window.supabase.createClient(SB_URL, SB_KEY, {auth:{persistSession:true, autoRefreshToken:true}}); }
+catch(e){ console.error("Supabase init:", e); }
+let currentUser=null, currentUserId=null;
+
+// ---- recettes (Supabase + cache mémoire) ----
+let savedCache=[];
+function getSaved(){ return savedCache; }
+async function loadRecipesFromDB(){
+  savedCache=[];
+  if(sb && currentUserId){
+    try{
+      const { data, error } = await sb.from("recipes").select("id,data,fav,created_at").order("created_at",{ascending:false});
+      if(error) throw error;
+      savedCache=(data||[]).map(row=>({ ...(row.data||{}), _dbid:row.id, fav:!!row.fav }));
+    }catch(e){ console.warn("Chargement recettes:", e); }
+  }
+  renderSaved();
+}
+function currentIsSaved(){ return recipe && recipe._id && savedCache.some(x=>x._id===recipe._id); }
 function refreshSaveBtn(){
   const path=$("saveIcon").querySelector("path");
-  if(currentIsSaved()){ path.setAttribute("fill","#fff"); }
-  else { path.setAttribute("fill","none"); }
+  path.setAttribute("fill", currentIsSaved()?"#fff":"none");
 }
-$("saveBtn").addEventListener("click",()=>{
-  if(!recipe) return;
-  let list=getSaved();
+$("saveBtn").addEventListener("click", async ()=>{
+  if(!recipe || !sb || !currentUserId) return;
   if(!recipe._id) recipe._id="r"+Date.now();
-  const idx=list.findIndex(x=>x._id===recipe._id);
-  if(idx>=0){ list.splice(idx,1); }   // déjà sauvée -> on retire
-  else { list.unshift({...recipe}); }  // on ajoute en tête
-  setSaved(list); refreshSaveBtn();
+  const existing=savedCache.find(x=>x._id===recipe._id);
+  if(existing){                                    // déjà sauvée -> retirer
+    savedCache=savedCache.filter(x=>x._id!==recipe._id);
+    refreshSaveBtn(); renderSaved();
+    if(existing._dbid){ try{ await sb.from("recipes").delete().eq("id", existing._dbid); }catch(e){} }
+  } else {                                         // ajouter (affichage immédiat, écriture en base ensuite)
+    const clean={...recipe}; delete clean._dbid;
+    const entry={...clean, fav:false};
+    savedCache.unshift(entry);
+    refreshSaveBtn(); renderSaved();
+    try{
+      const { data, error } = await sb.from("recipes").insert({ user_id: currentUserId, data: clean, fav:false }).select("id").single();
+      if(!error && data) entry._dbid=data.id;
+    }catch(e){ console.warn("Sauvegarde:", e); }
+  }
 });
 function renderSaved(){
-  const list=getSaved();
+  const list=savedCache;
   if(!list.length){ $("savedSection").classList.add("hidden"); return; }
   $("savedSection").classList.remove("hidden");
   const sorted=[...list].sort((a,b)=>{
@@ -463,16 +491,22 @@ function renderSaved(){
     row.innerHTML=`<span class="sr-name">${esc(r.title)}</span><button class="sr-fav" aria-label="favori">${heart}</button><button class="sr-del" aria-label="supprimer">✕</button>`;
     row.addEventListener("click",(e)=>{
       if(e.target.closest(".sr-fav")){ toggleFav(r._id); return; }
-      if(e.target.closest(".sr-del")){ setSaved(getSaved().filter(x=>x._id!==r._id)); renderSaved(); return; }
+      if(e.target.closest(".sr-del")){ deleteRecipe(r._id); return; }
       loadRecipe({...r});
     });
     box.appendChild(row);
   });
 }
-function toggleFav(id){
-  const list=getSaved();
-  const r=list.find(x=>x._id===id);
-  if(r){ r.fav=!r.fav; setSaved(list); renderSaved(); }
+async function toggleFav(id){
+  const r=savedCache.find(x=>x._id===id);
+  if(!r) return;
+  r.fav=!r.fav; renderSaved();
+  if(sb && r._dbid){ try{ await sb.from("recipes").update({fav:r.fav}).eq("id", r._dbid); }catch(e){} }
+}
+async function deleteRecipe(id){
+  const r=savedCache.find(x=>x._id===id);
+  savedCache=savedCache.filter(x=>x._id!==id); renderSaved();
+  if(sb && r && r._dbid){ try{ await sb.from("recipes").delete().eq("id", r._dbid); }catch(e){} }
 }
 
 // ---- mode cuisson ----
@@ -562,17 +596,8 @@ $("themeToggle").addEventListener("click",()=>{
 });
 initTheme();
 
-// ---- comptes (stockage local) ----
-let currentUser=null;
-function getUsers(){ try{ return JSON.parse(localStorage.getItem("mise_users")||"{}"); }catch(e){ return {}; } }
-function setUsers(u){ try{ localStorage.setItem("mise_users", JSON.stringify(u)); }catch(e){} }
-async function hashPwd(p){
-  try{
-    const buf=await crypto.subtle.digest("SHA-256", new TextEncoder().encode(p+"::mise.salt.v1"));
-    return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,"0")).join("");
-  }catch(e){ let h=0; for(let i=0;i<p.length;i++) h=(h*31+p.charCodeAt(i))|0; return "x"+(h>>>0).toString(16); }
-}
-let authMode="signup";
+// ---- comptes (Supabase Auth) ----
+let authMode="signup", authBusy=false;
 function setAuthError(m){ const e=$("authError"); if(!m){e.classList.add("hidden");return;} e.textContent=m; e.classList.remove("hidden"); }
 function renderAuthMode(){
   $("authTitle").textContent = authMode==="login" ? "Content de te revoir" : "Crée ton compte";
@@ -586,38 +611,63 @@ $("authSwitch").addEventListener("click",()=>{ authMode=authMode==="login"?"sign
 $("authSubmit").addEventListener("click", doAuth);
 $("authPwd").addEventListener("keydown",e=>{ if(e.key==="Enter") doAuth(); });
 async function doAuth(){
+  if(authBusy) return;
   const email=($("authEmail").value||"").trim().toLowerCase();
   const pwd=$("authPwd").value||"";
   if(!/.+@.+\..+/.test(email)){ setAuthError("Entre un email valide."); return; }
-  if(pwd.length<4){ setAuthError("Mot de passe : 4 caractères minimum."); return; }
-  const users=getUsers(); const h=await hashPwd(pwd);
-  if(authMode==="signup"){
-    if(users[email]){ setAuthError("Ce compte existe déjà — connecte-toi."); return; }
-    users[email]={ pwd:h, created:Date.now() }; setUsers(users);
-  } else {
-    if(!users[email]){ setAuthError("Aucun compte avec cet email."); return; }
-    if(users[email].pwd!==h){ setAuthError("Mot de passe incorrect."); return; }
-  }
-  currentUser=email;
-  try{ localStorage.setItem("mise_session", email); }catch(e){}
-  enterApp();
+  if(pwd.length<6){ setAuthError("Mot de passe : 6 caractères minimum."); return; }
+  if(!sb){ setAuthError("Connexion au serveur impossible. Réessaie."); return; }
+  authBusy=true; const btn=$("authSubmit"); const label=btn.textContent; btn.textContent="…"; setAuthError("");
+  try{
+    let res;
+    if(authMode==="signup"){
+      res=await sb.auth.signUp({ email, password:pwd });
+      if(res.error){ setAuthError(traduitErreur(res.error.message)); return; }
+      if(!res.data.session){  // au cas où la confirmation email serait activée
+        setAuthError("Compte créé ! Vérifie tes emails pour confirmer, puis connecte-toi."); authMode="login"; renderAuthMode(); return;
+      }
+    } else {
+      res=await sb.auth.signInWithPassword({ email, password:pwd });
+      if(res.error){ setAuthError(traduitErreur(res.error.message)); return; }
+    }
+    await onSignedIn(res.data.session);
+  }catch(e){ setAuthError("Une erreur est survenue. Réessaie."); }
+  finally{ authBusy=false; btn.textContent=label; }
 }
-function enterApp(){ if($("acctEmail")) $("acctEmail").textContent=currentUser; renderSaved(); show("home"); }
-function showAuth(){ authMode = Object.keys(getUsers()).length ? "login" : "signup"; renderAuthMode(); $("authEmail").value=""; $("authPwd").value=""; show("auth"); }
+function traduitErreur(m){
+  m=(m||"").toLowerCase();
+  if(m.includes("already registered")||m.includes("already been registered")) return "Ce compte existe déjà — connecte-toi.";
+  if(m.includes("invalid login")) return "Email ou mot de passe incorrect.";
+  if(m.includes("email not confirmed")) return "Confirme ton email avant de te connecter.";
+  if(m.includes("password")) return "Mot de passe : 6 caractères minimum.";
+  return "Vérifie ton email et ton mot de passe.";
+}
+async function onSignedIn(session){
+  currentUserId=session.user.id;
+  currentUser=session.user.email;
+  if($("acctEmail")) $("acctEmail").textContent=currentUser;
+  show("home");
+  await loadRecipesFromDB();
+}
+function showAuth(){ authMode="login"; renderAuthMode(); $("authEmail").value=""; $("authPwd").value=""; show("auth"); }
 
 // ---- paramètres ----
 $("acctBtn").addEventListener("click",()=>{ if($("acctEmail")) $("acctEmail").textContent=currentUser||""; show("settings"); });
 $("settingsBack").addEventListener("click",()=>show("home"));
-$("logoutBtn").addEventListener("click",()=>{
-  try{ localStorage.removeItem("mise_session"); }catch(e){}
-  currentUser=null; showAuth();
+$("logoutBtn").addEventListener("click", async ()=>{
+  if(sb){ try{ await sb.auth.signOut(); }catch(e){} }
+  currentUser=null; currentUserId=null; savedCache=[];
+  showAuth();
 });
 
-// init
-(function(){
-  let sess=null; try{ sess=localStorage.getItem("mise_session"); }catch(e){}
-  if(sess && getUsers()[sess]){ currentUser=sess; enterApp(); }
-  else { showAuth(); }
+// init : reprend la session si elle existe
+(async function(){
+  if(!sb){ showAuth(); return; }
+  try{
+    const { data } = await sb.auth.getSession();
+    if(data && data.session){ await onSignedIn(data.session); }
+    else { showAuth(); }
+  }catch(e){ showAuth(); }
 })();
 if("serviceWorker" in navigator){ navigator.serviceWorker.register("/sw.js").catch(()=>{}); }
 </script>
