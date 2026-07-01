@@ -113,13 +113,36 @@
 </head>
 <body>
 
+<!-- AUTH -->
+<section id="auth" class="wrap hidden">
+  <div style="display:flex;align-items:baseline;gap:2px;margin:6vh 0 36px">
+    <span class="mono" style="font-size:30px;font-weight:700;letter-spacing:-.02em">mise</span><span class="mono" style="font-size:30px;font-weight:700;color:var(--accent)">.</span>
+  </div>
+  <h1 id="authTitle" class="mono" style="font-size:30px;font-weight:700;letter-spacing:-.02em;margin-bottom:8px">Crée ton compte</h1>
+  <p id="authIntro" style="font-size:16px;color:var(--muted);line-height:1.5;margin-bottom:30px">Tes recettes enregistrées sont liées à ton compte.</p>
+
+  <label style="display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:8px">EMAIL</label>
+  <input id="authEmail" type="email" autocomplete="email" placeholder="ton@email.com" style="margin-bottom:16px" />
+  <label style="display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:8px">MOT DE PASSE</label>
+  <input id="authPwd" type="password" autocomplete="current-password" placeholder="••••••••" style="margin-bottom:20px" />
+
+  <button id="authSubmit" class="press" style="width:100%;font-size:17px;font-weight:600;padding:16px;border-radius:12px;border:none;background:var(--accent);color:#fff">Créer mon compte</button>
+  <p id="authError" class="hidden rise" style="font-size:14px;color:var(--accent);margin-top:14px;line-height:1.5"></p>
+  <p id="authSwitch" style="margin-top:24px;font-size:15px;color:var(--muted);cursor:pointer">Déjà un compte ? <b style="color:var(--ink)">Se connecter</b></p>
+</section>
+
 <!-- ACCUEIL -->
-<section id="home" class="wrap">
+<section id="home" class="wrap hidden">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:44px">
     <div style="display:flex;align-items:baseline;gap:2px">
       <span class="mono" style="font-size:26px;font-weight:700;letter-spacing:-.02em">mise</span><span class="mono" style="font-size:26px;font-weight:700;color:var(--accent)">.</span>
     </div>
-    <button id="themeToggle" class="theme-toggle press" aria-label="changer de thème"></button>
+    <div style="display:flex;gap:10px">
+      <button id="acctBtn" class="theme-toggle press" aria-label="compte">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
+      </button>
+      <button id="themeToggle" class="theme-toggle press" aria-label="changer de thème"></button>
+    </div>
   </div>
   <h1 class="mono" style="font-size:38px;line-height:1.05;font-weight:700;letter-spacing:-.03em;margin-bottom:16px">
     La recette,<br>sans le bouton pause.
@@ -154,6 +177,23 @@
     <div class="eyebrow">MES RECETTES</div>
     <div id="savedList" class="saved-list"></div>
   </div>
+</section>
+
+<!-- PARAMÈTRES -->
+<section id="settings" class="wrap hidden">
+  <div style="display:flex;align-items:center;gap:14px;margin-bottom:34px">
+    <button id="settingsBack" class="theme-toggle press" aria-label="retour">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <span class="mono" style="font-size:22px;font-weight:700">Paramètres</span>
+  </div>
+
+  <div style="background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px 20px;margin-bottom:24px">
+    <div style="font-size:13px;font-weight:600;color:var(--muted);margin-bottom:6px">CONNECTÉ EN TANT QUE</div>
+    <div id="acctEmail" style="font-size:17px;font-weight:600;word-break:break-all">—</div>
+  </div>
+
+  <button id="logoutBtn" class="press" style="width:100%;font-size:16px;font-weight:600;padding:15px;border-radius:12px;border:1.5px solid var(--line);background:transparent;color:var(--ink)">Se déconnecter / changer de compte</button>
 </section>
 
 <!-- RECETTE -->
@@ -274,7 +314,7 @@ function smartVal(amount, unit){
   return noFraction ? stepRound(amount) : niceFrac(amount);
 }
 function fmtTime(s){ const m=Math.floor(s/60); return m+":"+String(s%60).padStart(2,"0"); }
-function show(id){ ["home","recipe","cook"].forEach(s=>$(s).classList.toggle("hidden", s!==id)); }
+function show(id){ ["auth","home","recipe","cook","settings"].forEach(s=>$(s).classList.toggle("hidden", s!==id)); }
 function setError(msg){ const e=$("error"); if(!msg){e.classList.add("hidden");return;} e.textContent=msg; e.classList.remove("hidden"); }
 function esc(s){ return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
 
@@ -386,9 +426,10 @@ $("minus").addEventListener("click",()=>changeServings(-1));
 $("plus").addEventListener("click",()=>changeServings(1));
 $("backBtn").addEventListener("click",()=>{ renderSaved(); show("home"); });
 
-// ---- sauvegarde (localStorage) ----
-function getSaved(){ try{ return JSON.parse(localStorage.getItem("mise_recipes")||"[]"); }catch(e){ return []; } }
-function setSaved(a){ try{ localStorage.setItem("mise_recipes", JSON.stringify(a)); }catch(e){} }
+// ---- sauvegarde (localStorage, par compte) ----
+function recipesKey(){ return "mise_recipes__"+(currentUser||"_guest"); }
+function getSaved(){ try{ return JSON.parse(localStorage.getItem(recipesKey())||"[]"); }catch(e){ return []; } }
+function setSaved(a){ try{ localStorage.setItem(recipesKey(), JSON.stringify(a)); }catch(e){} }
 function currentIsSaved(){ return recipe && recipe._id && getSaved().some(x=>x._id===recipe._id); }
 function refreshSaveBtn(){
   const path=$("saveIcon").querySelector("path");
@@ -521,8 +562,63 @@ $("themeToggle").addEventListener("click",()=>{
 });
 initTheme();
 
+// ---- comptes (stockage local) ----
+let currentUser=null;
+function getUsers(){ try{ return JSON.parse(localStorage.getItem("mise_users")||"{}"); }catch(e){ return {}; } }
+function setUsers(u){ try{ localStorage.setItem("mise_users", JSON.stringify(u)); }catch(e){} }
+async function hashPwd(p){
+  try{
+    const buf=await crypto.subtle.digest("SHA-256", new TextEncoder().encode(p+"::mise.salt.v1"));
+    return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,"0")).join("");
+  }catch(e){ let h=0; for(let i=0;i<p.length;i++) h=(h*31+p.charCodeAt(i))|0; return "x"+(h>>>0).toString(16); }
+}
+let authMode="signup";
+function setAuthError(m){ const e=$("authError"); if(!m){e.classList.add("hidden");return;} e.textContent=m; e.classList.remove("hidden"); }
+function renderAuthMode(){
+  $("authTitle").textContent = authMode==="login" ? "Content de te revoir" : "Crée ton compte";
+  $("authSubmit").textContent = authMode==="login" ? "Se connecter" : "Créer mon compte";
+  $("authSwitch").innerHTML = authMode==="login"
+    ? 'Pas encore de compte ? <b style="color:var(--ink)">Créer un compte</b>'
+    : 'Déjà un compte ? <b style="color:var(--ink)">Se connecter</b>';
+  setAuthError("");
+}
+$("authSwitch").addEventListener("click",()=>{ authMode=authMode==="login"?"signup":"login"; renderAuthMode(); });
+$("authSubmit").addEventListener("click", doAuth);
+$("authPwd").addEventListener("keydown",e=>{ if(e.key==="Enter") doAuth(); });
+async function doAuth(){
+  const email=($("authEmail").value||"").trim().toLowerCase();
+  const pwd=$("authPwd").value||"";
+  if(!/.+@.+\..+/.test(email)){ setAuthError("Entre un email valide."); return; }
+  if(pwd.length<4){ setAuthError("Mot de passe : 4 caractères minimum."); return; }
+  const users=getUsers(); const h=await hashPwd(pwd);
+  if(authMode==="signup"){
+    if(users[email]){ setAuthError("Ce compte existe déjà — connecte-toi."); return; }
+    users[email]={ pwd:h, created:Date.now() }; setUsers(users);
+  } else {
+    if(!users[email]){ setAuthError("Aucun compte avec cet email."); return; }
+    if(users[email].pwd!==h){ setAuthError("Mot de passe incorrect."); return; }
+  }
+  currentUser=email;
+  try{ localStorage.setItem("mise_session", email); }catch(e){}
+  enterApp();
+}
+function enterApp(){ if($("acctEmail")) $("acctEmail").textContent=currentUser; renderSaved(); show("home"); }
+function showAuth(){ authMode = Object.keys(getUsers()).length ? "login" : "signup"; renderAuthMode(); $("authEmail").value=""; $("authPwd").value=""; show("auth"); }
+
+// ---- paramètres ----
+$("acctBtn").addEventListener("click",()=>{ if($("acctEmail")) $("acctEmail").textContent=currentUser||""; show("settings"); });
+$("settingsBack").addEventListener("click",()=>show("home"));
+$("logoutBtn").addEventListener("click",()=>{
+  try{ localStorage.removeItem("mise_session"); }catch(e){}
+  currentUser=null; showAuth();
+});
+
 // init
-renderSaved();
+(function(){
+  let sess=null; try{ sess=localStorage.getItem("mise_session"); }catch(e){}
+  if(sess && getUsers()[sess]){ currentUser=sess; enterApp(); }
+  else { showAuth(); }
+})();
 if("serviceWorker" in navigator){ navigator.serviceWorker.register("/sw.js").catch(()=>{}); }
 </script>
 </body>
