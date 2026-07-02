@@ -822,17 +822,18 @@ function renderCook(){
 }
 
 // ---- minuteur ----
-function mountTimer(sec){ const slot=$("timerSlot"); timerState={left:sec,total:sec,running:false,done:false,handle:null}; renderTimer(slot); }
+function mountTimer(sec){ const slot=$("timerSlot"); timerState={left:sec,total:sec,running:false,done:false,handle:null,pushId:null}; renderTimer(slot); }
 function renderTimer(slot){
   const t=timerState;
   slot.innerHTML=`<div style="margin-top:32px;display:flex;align-items:center;gap:16px;padding:16px 18px;background:${t.done?"rgba(79,111,82,.2)":"rgba(251,248,243,.06)"};border-radius:14px;border:1px solid ${t.done?GREEN:"rgba(251,248,243,.12)"}">
     <div class="mono" style="font-size:34px;font-weight:700;color:${t.done?GREEN:PAPER};min-width:92px">${t.done?"Prêt !":fmtTime(t.left)}</div>
     <button id="timerBtn" class="press" style="font-size:15px;font-weight:600;padding:10px 20px;border-radius:10px;border:${t.done?"1.5px solid rgba(251,248,243,.25)":"none"};background:${t.done?"transparent":ACCENT};color:#fff">${t.done?"Relancer":(t.running?"Pause":(t.left===t.total?"Démarrer le minuteur":"Reprendre"))}</button>
   </div>`;
-  $("timerBtn").addEventListener("click",()=>{
-    if(t.done){ t.done=false; t.left=t.total; t.running=false; renderTimer(slot); return; }
+  $("timerBtn").addEventListener("click", async ()=>{
+    if(t.done){ if(t.pushId){ cancelTimerPush(t.pushId); t.pushId=null; } t.done=false; t.left=t.total; t.running=false; renderTimer(slot); return; }
     t.running=!t.running;
-    if(t.running) tick(slot); else clearTimeout(t.handle);
+    if(t.running){ tick(slot); t.pushId=await scheduleTimerPush(t.left); }
+    else { clearTimeout(t.handle); if(t.pushId){ cancelTimerPush(t.pushId); t.pushId=null; } }
     renderTimer(slot);
   });
 }
@@ -841,11 +842,11 @@ function tick(slot){
   t.handle=setTimeout(()=>{
     if(!t.running) return;
     t.left--;
-    if(t.left<=0){ t.left=0; t.running=false; t.done=true; alarm(); renderTimer(slot); }
+    if(t.left<=0){ t.left=0; t.running=false; t.done=true; if(t.pushId){ cancelTimerPush(t.pushId); t.pushId=null; } alarm(); renderTimer(slot); }
     else { renderTimer(slot); tick(slot); }
   },1000);
 }
-function stopTimer(){ if(timerState&&timerState.handle) clearTimeout(timerState.handle); timerState=null; }
+function stopTimer(){ if(timerState){ if(timerState.handle) clearTimeout(timerState.handle); if(timerState.pushId) cancelTimerPush(timerState.pushId); } timerState=null; }
 function alarm(){
   try{ navigator.vibrate && navigator.vibrate([200,100,200]); }catch(e){}
   try{
@@ -953,6 +954,39 @@ function refreshNotifStatus(){
   else if(Notification.permission==="denied"){ s.textContent="Notifications bloquées. Va dans les réglages de ton téléphone pour les réautoriser."; }
   else { s.textContent=""; }
 }
+// abonnement push (pour notifs même app fermée)
+const VAPID_PUBLIC="BMUXblAD9S3NEVQcpSTYfO4BDC2La13Bnv5Nv34Q6WrZ0HRjV9EfOF99NsBThUxKINb6Tx-rfxMCVuU1KPwCn4g";
+function urlB64ToUint8(base64){
+  const pad="=".repeat((4-base64.length%4)%4);
+  const b64=(base64+pad).replace(/-/g,"+").replace(/_/g,"/");
+  const raw=atob(b64), arr=new Uint8Array(raw.length);
+  for(let i=0;i<raw.length;i++) arr[i]=raw.charCodeAt(i);
+  return arr;
+}
+let pushSub=null;
+async function ensurePushSubscription(){
+  try{
+    if(!("serviceWorker" in navigator) || !("PushManager" in window)) return null;
+    if(Notification.permission!=="granted") return null;
+    const reg=await navigator.serviceWorker.ready;
+    let sub=await reg.pushManager.getSubscription();
+    if(!sub){ sub=await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey:urlB64ToUint8(VAPID_PUBLIC) }); }
+    pushSub=sub; return sub;
+  }catch(e){ return null; }
+}
+async function scheduleTimerPush(seconds){
+  try{
+    const sub=await ensurePushSubscription();
+    if(!sub) return null;
+    const r=await fetch("/api/schedule-push",{method:"POST",headers:{"content-type":"application/json"},
+      body:JSON.stringify({ subscription:sub, delaySeconds:seconds, title:"mise.", body:"⏲️ Ton minuteur est terminé !" })});
+    const d=await r.json(); return d.id||null;
+  }catch(e){ return null; }
+}
+async function cancelTimerPush(id){
+  if(!id) return;
+  try{ await fetch("/api/cancel-push",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({id})}); }catch(e){}
+}
 $("notifBtn").addEventListener("click", async ()=>{
   const s=$("notifStatus");
   if(!("Notification" in window)){ s.textContent="Notifications non supportées ici."; return; }
@@ -963,6 +997,7 @@ $("notifBtn").addEventListener("click", async ()=>{
   try{
     const perm = await Notification.requestPermission();
     if(perm!=="granted"){ s.textContent="Autorisation refusée."; return; }
+    await ensurePushSubscription();
     const reg = await navigator.serviceWorker.ready;
     await reg.showNotification("mise.", { body:"Les notifications marchent ✅", icon:"/icon-192.png", badge:"/icon-192.png", vibrate:[200,100,200] });
     s.textContent="✅ C'est bon ! Tu viens de recevoir une notif de test.";
