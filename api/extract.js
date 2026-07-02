@@ -1,5 +1,5 @@
 // api/extract.js — Fonction serverless Vercel (Node)
-// Reçoit { url } ou { text }, renvoie une recette structurée en JSON.
+// Reçoit { url }, { text } ou { image } (data URL base64), renvoie une recette structurée en JSON.
 // Transcript via Supadata (fiable depuis Vercel + fallback Whisper sur vidéos sans sous-titres).
 
 export const maxDuration = 60;
@@ -97,10 +97,46 @@ async function askClaude(source) {
   return extractJSON(text);
 }
 
+// --- Lecture d'une image (capture d'écran, photo d'un texte) via Claude vision ---
+async function askClaudeVision(dataUrl) {
+  const m = /^data:(image\/[a-zA-Z0-9.+-]+);base64,([\s\S]+)$/.exec(dataUrl || "");
+  if (!m) throw new Error("image invalide");
+  const mediaType = m[1], b64 = m[2];
+  const r = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-api-key": ANTHROPIC_KEY,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-6",
+      max_tokens: 1500,
+      messages: [{
+        role: "user",
+        content: [
+          { type: "image", source: { type: "base64", media_type: mediaType, data: b64 } },
+          { type: "text", text: `Cette image contient une recette de cuisine (capture d'écran, photo d'un texte, d'une page de livre ou d'une liste d'ingrédients). Lis tout son contenu et structure-le en recette.\n\n${INSTRUCTIONS}` },
+        ],
+      }],
+    }),
+  });
+  const data = await r.json();
+  const text = (data.content || []).filter((b) => b.type === "text").map((b) => b.text).join("\n");
+  return extractJSON(text);
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ found: false, error: "Méthode non autorisée" });
   try {
-    const { url, text } = req.body || {};
+    const { url, text, image: imgInput } = req.body || {};
+
+    // 1) Image (capture d'écran / photo d'un texte) -> Claude vision
+    if (imgInput && typeof imgInput === "string" && imgInput.startsWith("data:image")) {
+      const recipe = await askClaudeVision(imgInput);
+      return res.status(200).json(recipe); // pas de photo de plat auto ici
+    }
+
     let source = "";
     let image = null;
 
