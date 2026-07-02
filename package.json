@@ -4,6 +4,6 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "youtube-transcript": "^1.2.1"
+    "web-push": "^3.6.7"
   }
 }
