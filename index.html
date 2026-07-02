@@ -189,6 +189,15 @@
     </div>
   </div>
 
+  <div style="margin-top:20px;border-top:1px solid var(--line);padding-top:20px">
+    <button id="imgPickBtn" class="press" style="width:100%;font-size:15px;font-weight:600;padding:12px 20px;border-radius:10px;border:1.5px solid var(--line);background:transparent;color:var(--ink);display:flex;align-items:center;justify-content:center;gap:8px">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      Depuis une photo / capture
+    </button>
+    <p style="font-size:13px;color:var(--muted);margin-top:10px;line-height:1.5">Une capture d'écran ou une photo d'une recette (texte, ingrédients) → mise. la lit pour toi.</p>
+    <input type="file" id="recipeImgInput" accept="image/*" style="display:none" />
+  </div>
+
   <!-- Mes recettes -->
   <div id="savedSection" class="hidden" style="margin-top:40px">
     <div class="eyebrow">MES RECETTES</div>
@@ -423,6 +432,12 @@ const CREATE_STEPS=[
   {e:"🥣", m:"Rédaction des étapes…"},
   {e:"⏲️", m:"Presque prêt…"}
 ];
+const IMAGE_STEPS=[
+  {e:"📷", m:"Lecture de l'image…"},
+  {e:"📝", m:"Extraction des ingrédients…"},
+  {e:"🥣", m:"Mise en forme de la recette…"},
+  {e:"⏲️", m:"Presque prêt…"}
+];
 let activeSteps=LOAD_STEPS;
 function applyLoadStep(){ const s=activeSteps[loadStep]; $("loadSpin").textContent=s.e; $("loadMsg").textContent=s.m; }
 function showLoadOverlay(on, steps){
@@ -466,6 +481,24 @@ $("decodeBtn").addEventListener("click", async ()=>{
 });
 $("manualToggle").addEventListener("click", ()=> $("manualBox").classList.toggle("hidden"));
 $("createToggle").addEventListener("click", ()=> $("createBox").classList.toggle("hidden"));
+$("imgPickBtn").addEventListener("click", ()=> $("recipeImgInput").click());
+$("recipeImgInput").addEventListener("change", async (e)=>{
+  setError("");
+  const f=e.target.files && e.target.files[0];
+  e.target.value="";
+  if(!f) return;
+  showLoadOverlay(true, IMAGE_STEPS);
+  let ok=null, err=null;
+  try{
+    const dataUrl=await fileToCompressed(f, 1600, 0.82);   // bonne netteté pour lire le texte
+    const r=await callBackend({image:dataUrl});
+    if(!r.found) err=r.error||"Je n'ai pas trouvé de recette dans cette image. Essaie une image plus nette.";
+    else ok=r;
+  }catch(e2){ err="Impossible de lire cette image. Réessaie."; }
+  if(ok) loadRecipe(ok);
+  showLoadOverlay(false);
+  if(err) setError(err);
+});
 $("createBtn").addEventListener("click", async ()=>{
   setError("");
   const d=$("createText").value.trim();
