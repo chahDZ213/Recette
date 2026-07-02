@@ -180,6 +180,15 @@
     </div>
   </div>
 
+  <div style="margin-top:20px;border-top:1px solid var(--line);padding-top:20px">
+    <button id="createToggle" style="background:none;border:none;color:var(--accent);font-size:14px;font-weight:700;padding:0">✨ Créer ma recette</button>
+    <div id="createBox" class="hidden rise" style="margin-top:12px">
+      <p style="font-size:13px;color:var(--muted);margin-bottom:8px;line-height:1.5">Décris ce que tu veux cuisiner, mise. te génère la recette complète avec un titre.</p>
+      <textarea id="createText" rows="4" placeholder="Ex : un gâteau au yaourt moelleux pour 6, sans beurre…" style="resize:vertical"></textarea>
+      <button id="createBtn" class="press" style="margin-top:10px;font-size:15px;font-weight:600;padding:12px 20px;border-radius:10px;border:none;background:var(--accent);color:#fff">✨ Créer la recette</button>
+    </div>
+  </div>
+
   <!-- Mes recettes -->
   <div id="savedSection" class="hidden" style="margin-top:40px">
     <div class="eyebrow">MES RECETTES</div>
@@ -400,14 +409,22 @@ const LOAD_STEPS=[
   {e:"🥣", m:"Mise en forme de la recette…"},
   {e:"⏲️", m:"Presque prêt…"}
 ];
-function applyLoadStep(){ const s=LOAD_STEPS[loadStep]; $("loadSpin").textContent=s.e; $("loadMsg").textContent=s.m; }
-function showLoadOverlay(on){
+const CREATE_STEPS=[
+  {e:"✨", m:"Création de ta recette…"},
+  {e:"📝", m:"Choix des ingrédients…"},
+  {e:"🥣", m:"Rédaction des étapes…"},
+  {e:"⏲️", m:"Presque prêt…"}
+];
+let activeSteps=LOAD_STEPS;
+function applyLoadStep(){ const s=activeSteps[loadStep]; $("loadSpin").textContent=s.e; $("loadMsg").textContent=s.m; }
+function showLoadOverlay(on, steps){
   const ov=$("loadOverlay");
   if(on){
+    activeSteps = steps || LOAD_STEPS;
     loadStep=0; applyLoadStep(); ov.classList.remove("hidden");
     loadTimer=setInterval(()=>{
-      if(loadStep < LOAD_STEPS.length-1){ loadStep++; applyLoadStep(); }
-      else { clearInterval(loadTimer); loadTimer=null; }   // un seul cycle : on reste sur le dernier message
+      if(loadStep < activeSteps.length-1){ loadStep++; applyLoadStep(); }
+      else { clearInterval(loadTimer); loadTimer=null; }
     }, 4200);
   } else {
     ov.classList.add("hidden");
@@ -433,6 +450,21 @@ $("decodeBtn").addEventListener("click", async ()=>{
   loading(false);
 });
 $("manualToggle").addEventListener("click", ()=> $("manualBox").classList.toggle("hidden"));
+$("createToggle").addEventListener("click", ()=> $("createBox").classList.toggle("hidden"));
+$("createBtn").addEventListener("click", async ()=>{
+  setError("");
+  const d=$("createText").value.trim();
+  if(d.length<8){ setError("Décris un peu plus ce que tu veux cuisiner."); return; }
+  const demande="Crée une recette de cuisine complète, réaliste et savoureuse à partir de cette demande. Invente un titre approprié, donne des ingrédients avec des quantités et des étapes claires. Demande de l'utilisateur :\n\n"+d;
+  $("createBtn").disabled=true; const lbl=$("createBtn").textContent; $("createBtn").textContent="Création…"; showLoadOverlay(true, CREATE_STEPS);
+  try{
+    const r=await callBackend({text:demande});
+    if(!r.found) setError(r.error||"Je n'ai pas réussi à créer cette recette. Reformule ta demande.");
+    else { loadRecipe(r); $("createBox").classList.add("hidden"); $("createText").value=""; }
+  }catch(e){ setError("Le serveur n'a pas répondu."); }
+  showLoadOverlay(false);
+  $("createBtn").disabled=false; $("createBtn").textContent=lbl;
+});
 $("manualBtn").addEventListener("click", async ()=>{
   setError("");
   const t=$("manualText").value;
