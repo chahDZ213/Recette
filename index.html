@@ -402,7 +402,8 @@ async function callBackend(payload){
   const r=await fetch(BACKEND_URL,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(payload)});
   return r.json();
 }
-let loadTimer=null, loadStep=0;
+let loadTimer=null, loadStep=0, loadStart=0;
+const STEP_MS=1800;   // durée d'affichage de chaque message
 const LOAD_STEPS=[
   {e:"🍳", m:"Lecture de la vidéo…"},
   {e:"📝", m:"Extraction des ingrédients…"},
@@ -421,14 +422,21 @@ function showLoadOverlay(on, steps){
   const ov=$("loadOverlay");
   if(on){
     activeSteps = steps || LOAD_STEPS;
-    loadStep=0; applyLoadStep(); ov.classList.remove("hidden");
+    loadStep=0; applyLoadStep(); loadStart=Date.now(); ov.classList.remove("hidden");
+    if(loadTimer){ clearInterval(loadTimer); }
     loadTimer=setInterval(()=>{
       if(loadStep < activeSteps.length-1){ loadStep++; applyLoadStep(); }
       else { clearInterval(loadTimer); loadTimer=null; }
-    }, 4200);
+    }, STEP_MS);
   } else {
-    ov.classList.add("hidden");
-    if(loadTimer){ clearInterval(loadTimer); loadTimer=null; }
+    // on laisse l'animation jouer son cycle COMPLET avant de masquer (jamais coupée en plein milieu).
+    // si le serveur a été plus lent que le cycle, on masque tout de suite (pas d'attente en trop).
+    const cycle = activeSteps.length * STEP_MS;
+    const wait = Math.max(0, cycle - (Date.now()-loadStart));
+    setTimeout(()=>{
+      ov.classList.add("hidden");
+      if(loadTimer){ clearInterval(loadTimer); loadTimer=null; }
+    }, wait);
   }
 }
 function loading(on){
