@@ -219,6 +219,13 @@
     <div id="acctEmail" style="font-size:17px;font-weight:600;word-break:break-all">—</div>
   </div>
 
+  <div style="background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px 20px;margin-bottom:16px">
+    <div style="font-size:15px;font-weight:600;margin-bottom:4px">Notifications</div>
+    <div style="font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:14px">Pour être prévenu quand un minuteur se termine.</div>
+    <button id="notifBtn" class="press" style="width:100%;font-size:15px;font-weight:600;padding:13px;border-radius:12px;border:none;background:var(--accent);color:#fff">🔔 Activer les notifications</button>
+    <div id="notifStatus" style="font-size:13px;color:var(--muted);margin-top:10px;line-height:1.5"></div>
+  </div>
+
   <button id="logoutBtn" class="press" style="width:100%;font-size:16px;font-weight:600;padding:15px;border-radius:12px;border:1.5px solid var(--line);background:transparent;color:var(--ink)">Se déconnecter / changer de compte</button>
 </section>
 
@@ -931,8 +938,37 @@ async function onSignedIn(session){
 function showAuth(){ authMode="login"; renderAuthMode(); $("authEmail").value=""; $("authPwd").value=""; show("auth"); }
 
 // ---- paramètres ----
-$("acctBtn").addEventListener("click",()=>{ if($("acctEmail")) $("acctEmail").textContent=currentUser||""; show("settings"); });
+$("acctBtn").addEventListener("click",()=>{ if($("acctEmail")) $("acctEmail").textContent=currentUser||""; refreshNotifStatus(); show("settings"); });
 $("settingsBack").addEventListener("click",()=>show("home"));
+
+// ---- notifications (Phase 1 : autorisation + test local) ----
+function isStandalone(){
+  return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+}
+function isIOS(){ return /iphone|ipad|ipod/i.test(navigator.userAgent); }
+function refreshNotifStatus(){
+  const s=$("notifStatus"); if(!s) return;
+  if(!("Notification" in window)){ s.textContent="Ton navigateur ne gère pas les notifications."; return; }
+  if(Notification.permission==="granted"){ s.textContent="✅ Notifications activées."; $("notifBtn").textContent="🔔 Envoyer une notif de test"; }
+  else if(Notification.permission==="denied"){ s.textContent="Notifications bloquées. Va dans les réglages de ton téléphone pour les réautoriser."; }
+  else { s.textContent=""; }
+}
+$("notifBtn").addEventListener("click", async ()=>{
+  const s=$("notifStatus");
+  if(!("Notification" in window)){ s.textContent="Notifications non supportées ici."; return; }
+  if(isIOS() && !isStandalone()){
+    s.textContent="Sur iPhone : ajoute d'abord mise. à ton écran d'accueil (Partager → Sur l'écran d'accueil), puis ouvre l'app depuis l'icône.";
+    return;
+  }
+  try{
+    const perm = await Notification.requestPermission();
+    if(perm!=="granted"){ s.textContent="Autorisation refusée."; return; }
+    const reg = await navigator.serviceWorker.ready;
+    await reg.showNotification("mise.", { body:"Les notifications marchent ✅", icon:"/icon-192.png", badge:"/icon-192.png", vibrate:[200,100,200] });
+    s.textContent="✅ C'est bon ! Tu viens de recevoir une notif de test.";
+    $("notifBtn").textContent="🔔 Envoyer une notif de test";
+  }catch(e){ s.textContent="Une erreur est survenue."; }
+});
 $("logoutBtn").addEventListener("click", async ()=>{
   if(sb){ try{ await sb.auth.signOut(); }catch(e){} }
   currentUser=null; currentUserId=null; savedCache=[];
