@@ -380,7 +380,10 @@ function showLoadOverlay(on){
   const ov=$("loadOverlay");
   if(on){
     loadStep=0; applyLoadStep(); ov.classList.remove("hidden");
-    loadTimer=setInterval(()=>{ loadStep=(loadStep+1)%LOAD_STEPS.length; applyLoadStep(); }, 1800);
+    loadTimer=setInterval(()=>{
+      if(loadStep < LOAD_STEPS.length-1){ loadStep++; applyLoadStep(); }
+      else { clearInterval(loadTimer); loadTimer=null; }   // un seul cycle : on reste sur le dernier message
+    }, 4200);
   } else {
     ov.classList.add("hidden");
     if(loadTimer){ clearInterval(loadTimer); loadTimer=null; }
