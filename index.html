@@ -43,6 +43,12 @@
   input:focus,textarea:focus{ outline:2px solid var(--accent); outline-offset:1px; }
   .theme-toggle{ width:42px; height:42px; border-radius:12px; border:1.5px solid var(--line); background:var(--surface); color:var(--ink); display:flex; align-items:center; justify-content:center; }
   .theme-toggle svg{ width:20px; height:20px; }
+  .edit-row{ display:flex; gap:8px; align-items:center; margin-bottom:10px; }
+  .edit-row input{ width:auto; padding:11px 10px; font-size:15px; border-radius:10px; }
+  .ei-amt{ width:58px; text-align:center; }
+  .ei-unit{ width:74px; }
+  .ei-name{ flex:1; min-width:0; }
+  .ei-del{ flex:none; width:38px; height:42px; border-radius:10px; border:1.5px solid var(--line); background:transparent; color:var(--muted); font-size:14px; }
   .hidden{ display:none !important; }
   @keyframes spin{ to{ transform:rotate(360deg); } }
   @keyframes bob{ 0%,100%{ transform:translateY(0) rotate(-6deg);} 50%{ transform:translateY(-14px) rotate(6deg);} }
@@ -239,6 +245,8 @@
       <div class="eyebrow" style="margin-bottom:6px">MA NOTE</div>
       <div id="noteDisplay" style="font-size:15px;line-height:1.55;white-space:pre-wrap"></div>
     </div>
+
+    <button id="editIngBtn" class="press" style="margin-top:22px;width:100%;font-size:15px;font-weight:600;padding:13px;border-radius:12px;border:1.5px solid var(--line);background:transparent;color:var(--ink)">Modifier les ingrédients</button>
   </div>
 
   <button id="cookBtn" class="cook-cta press">Lancer le mode cuisson →</button>
@@ -255,6 +263,23 @@
   <div style="display:flex;gap:12px;margin-top:24px">
     <button id="prevStep" class="press" style="flex:1;font-size:16px;font-weight:600;padding:16px;border-radius:14px;border:1.5px solid rgba(251,248,243,.2);background:transparent;color:var(--paper)">Précédent</button>
     <button id="nextStep" class="press" style="flex:2;font-size:16px;font-weight:600;padding:16px;border-radius:14px;border:none;background:var(--accent);color:#fff">Suivant →</button>
+  </div>
+</section>
+
+<!-- MODIFIER LES INGRÉDIENTS -->
+<section id="editIng" class="hidden" style="position:fixed;inset:0;background:var(--paper);z-index:50;display:flex;flex-direction:column;padding:20px 20px 24px;max-width:620px;margin:0 auto">
+  <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px">
+    <button id="editIngBack" class="theme-toggle press" aria-label="retour">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <span class="mono" style="font-size:22px;font-weight:700">Modifier</span>
+  </div>
+  <div style="font-size:13px;color:var(--muted);margin-bottom:16px">Quantité · unité · ingrédient</div>
+  <div id="editList" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch"></div>
+  <button id="editAdd" class="press" style="width:100%;font-size:14px;font-weight:600;padding:11px;border-radius:10px;border:1.5px dashed var(--line);background:transparent;color:var(--muted);margin:6px 0 14px">+ Ajouter un ingrédient</button>
+  <div style="display:flex;gap:10px">
+    <button id="editReset" class="press" style="flex:none;font-size:14px;font-weight:600;padding:14px 16px;border-radius:12px;border:1.5px solid var(--line);background:transparent;color:var(--ink)">Valeurs d'origine</button>
+    <button id="editSave" class="press" style="flex:1;font-size:16px;font-weight:600;padding:14px;border-radius:12px;border:none;background:var(--accent);color:#fff">Enregistrer</button>
   </div>
 </section>
 
@@ -425,6 +450,7 @@ $("manualBtn").addEventListener("click", async ()=>{
 // ---- recette ----
 function loadRecipe(r){
   recipe=r; base=r.baseServings||4; servings=base; checked={};
+  if(!recipe.original){ recipe.original = JSON.parse(JSON.stringify(recipe.ingredients||[])); }
   $("rTitle").textContent=r.title;
   if(r.platform){ const b=platBadge(r.platform); $("rPlatform").innerHTML=`<span class="hero-plat-badge" style="background:${b.bg}">${b.svg}</span>${r.platform}`; }
   else { $("rPlatform").innerHTML=""; }
@@ -510,6 +536,47 @@ async function persistRecipeChange(){
   const clean = {...recipe}; delete clean._dbid;
   if(sb && entry._dbid){ try{ await sb.from("recipes").update({ data: clean }).eq("id", entry._dbid); }catch(e){} }
   renderSaved();
+}
+
+// ---- modifier les ingrédients ----
+$("editIngBtn").addEventListener("click", ()=>{ if(recipe){ fillEditFrom(recipe.ingredients); $("editIng").classList.remove("hidden"); } });
+$("editIngBack").addEventListener("click", ()=>$("editIng").classList.add("hidden"));
+$("editAdd").addEventListener("click", ()=>addEditRow("","","","Autre"));
+$("editReset").addEventListener("click", ()=>{ if(recipe&&recipe.original) fillEditFrom(recipe.original); });
+$("editSave").addEventListener("click", async ()=>{
+  const rows=[...$("editList").querySelectorAll(".edit-row")];
+  const newIngs=[];
+  rows.forEach(row=>{
+    const name=row.querySelector(".ei-name").value.trim();
+    if(!name) return;                                  // ligne sans nom = ignorée
+    const unit=row.querySelector(".ei-unit").value.trim();
+    const raw=row.querySelector(".ei-amt").value.trim().replace(",",".");
+    let amount=null;
+    if(raw!==""){ const v=parseFloat(raw); if(!isNaN(v)) amount = v*base/servings; }  // valeur saisie (proportionnelle) -> ramenée à la base
+    newIngs.push({ name, unit:unit||null, amount, category: row.dataset.cat||"Autre" });
+  });
+  recipe.ingredients=newIngs;
+  renderIngredients(false);
+  $("editIng").classList.add("hidden");
+  await persistRecipeChange();
+});
+function fillEditFrom(ings){
+  $("editList").innerHTML="";
+  (ings||[]).forEach(ing=>{
+    const disp = ing.amount==null ? "" : String(Math.round(((ing.amount*servings)/base)*100)/100);
+    addEditRow(disp, ing.unit||"", ing.name||"", ing.category||"Autre");
+  });
+}
+function addEditRow(amt,unit,name,cat){
+  const row=document.createElement("div");
+  row.className="edit-row"; row.dataset.cat=cat||"Autre";
+  const a=document.createElement("input"); a.className="ei-amt"; a.type="text"; a.inputMode="decimal"; a.placeholder="—"; a.value=amt||"";
+  const u=document.createElement("input"); u.className="ei-unit"; u.type="text"; u.placeholder="unité"; u.value=unit||"";
+  const n=document.createElement("input"); n.className="ei-name"; n.type="text"; n.placeholder="ingrédient"; n.value=name||"";
+  const d=document.createElement("button"); d.className="ei-del"; d.setAttribute("aria-label","supprimer"); d.textContent="✕";
+  d.addEventListener("click", ()=>row.remove());
+  row.append(a,u,n,d);
+  $("editList").appendChild(row);
 }
 
 // ---- Supabase ----
