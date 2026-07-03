@@ -107,6 +107,8 @@
 
   /* ---- mes recettes (accueil) ---- */
   .saved-list{ margin-top:14px; background:var(--surface); border-radius:16px; overflow:hidden; box-shadow:0 1px 3px rgba(26,24,23,.06); }
+  .list-tab{ font-family:inherit; font-size:14px; font-weight:600; padding:9px 16px; border-radius:10px; border:1.5px solid var(--line); background:transparent; color:var(--muted); }
+  .list-tab.active{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
   .saved-row{ display:flex; align-items:center; gap:12px; padding:15px 16px; border-bottom:1px solid var(--line); cursor:pointer; transition:background .15s; }
   .saved-row:last-child{ border-bottom:none; }
   .saved-row:active{ background:var(--rowhover); }
@@ -117,6 +119,8 @@
   .saved-row .sr-del{ width:28px; height:28px; border-radius:8px; background:transparent; color:var(--muted); border:none; font-size:15px; flex-shrink:0; }
   .saved-row .sr-cook{ width:36px; height:36px; border-radius:50%; background:var(--accent); color:#fff; border:none; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; box-shadow:0 3px 10px rgba(199,91,124,.35); }
   .saved-row .sr-cook svg{ width:16px; height:16px; margin-left:2px; }
+  .saved-row .sr-save{ width:32px; height:32px; border-radius:9px; background:transparent; border:none; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; }
+  .saved-row .sr-save svg{ width:19px; height:19px; }
   .saved-row .sr-del:active{ background:var(--cream); }
 
   @media (prefers-reduced-motion:reduce){ .rise{animation:none;} .ing-qty{transition:none;} }
@@ -202,10 +206,14 @@
     <input type="file" id="recipeImgInput" accept="image/*" style="display:none" />
   </div>
 
-  <!-- Mes recettes -->
-  <div id="savedSection" class="hidden" style="margin-top:40px">
-    <div class="eyebrow">MES RECETTES</div>
-    <div id="savedList" class="saved-list"></div>
+  <!-- Mes recettes / Historique -->
+  <div id="listSection" class="hidden" style="margin-top:40px">
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <button id="tabSaved" class="list-tab active">Mes recettes</button>
+      <button id="tabHistory" class="list-tab">Historique</button>
+    </div>
+    <div id="recipeList" class="saved-list"></div>
+    <div id="listEmpty" class="hidden" style="color:var(--muted);font-size:14px;line-height:1.5;padding:10px 2px"></div>
   </div>
 </section>
 
@@ -486,7 +494,7 @@ $("decodeBtn").addEventListener("click", async ()=>{
   try{
     const r=await callBackend({url:$("url").value});
     if(!r.found){ setError(r.error||"Recette introuvable. Colle la description ci-dessous."); $("manualBox").classList.remove("hidden"); }
-    else { r.platform=d.platform; loadRecipe(r); }
+    else { r.platform=d.platform; await addToHistory(r); loadRecipe(r); }
   }catch(e){ setError("Le serveur n'a pas répondu. Vérifie que /api/extract est déployé."); }
   loading(false);
 });
@@ -506,7 +514,7 @@ $("recipeImgInput").addEventListener("change", async (e)=>{
     if(!r.found) err=r.error||"Je n'ai pas trouvé de recette dans cette image. Essaie une image plus nette.";
     else ok=r;
   }catch(e2){ err="Impossible de lire cette image. Réessaie."; }
-  if(ok) loadRecipe(ok);
+  if(ok){ await addToHistory(ok); loadRecipe(ok); }
   showLoadOverlay(false);
   if(err) setError(err);
 });
@@ -519,7 +527,7 @@ $("createBtn").addEventListener("click", async ()=>{
   try{
     const r=await callBackend({text:demande});
     if(!r.found) setError(r.error||"Je n'ai pas réussi à créer cette recette. Reformule ta demande.");
-    else { loadRecipe(r); $("createBox").classList.add("hidden"); $("createText").value=""; }
+    else { await addToHistory(r); loadRecipe(r); $("createBox").classList.add("hidden"); $("createText").value=""; }
   }catch(e){ setError("Le serveur n'a pas répondu."); }
   showLoadOverlay(false);
   $("createBtn").disabled=false; $("createBtn").textContent=lbl;
@@ -532,7 +540,7 @@ $("manualBtn").addEventListener("click", async ()=>{
   try{
     const r=await callBackend({text:t});
     if(!r.found) setError(r.error||"Pas de recette claire dans ce texte.");
-    else { loadRecipe(r); $("manualBox").classList.add("hidden"); }
+    else { await addToHistory(r); loadRecipe(r); $("manualBox").classList.add("hidden"); }
   }catch(e){ setError("Échec de la structuration."); }
   showLoadOverlay(false);
   $("manualBtn").textContent="Structurer ce texte"; $("manualBtn").disabled=false;
@@ -603,7 +611,7 @@ function changeServings(d){
 }
 $("minus").addEventListener("click",()=>changeServings(-1));
 $("plus").addEventListener("click",()=>changeServings(1));
-$("backBtn").addEventListener("click",()=>{ renderSaved(); show("home"); saveView("home"); });
+$("backBtn").addEventListener("click",()=>{ renderList(); show("home"); saveView("home"); });
 
 // ---- notes ----
 $("noteBtn").addEventListener("click",()=>{
@@ -623,12 +631,12 @@ $("noteSave").addEventListener("click", async ()=>{
 // si la recette est déjà enregistrée, on met à jour la base (sinon la modif part avec la sauvegarde)
 async function persistRecipeChange(){
   if(!recipe || !recipe._id) return;
-  const entry = savedCache.find(x=>x._id===recipe._id);
+  const entry = allCache.find(x=>x._id===recipe._id);
   if(!entry) return;
   Object.assign(entry, {...recipe});
   const clean = {...recipe}; delete clean._dbid;
   if(sb && entry._dbid){ try{ await sb.from("recipes").update({ data: clean }).eq("id", entry._dbid); }catch(e){} }
-  renderSaved();
+  renderList();
 }
 
 // ---- photo du plat ----
@@ -727,77 +735,114 @@ catch(e){ console.error("Supabase init:", e); }
 let currentUser=null, currentUserId=null;
 
 // ---- recettes (Supabase + cache mémoire) ----
-let savedCache=[];
-function getSaved(){ return savedCache; }
+let allCache=[];
+function getSaved(){ return allCache; }
 async function loadRecipesFromDB(){
-  savedCache=[];
+  allCache=[];
   if(sb && currentUserId){
     try{
-      const { data, error } = await sb.from("recipes").select("id,data,fav,created_at").order("created_at",{ascending:false});
+      const { data, error } = await sb.from("recipes").select("id,data,fav,saved,created_at").order("created_at",{ascending:false});
       if(error) throw error;
-      savedCache=(data||[]).map(row=>({ ...(row.data||{}), _dbid:row.id, fav:!!row.fav }));
+      allCache=(data||[]).map(row=>({ ...(row.data||{}), _dbid:row.id, fav:!!row.fav, saved:!!row.saved, _ts:new Date(row.created_at).getTime() }));
     }catch(e){ console.warn("Chargement recettes:", e); }
   }
-  renderSaved();
+  renderList();
 }
-function currentIsSaved(){ return recipe && recipe._id && savedCache.some(x=>x._id===recipe._id); }
+// ajoute automatiquement une recette fraîchement décodée à l'historique
+async function addToHistory(r){
+  if(!sb || !currentUserId) return;
+  if(!r._id) r._id="r"+Date.now();
+  r.saved=false; r.fav=false;
+  const clean={...r}; delete clean._dbid;
+  const entry={...clean, fav:false, saved:false, _ts:Date.now()};
+  allCache.unshift(entry);
+  try{
+    const { data, error } = await sb.from("recipes").insert({ user_id: currentUserId, data: clean, fav:false, saved:false }).select("id,created_at").single();
+    if(!error && data){ entry._dbid=data.id; r._dbid=data.id; entry._ts=new Date(data.created_at).getTime(); }
+  }catch(e){ console.warn("historique:", e); }
+}
+function currentIsSaved(){
+  if(!recipe || !recipe._id) return false;
+  const e=allCache.find(x=>x._id===recipe._id);
+  return !!(e && e.saved);
+}
 function refreshSaveBtn(){
   const path=$("saveIcon").querySelector("path");
   path.setAttribute("fill", currentIsSaved()?"#fff":"none");
 }
 $("saveBtn").addEventListener("click", async ()=>{
   if(!recipe || !sb || !currentUserId) return;
-  if(!recipe._id) recipe._id="r"+Date.now();
-  const existing=savedCache.find(x=>x._id===recipe._id);
-  if(existing){                                    // déjà sauvée -> retirer
-    savedCache=savedCache.filter(x=>x._id!==recipe._id);
-    refreshSaveBtn(); renderSaved();
-    if(existing._dbid){ try{ await sb.from("recipes").delete().eq("id", existing._dbid); }catch(e){} }
-  } else {                                         // ajouter (affichage immédiat, écriture en base ensuite)
-    const clean={...recipe}; delete clean._dbid;
-    const entry={...clean, fav:false};
-    savedCache.unshift(entry);
-    refreshSaveBtn(); renderSaved();
-    try{
-      const { data, error } = await sb.from("recipes").insert({ user_id: currentUserId, data: clean, fav:false }).select("id").single();
-      if(!error && data) entry._dbid=data.id;
-    }catch(e){ console.warn("Sauvegarde:", e); }
-  }
+  let entry = recipe._id ? allCache.find(x=>x._id===recipe._id) : null;
+  if(!entry){ await addToHistory(recipe); entry = allCache.find(x=>x._id===recipe._id); if(!entry) return; }
+  entry.saved = !entry.saved; recipe.saved = entry.saved;
+  refreshSaveBtn(); renderList();
+  if(entry._dbid){ try{ await sb.from("recipes").update({ saved: entry.saved }).eq("id", entry._dbid); }catch(e){} }
 });
-function renderSaved(){
-  const list=savedCache;
-  if(!list.length){ $("savedSection").classList.add("hidden"); return; }
-  $("savedSection").classList.remove("hidden");
-  const sorted=[...list].sort((a,b)=>{
-    if(!!a.fav!==!!b.fav) return a.fav?-1:1;                       // favoris en haut
-    return (a.title||"").localeCompare(b.title||"","fr",{sensitivity:"base"}); // puis alphabétique
-  });
-  const box=$("savedList"); box.innerHTML="";
-  sorted.forEach(r=>{
-    const row=document.createElement("div");
-    row.className="saved-row";
-    const heart = r.fav
-      ? `<svg viewBox="0 0 24 24" fill="#E5484D"><path d="M12 20.8s-6.6-4.2-9-8.4C1.6 9.3 3 6 6.2 6c1.9 0 3 1.2 5.8 3.8C14.9 7.2 16 6 17.9 6c3.2 0 4.6 3.3 3.1 6.4-2.4 4.2-9 8.4-9 8.4z"/></svg>`
-      : `<svg viewBox="0 0 24 24" fill="none" stroke="#C9C2B6" stroke-width="2"><path d="M12 20.3s-6.4-4.1-8.7-8.2C1.8 9.2 3.1 6 6.2 6c1.8 0 2.9 1.1 5.8 3.7C14.9 7.1 16 6 17.8 6c3.1 0 4.4 3.2 2.9 6.1C18.4 16.2 12 20.3 12 20.3z"/></svg>`;
-    row.innerHTML=`<span class="sr-name">${esc(r.title)}</span><button class="sr-cook" aria-label="cuisiner"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button><button class="sr-fav" aria-label="favori">${heart}</button><button class="sr-del" aria-label="supprimer">✕</button>`;
+const HEART_FILL=`<svg viewBox="0 0 24 24" fill="#E5484D"><path d="M12 20.8s-6.6-4.2-9-8.4C1.6 9.3 3 6 6.2 6c1.9 0 3 1.2 5.8 3.8C14.9 7.2 16 6 17.9 6c3.2 0 4.6 3.3 3.1 6.4-2.4 4.2-9 8.4-9 8.4z"/></svg>`;
+const HEART_LINE=`<svg viewBox="0 0 24 24" fill="none" stroke="#C9C2B6" stroke-width="2"><path d="M12 20.3s-6.4-4.1-8.7-8.2C1.8 9.2 3.1 6 6.2 6c1.8 0 2.9 1.1 5.8 3.7C14.9 7.1 16 6 17.8 6c3.1 0 4.4 3.2 2.9 6.1C18.4 16.2 12 20.3 12 20.3z"/></svg>`;
+const BM_FILL=`<svg viewBox="0 0 24 24" fill="var(--accent)"><path d="M6 4h12v16l-6-4-6 4V4z"/></svg>`;
+const BM_LINE=`<svg viewBox="0 0 24 24" fill="none" stroke="#C9C2B6" stroke-width="2"><path d="M6 4h12v16l-6-4-6 4V4z"/></svg>`;
+let listTab="saved";
+$("tabSaved").addEventListener("click",()=>{ listTab="saved"; renderList(); });
+$("tabHistory").addEventListener("click",()=>{ listTab="history"; renderList(); });
+function renderList(){
+  if(!allCache.length){ $("listSection").classList.add("hidden"); return; }
+  $("listSection").classList.remove("hidden");
+  $("tabSaved").classList.toggle("active", listTab==="saved");
+  $("tabHistory").classList.toggle("active", listTab==="history");
+  let list;
+  if(listTab==="saved"){
+    list=allCache.filter(x=>x.saved).sort((a,b)=>{ if(!!a.fav!==!!b.fav) return a.fav?-1:1; return (a.title||"").localeCompare(b.title||"","fr",{sensitivity:"base"}); });
+  } else {
+    list=[...allCache].sort((a,b)=>(b._ts||0)-(a._ts||0));
+  }
+  const box=$("recipeList"), empty=$("listEmpty");
+  box.innerHTML="";
+  if(!list.length){
+    empty.classList.remove("hidden");
+    empty.textContent = listTab==="saved" ? "Aucune recette enregistrée. Ouvre une recette et appuie sur le marque-page 🔖." : "Ton historique est vide.";
+    return;
+  }
+  empty.classList.add("hidden");
+  list.forEach(r=>{
+    const row=document.createElement("div"); row.className="saved-row";
+    let actions;
+    if(listTab==="saved"){
+      actions=`<button class="sr-fav" aria-label="favori">${r.fav?HEART_FILL:HEART_LINE}</button><button class="sr-del" aria-label="retirer">✕</button>`;
+    } else {
+      actions=`<button class="sr-save" aria-label="enregistrer">${r.saved?BM_FILL:BM_LINE}</button><button class="sr-del" aria-label="supprimer">✕</button>`;
+    }
+    row.innerHTML=`<span class="sr-name">${esc(r.title)}</span><button class="sr-cook" aria-label="cuisiner"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>${actions}`;
     row.addEventListener("click",(e)=>{
       if(e.target.closest(".sr-cook")){ loadRecipe({...r}); cookStep=0; show("cook"); renderCook(); return; }
       if(e.target.closest(".sr-fav")){ toggleFav(r._id); return; }
-      if(e.target.closest(".sr-del")){ deleteRecipe(r._id); return; }
+      if(e.target.closest(".sr-save")){ toggleSaved(r._id); return; }
+      if(e.target.closest(".sr-del")){ if(listTab==="saved") unsaveRecipe(r._id); else deleteRecipe(r._id); return; }
       loadRecipe({...r});
     });
     box.appendChild(row);
   });
 }
 async function toggleFav(id){
-  const r=savedCache.find(x=>x._id===id);
-  if(!r) return;
-  r.fav=!r.fav; renderSaved();
+  const r=allCache.find(x=>x._id===id); if(!r) return;
+  r.fav=!r.fav; renderList();
   if(sb && r._dbid){ try{ await sb.from("recipes").update({fav:r.fav}).eq("id", r._dbid); }catch(e){} }
 }
+async function toggleSaved(id){
+  const r=allCache.find(x=>x._id===id); if(!r) return;
+  r.saved=!r.saved; renderList();
+  if(recipe && recipe._id===id){ recipe.saved=r.saved; refreshSaveBtn(); }
+  if(sb && r._dbid){ try{ await sb.from("recipes").update({saved:r.saved}).eq("id", r._dbid); }catch(e){} }
+}
+async function unsaveRecipe(id){
+  const r=allCache.find(x=>x._id===id); if(!r) return;
+  r.saved=false; renderList();
+  if(recipe && recipe._id===id){ recipe.saved=false; refreshSaveBtn(); }
+  if(sb && r._dbid){ try{ await sb.from("recipes").update({saved:false}).eq("id", r._dbid); }catch(e){} }
+}
 async function deleteRecipe(id){
-  const r=savedCache.find(x=>x._id===id);
-  savedCache=savedCache.filter(x=>x._id!==id); renderSaved();
+  const r=allCache.find(x=>x._id===id);
+  allCache=allCache.filter(x=>x._id!==id); renderList();
   if(sb && r && r._dbid){ try{ await sb.from("recipes").delete().eq("id", r._dbid); }catch(e){} }
 }
 
@@ -999,7 +1044,7 @@ async function scheduleTimerPush(seconds){
 let pendingPhotoId=null;
 function openPhotoForRecipe(id){
   if(!id) return;
-  const r=savedCache.find(x=>x._id===id);
+  const r=allCache.find(x=>x._id===id);
   if(!r) return;                          // recette introuvable (non sauvegardée)
   loadRecipe({...r});
   const btn=$("photoBtn");
@@ -1028,7 +1073,7 @@ function restoreLastView(){
   try{ v=JSON.parse(localStorage.getItem("mise_lastview")||"null"); }catch(e){}
   if(!v || !v.recipeId) return;
   if(!v.ts || (Date.now()-v.ts) > 2*3600*1000) return;   // trop vieux (>2h) -> on reste à l'accueil
-  const r=savedCache.find(x=>x._id===v.recipeId);
+  const r=allCache.find(x=>x._id===v.recipeId);
   if(!r) return;
   loadRecipe({...r});
   if(v.screen==="cook"){
@@ -1068,7 +1113,7 @@ $("notifBtn").addEventListener("click", async ()=>{
 });
 $("logoutBtn").addEventListener("click", async ()=>{
   if(sb){ try{ await sb.auth.signOut(); }catch(e){} }
-  currentUser=null; currentUserId=null; savedCache=[];
+  currentUser=null; currentUserId=null; allCache=[];
   showAuth();
 });
 
