@@ -52,6 +52,8 @@
   .hidden{ display:none !important; }
   @keyframes spin{ to{ transform:rotate(360deg); } }
   @keyframes bob{ 0%,100%{ transform:translateY(0) rotate(-6deg);} 50%{ transform:translateY(-14px) rotate(6deg);} }
+  @keyframes blinkpulse{ 0%,100%{ transform:scale(1); box-shadow:0 0 0 0 rgba(255,255,255,0);} 50%{ transform:scale(1.18); box-shadow:0 0 0 9px rgba(255,255,255,.25);} }
+  .blink{ animation:blinkpulse 1s ease-in-out 4; }
   @keyframes rise{ from{ opacity:0; transform:translateY(8px);} to{ opacity:1; transform:none;} }
   .rise{ animation:rise .4s ease both; }
 
@@ -941,6 +943,7 @@ async function onSignedIn(session){
   if($("acctEmail")) $("acctEmail").textContent=currentUser;
   show("home");
   await loadRecipesFromDB();
+  if(pendingPhotoId){ const id=pendingPhotoId; pendingPhotoId=null; openPhotoForRecipe(id); }
 }
 function showAuth(){ authMode="login"; renderAuthMode(); $("authEmail").value=""; $("authPwd").value=""; show("auth"); }
 
@@ -985,9 +988,34 @@ async function scheduleTimerPush(seconds){
     const sub=await ensurePushSubscription();
     if(!sub) return null;
     const r=await fetch("/api/schedule-push",{method:"POST",headers:{"content-type":"application/json"},
-      body:JSON.stringify({ subscription:sub, delaySeconds:seconds, title:"mise.", body:"⏲️ Ton minuteur est terminé !" })});
+      body:JSON.stringify({ subscription:sub, delaySeconds:seconds, title:"mise.", body:"⏲️ Terminé ! Ajoute une photo de ton plat 📷", recipeId:(recipe&&recipe._id)||null })});
     const d=await r.json(); return d.id||null;
   }catch(e){ return null; }
+}
+// ouvrir la recette + tenter l'appareil photo (depuis une notif)
+let pendingPhotoId=null;
+function openPhotoForRecipe(id){
+  if(!id) return;
+  const r=savedCache.find(x=>x._id===id);
+  if(!r) return;                          // recette introuvable (non sauvegardée)
+  loadRecipe({...r});
+  const btn=$("photoBtn");
+  if(btn){ btn.classList.add("blink"); setTimeout(()=>btn.classList.remove("blink"), 4400); }
+  setTimeout(()=>{ try{ $("photoInput").click(); }catch(e){} }, 450);  // tente la caméra (iOS peut bloquer)
+}
+function checkPhotoParam(){
+  try{
+    const p=new URLSearchParams(location.search).get("photo");
+    if(p){ pendingPhotoId=p; history.replaceState(null,"",location.pathname); }
+  }catch(e){}
+}
+checkPhotoParam();
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.addEventListener("message",(e)=>{
+    if(e.data && e.data.type==="open-photo"){
+      try{ const id=new URLSearchParams(new URL(e.data.url, location.origin).search).get("photo"); if(id) openPhotoForRecipe(id); }catch(_){}
+    }
+  });
 }
 async function cancelTimerPush(id){
   if(!id) return;
