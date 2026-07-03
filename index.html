@@ -113,6 +113,8 @@
   .saved-row .sr-fav svg{ width:20px; height:20px; }
   .saved-row .sr-fav:active{ background:var(--cream); }
   .saved-row .sr-del{ width:28px; height:28px; border-radius:8px; background:transparent; color:var(--muted); border:none; font-size:15px; flex-shrink:0; }
+  .saved-row .sr-cook{ width:36px; height:36px; border-radius:50%; background:var(--accent); color:#fff; border:none; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; box-shadow:0 3px 10px rgba(199,91,124,.35); }
+  .saved-row .sr-cook svg{ width:16px; height:16px; margin-left:2px; }
   .saved-row .sr-del:active{ background:var(--cream); }
 
   @media (prefers-reduced-motion:reduce){ .rise{animation:none;} .ing-qty{transition:none;} }
@@ -774,8 +776,9 @@ function renderSaved(){
     const heart = r.fav
       ? `<svg viewBox="0 0 24 24" fill="#E5484D"><path d="M12 20.8s-6.6-4.2-9-8.4C1.6 9.3 3 6 6.2 6c1.9 0 3 1.2 5.8 3.8C14.9 7.2 16 6 17.9 6c3.2 0 4.6 3.3 3.1 6.4-2.4 4.2-9 8.4-9 8.4z"/></svg>`
       : `<svg viewBox="0 0 24 24" fill="none" stroke="#C9C2B6" stroke-width="2"><path d="M12 20.3s-6.4-4.1-8.7-8.2C1.8 9.2 3.1 6 6.2 6c1.8 0 2.9 1.1 5.8 3.7C14.9 7.1 16 6 17.8 6c3.1 0 4.4 3.2 2.9 6.1C18.4 16.2 12 20.3 12 20.3z"/></svg>`;
-    row.innerHTML=`<span class="sr-name">${esc(r.title)}</span><button class="sr-fav" aria-label="favori">${heart}</button><button class="sr-del" aria-label="supprimer">✕</button>`;
+    row.innerHTML=`<span class="sr-name">${esc(r.title)}</span><button class="sr-cook" aria-label="cuisiner"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button><button class="sr-fav" aria-label="favori">${heart}</button><button class="sr-del" aria-label="supprimer">✕</button>`;
     row.addEventListener("click",(e)=>{
+      if(e.target.closest(".sr-cook")){ loadRecipe({...r}); cookStep=0; show("cook"); renderCook(); return; }
       if(e.target.closest(".sr-fav")){ toggleFav(r._id); return; }
       if(e.target.closest(".sr-del")){ deleteRecipe(r._id); return; }
       loadRecipe({...r});
@@ -811,9 +814,12 @@ function renderCook(){
   let html=`<div class="rise"><div class="mono" style="font-size:14px;color:${ACCENT};font-weight:500;margin-bottom:14px;letter-spacing:.04em">ÉTAPE ${cookStep+1}</div>`;
   if(s.title) html+=`<h2 class="mono" style="font-size:26px;font-weight:700;letter-spacing:-.02em;margin-bottom:18px;line-height:1.15">${esc(s.title)}</h2>`;
   html+=`<p style="font-size:22px;line-height:1.45">${esc(s.content)}</p>`;
+  const firstTimer=steps.findIndex(st=>st.timerSeconds);
+  if(firstTimer>cookStep) html+=`<button id="skipToCook" class="press" style="margin-top:22px;font-size:14px;font-weight:600;padding:11px 18px;border-radius:11px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.09);color:#fff;display:inline-flex;align-items:center;gap:7px">⏲️ Passer à la cuisson</button>`;
   if(s.timerSeconds) html+=`<div id="timerSlot"></div>`;
   html+=`</div>`;
   $("stepBody").innerHTML=html;
+  if($("skipToCook")) $("skipToCook").addEventListener("click", ()=>{ cookStep=firstTimer; renderCook(); });
   const nextBtn=$("nextStep");
   if(cookStep===total-1){ nextBtn.textContent="Terminé ✓"; nextBtn.style.background=GREEN; }
   else{ nextBtn.textContent="Suivant →"; nextBtn.style.background=ACCENT; }
