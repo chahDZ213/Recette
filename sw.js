@@ -1,52 +1,29 @@
-// sw.js — service worker minimal (network-first)
-const CACHE = "mise-v21";
+// api/send-push.js — reçu par QStash après le délai : envoie la notification web push.
+import webpush from "web-push";
 
-self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(["/", "/index.html"])).catch(() => {}));
-  self.skipWaiting();
-});
+const VAPID_PUBLIC = process.env.VAPID_PUBLIC_KEY;
+const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY;
+const SEND_SECRET = process.env.SEND_SECRET;
 
-self.addEventListener("activate", (e) => {
-  e.waitUntil(Promise.all([caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))), self.clients.claim()]));
-});
+if (VAPID_PUBLIC && VAPID_PRIVATE) {
+  webpush.setVapidDetails("mailto:contact@mise.app", VAPID_PUBLIC, VAPID_PRIVATE);
+}
 
-self.addEventListener("fetch", (e) => {
-  // Ne pas intercepter les appels API (POST vers /api/extract)
-  if (e.request.method !== "GET") return;
-  e.respondWith(
-    fetch(e.request)
-      .then((res) => {
-        const copy = res.clone();
-        caches.open(CACHE).then((c) => c.put(e.request, copy)).catch(() => {});
-        return res;
-      })
-      .catch(() => caches.match(e.request).then((r) => r || caches.match("/")))
-  );
-});
+export default async function handler(req, res) {
+  if (req.method !== "POST") return res.status(405).end();
+  try {
+    const { subscription, title, body, secret, recipeId } = req.body || {};
+    if (secret !== SEND_SECRET) return res.status(401).json({ error: "non autorisé" });
+    if (!subscription) return res.status(400).json({ error: "pas d'abonnement" });
 
-// --- Notifications ---
-self.addEventListener("push", (e) => {
-  let data = {};
-  try { data = e.data ? e.data.json() : {}; } catch (_) { data = { body: e.data ? e.data.text() : "" }; }
-  const title = data.title || "mise.";
-  const body = data.body || "C'est prêt ! 🔔";
-  e.waitUntil(self.registration.showNotification(title, {
-    body,
-    icon: "/icon-192.png",
-    badge: "/icon-192.png",
-    vibrate: [200, 100, 200],
-    tag: data.tag || "mise-timer",
-    data: { url: data.url || "/" },
-  }));
-});
-
-self.addEventListener("notificationclick", (e) => {
-  e.notification.close();
-  const url = (e.notification.data && e.notification.data.url) || "/";
-  e.waitUntil(
-    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((cs) => {
-      for (const c of cs) { if ("focus" in c) return c.focus(); }
-      if (self.clients.openWindow) return self.clients.openWindow(url);
-    })
-  );
-});
+    const url = recipeId ? ("/?photo=" + encodeURIComponent(recipeId)) : "/";
+    await webpush.sendNotification(
+      subscription,
+      JSON.stringify({ title: title || "mise.", body: body || "⏲️ Ton minuteur est terminé !", tag: "mise-timer", url })
+    );
+    return res.status(200).json({ ok: true });
+  } catch (e) {
+    // 200 quand même pour éviter que QStash retente en boucle si l'abonnement est expiré
+    return res.status(200).json({ ok: false, error: String((e && e.message) || e) });
+  }
+}
