@@ -9,7 +9,7 @@ const BASE_URL = process.env.PUBLIC_BASE_URL;     // ex: https://recette-xi.verc
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Méthode non autorisée" });
   try {
-    const { subscription, delaySeconds, title, body } = req.body || {};
+    const { subscription, delaySeconds, title, body, recipeId } = req.body || {};
     if (!subscription || !delaySeconds) return res.status(400).json({ error: "paramètres manquants" });
 
     const delay = Math.max(1, Math.min(86400, Math.round(delaySeconds))); // 1s .. 24h
@@ -22,7 +22,7 @@ export default async function handler(req, res) {
         "Content-Type": "application/json",
         "Upstash-Delay": `${delay}s`,
       },
-      body: JSON.stringify({ subscription, title, body, secret: SEND_SECRET }),
+      body: JSON.stringify({ subscription, title, body, secret: SEND_SECRET, recipeId: recipeId || null }),
     });
 
     const d = await r.json().catch(() => ({}));
