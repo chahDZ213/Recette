@@ -12,13 +12,14 @@ if (VAPID_PUBLIC && VAPID_PRIVATE) {
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
   try {
-    const { subscription, title, body, secret } = req.body || {};
+    const { subscription, title, body, secret, recipeId } = req.body || {};
     if (secret !== SEND_SECRET) return res.status(401).json({ error: "non autorisé" });
     if (!subscription) return res.status(400).json({ error: "pas d'abonnement" });
 
+    const url = recipeId ? ("/?photo=" + encodeURIComponent(recipeId)) : "/";
     await webpush.sendNotification(
       subscription,
-      JSON.stringify({ title: title || "mise.", body: body || "⏲️ Ton minuteur est terminé !", tag: "mise-timer" })
+      JSON.stringify({ title: title || "mise.", body: body || "⏲️ Ton minuteur est terminé !", tag: "mise-timer", url })
     );
     return res.status(200).json({ ok: true });
   } catch (e) {
