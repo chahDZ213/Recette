@@ -109,6 +109,9 @@
   .saved-list{ margin-top:14px; background:var(--surface); border-radius:16px; overflow:hidden; box-shadow:0 1px 3px rgba(26,24,23,.06); }
   .list-tab{ font-family:inherit; font-size:14px; font-weight:600; padding:9px 16px; border-radius:10px; border:1.5px solid var(--line); background:transparent; color:var(--muted); }
   .list-tab.active{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
+  #shareBanner{ display:flex; align-items:center; gap:12px; justify-content:space-between; background:var(--cream); border:1px solid var(--line); border-radius:14px; padding:14px 16px; margin-bottom:22px; font-size:15px; font-weight:600; }
+  #shareBanner button{ flex:none; font-family:inherit; font-size:13px; font-weight:600; padding:10px 14px; border-radius:10px; border:none; background:var(--accent); color:#fff; }
+  .public-mode #photoBtn, .public-mode #photoRemove, .public-mode #noteBtn, .public-mode #saveBtn, .public-mode #shareBtn, .public-mode #editIngBtn{ display:none !important; }
   .saved-row{ display:flex; align-items:center; gap:12px; padding:15px 16px; border-bottom:1px solid var(--line); cursor:pointer; transition:background .15s; }
   .saved-row:last-child{ border-bottom:none; }
   .saved-row:active{ background:var(--rowhover); }
@@ -257,6 +260,9 @@
         <button id="noteBtn" class="hero-btn press" aria-label="note">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
         </button>
+        <button id="shareBtn" class="hero-btn press" aria-label="partager">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+        </button>
         <button id="saveBtn" class="hero-btn press" aria-label="sauvegarder">
           <svg id="saveIcon" width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M6 4h12v16l-6-4-6 4V4z" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg>
         </button>
@@ -270,6 +276,10 @@
   <input type="file" id="photoInput" accept="image/*" style="display:none" />
 
   <div class="recipe-body">
+    <div id="shareBanner" class="hidden">
+      <div style="line-height:1.4"><b>mise.</b> · recette partagée<br><span style="font-size:13px;color:var(--muted)">Décode tes propres recettes de vidéos, gratuitement.</span></div>
+      <button id="shareCta">Créer mon compte</button>
+    </div>
     <div class="servings-card">
       <span style="color:#fff;font-size:14px;font-weight:500;opacity:.7">Pour</span>
       <div style="display:flex;align-items:center;gap:18px">
@@ -611,7 +621,10 @@ function changeServings(d){
 }
 $("minus").addEventListener("click",()=>changeServings(-1));
 $("plus").addEventListener("click",()=>changeServings(1));
-$("backBtn").addEventListener("click",()=>{ renderList(); show("home"); saveView("home"); });
+$("backBtn").addEventListener("click",()=>{
+  if(publicPreview){ publicPreview=false; applyPublicMode(false); if(currentUserId){ renderList(); show("home"); } else { showAuth(); } return; }
+  renderList(); show("home"); saveView("home");
+});
 
 // ---- notes ----
 $("noteBtn").addEventListener("click",()=>{
@@ -1083,6 +1096,54 @@ function restoreLastView(){
   }
 }
 checkPhotoParam();
+
+// ---- partage public ----
+let pendingShareId=null, publicPreview=false;
+function checkShareParam(){
+  try{ const id=new URLSearchParams(location.search).get("r"); if(id) pendingShareId=id; }catch(e){}
+}
+async function shareRecipe(){
+  if(!recipe || !sb || !currentUserId) return;
+  const snap={ title:recipe.title, baseServings:recipe.baseServings, ingredients:recipe.ingredients, steps:recipe.steps, image:recipe.image||null, platform:recipe.platform||null };
+  let url=location.origin+"/";
+  try{
+    const { data, error } = await sb.from("shares").insert({ owner_id: currentUserId, data: snap }).select("id").single();
+    if(!error && data) url = location.origin + "/?r=" + data.id;
+  }catch(e){}
+  const sd={ title:"mise.", text:"Recette : "+(recipe.title||"")+" — sur mise.", url };
+  if(navigator.share){ try{ await navigator.share(sd); }catch(e){} }
+  else { try{ await navigator.clipboard.writeText(url); alert("Lien copié ! Colle-le dans WhatsApp, Insta, SMS…"); }catch(e){ prompt("Copie ce lien :", url); } }
+}
+async function openSharedRecipe(id){
+  if(!sb) return false;
+  try{
+    const { data, error } = await sb.from("shares").select("data").eq("id", id).single();
+    if(error || !data || !data.data) return false;
+    try{ history.replaceState(null,"",location.pathname); }catch(e){}
+    publicPreview=true;
+    loadRecipe({ ...(data.data) });
+    applyPublicMode(true);
+    return true;
+  }catch(e){ return false; }
+}
+function applyPublicMode(on){
+  document.body.classList.toggle("public-mode", on);
+  const b=$("shareBanner"); if(!b) return;
+  if(on){ b.classList.remove("hidden"); $("shareCta").textContent = currentUserId ? "Ajouter à mes recettes" : "Créer mon compte"; }
+  else { b.classList.add("hidden"); }
+}
+$("shareBtn").addEventListener("click", shareRecipe);
+$("shareCta").addEventListener("click", async ()=>{
+  if(currentUserId){
+    await addToHistory(recipe);
+    const entry=allCache.find(x=>x._id===recipe._id);
+    if(entry){ entry.saved=true; recipe.saved=true; if(sb&&entry._dbid){ try{ await sb.from("recipes").update({saved:true}).eq("id",entry._dbid); }catch(e){} } }
+    renderList(); publicPreview=false; applyPublicMode(false); show("home");
+  } else {
+    publicPreview=false; applyPublicMode(false);
+    authMode="signup"; renderAuthMode(); show("auth");
+  }
+});
 if("serviceWorker" in navigator){
   navigator.serviceWorker.addEventListener("message",(e)=>{
     if(e.data && e.data.type==="open-photo"){
@@ -1117,14 +1178,19 @@ $("logoutBtn").addEventListener("click", async ()=>{
   showAuth();
 });
 
-// init : reprend la session si elle existe
+// init : lien de partage prioritaire, sinon reprise de session
+checkShareParam();
 (async function(){
-  if(!sb){ showAuth(); return; }
-  try{
-    const { data } = await sb.auth.getSession();
-    if(data && data.session){ await onSignedIn(data.session); }
-    else { showAuth(); }
-  }catch(e){ showAuth(); }
+  let session=null;
+  if(sb){ try{ const { data } = await sb.auth.getSession(); session=(data&&data.session)||null; }catch(e){} }
+  if(pendingShareId){
+    const id=pendingShareId; pendingShareId=null;
+    if(session){ currentUserId=session.user.id; currentUser=session.user.email; if($("acctEmail")) $("acctEmail").textContent=currentUser; loadRecipesFromDB(); }
+    const ok=await openSharedRecipe(id);
+    if(ok) return;                       // on reste sur l'aperçu public
+  }
+  if(session){ await onSignedIn(session); }
+  else { showAuth(); }
 })();
 if("serviceWorker" in navigator){ navigator.serviceWorker.register("/sw.js").catch(()=>{}); }
 </script>
