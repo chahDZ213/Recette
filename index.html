@@ -165,6 +165,13 @@
       <button id="themeToggle" class="theme-toggle press" aria-label="changer de thème"></button>
     </div>
   </div>
+  <div id="installBanner" class="hidden" style="display:flex;align-items:center;gap:12px;justify-content:space-between;background:var(--cream);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:26px">
+    <div style="font-size:13px;line-height:1.4;font-weight:600">📲 Installe mise. sur ton écran d'accueil<br><span style="color:var(--muted);font-weight:400">Vraie app + notifications</span></div>
+    <div style="display:flex;gap:6px;flex:none;align-items:center">
+      <button id="installBtn" style="font-family:inherit;font-size:13px;font-weight:600;padding:9px 13px;border-radius:10px;border:none;background:var(--accent);color:#fff">Installer</button>
+      <button id="installClose" aria-label="fermer" style="font-size:15px;padding:0 4px;border:none;background:transparent;color:var(--muted)">✕</button>
+    </div>
+  </div>
   <h1 class="mono" style="font-size:38px;line-height:1.05;font-weight:700;letter-spacing:-.03em;margin-bottom:16px">
     La recette,<br>sans le bouton pause.
   </h1>
@@ -350,6 +357,19 @@
   <textarea id="noteText" placeholder="Ex : cuire 2 min de plus, mettre moins de sucre, top avec du sirop d'érable…" style="flex:1;resize:none;line-height:1.5;margin-bottom:16px"></textarea>
   <button id="noteSave" class="press" style="width:100%;font-size:16px;font-weight:600;padding:15px;border-radius:12px;border:none;background:var(--accent);color:#fff">Enregistrer la note</button>
 </section>
+
+<!-- GUIDE INSTALLATION iPhone -->
+<div id="installSheet" class="hidden" style="position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center">
+  <div style="background:var(--surface);color:var(--ink);width:100%;max-width:620px;border-radius:20px 20px 0 0;padding:24px 22px calc(28px + env(safe-area-inset-bottom))">
+    <div class="mono" style="font-size:20px;font-weight:700;margin-bottom:14px">Installer mise. 📲</div>
+    <ol style="font-size:15px;line-height:1.9;padding-left:20px;margin-bottom:18px">
+      <li>Appuie sur <b>Partager</b> ⬆️ en bas de Safari</li>
+      <li>Choisis <b>« Sur l'écran d'accueil »</b></li>
+      <li>Appuie sur <b>Ajouter</b> — et c'est fait !</li>
+    </ol>
+    <button id="installSheetClose" style="font-family:inherit;width:100%;font-size:15px;font-weight:600;padding:13px;border-radius:12px;border:1.5px solid var(--line);background:transparent;color:var(--ink)">Compris</button>
+  </div>
+</div>
 
 <!-- CHARGEMENT -->
 <div id="loadOverlay" class="hidden" style="position:fixed;inset:0;background:var(--paper);z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px">
@@ -869,7 +889,16 @@ $("exitCook").addEventListener("click",()=>{ stopTimer(); show("recipe"); saveVi
 $("prevStep").addEventListener("click",()=>{ if(cookStep>0){cookStep--;renderCook();} });
 $("nextStep").addEventListener("click",()=>{
   const total=recipe.steps.length;
-  if(cookStep<total-1){ cookStep++; renderCook(); } else { stopTimer(); show("home"); window.scrollTo(0,0); saveView("home"); }
+  if(cookStep<total-1){ cookStep++; renderCook(); return; }
+  stopTimer();
+  if(publicPreview){
+    publicPreview=false; applyPublicMode(false);
+    if(currentUserId){ renderList(); show("home"); maybeShowInstall(); }
+    else { authMode="signup"; renderAuthMode(); show("auth"); }
+  } else {
+    show("home"); saveView("home"); maybeShowInstall();
+  }
+  window.scrollTo(0,0);
 });
 function renderCook(){
   stopTimer();
@@ -1006,6 +1035,7 @@ async function onSignedIn(session){
   currentUser=session.user.email;
   if($("acctEmail")) $("acctEmail").textContent=currentUser;
   show("home");
+  maybeShowInstall();
   await loadRecipesFromDB();
   if(pendingPhotoId){ const id=pendingPhotoId; pendingPhotoId=null; openPhotoForRecipe(id); }
   else { restoreLastView(); }
@@ -1021,6 +1051,27 @@ function isStandalone(){
   return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
 }
 function isIOS(){ return /iphone|ipad|ipod/i.test(navigator.userAgent); }
+// ---- installation sur l'écran d'accueil ----
+let deferredPrompt=null;
+window.addEventListener("beforeinstallprompt",(e)=>{ e.preventDefault(); deferredPrompt=e; maybeShowInstall(); });
+window.addEventListener("appinstalled",()=>{ const b=$("installBanner"); if(b) b.classList.add("hidden"); });
+function installDismissed(){ try{ return localStorage.getItem("mise_install_dismissed")==="1"; }catch(e){ return false; } }
+function maybeShowInstall(){
+  const b=$("installBanner"); if(!b) return;
+  if(isStandalone() || installDismissed()){ b.classList.add("hidden"); return; }
+  if(deferredPrompt || (isIOS() && !isStandalone())){ b.classList.remove("hidden"); }
+}
+$("installBtn").addEventListener("click", async ()=>{
+  if(deferredPrompt){
+    deferredPrompt.prompt();
+    try{ await deferredPrompt.userChoice; }catch(e){}
+    deferredPrompt=null; $("installBanner").classList.add("hidden");
+  } else {
+    $("installSheet").classList.remove("hidden");   // iPhone / navigateurs sans prompt natif
+  }
+});
+$("installClose").addEventListener("click",()=>{ try{ localStorage.setItem("mise_install_dismissed","1"); }catch(e){} $("installBanner").classList.add("hidden"); });
+$("installSheetClose").addEventListener("click",()=>$("installSheet").classList.add("hidden"));
 function refreshNotifStatus(){
   const s=$("notifStatus"); if(!s) return;
   if(!("Notification" in window)){ s.textContent="Ton navigateur ne gère pas les notifications."; return; }
