@@ -75,8 +75,8 @@
   .hero-plat-badge svg{ width:13px; height:13px; }
   .recipe-body{ padding:22px 20px 0; }
 
-  .servings-card{ background:var(--panel); border-radius:18px; padding:16px 20px; display:flex; align-items:center; justify-content:space-between; margin-bottom:26px; }
-  .step-btn{ width:46px; height:46px; border-radius:13px; border:1.5px solid rgba(255,255,255,.22); background:transparent; color:#fff; font-size:26px; line-height:1; display:flex; align-items:center; justify-content:center; }
+  .servings-card{ background:var(--surface); border:1px solid var(--line); border-radius:15px; padding:10px 16px; display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; }
+  .step-btn{ width:38px; height:38px; border-radius:11px; border:1.5px solid var(--line); background:transparent; color:var(--ink); font-size:22px; line-height:1; display:flex; align-items:center; justify-content:center; }
 
   .eyebrow{ font-size:12px; font-weight:700; color:var(--muted); letter-spacing:.08em; margin-bottom:12px; }
 
@@ -172,12 +172,14 @@
       <button id="installClose" aria-label="fermer" style="font-size:15px;padding:0 4px;border:none;background:transparent;color:var(--muted)">✕</button>
     </div>
   </div>
-  <h1 class="mono" style="font-size:38px;line-height:1.05;font-weight:700;letter-spacing:-.03em;margin-bottom:16px">
-    La recette,<br>sans le bouton pause.
-  </h1>
-  <p style="font-size:17px;color:var(--muted);line-height:1.5;margin-bottom:32px;max-width:460px">
-    Colle le lien d'une vidéo de recette (YouTube, Shorts, Instagram, TikTok, Facebook). Tu récupères les ingrédients, les portions ajustables et un mode cuisson étape par étape.
-  </p>
+  <div id="introBlock">
+    <h1 class="mono" style="font-size:34px;line-height:1.05;font-weight:700;letter-spacing:-.03em;margin-bottom:14px">
+      La recette,<br>sans le bouton pause.
+    </h1>
+    <p style="font-size:16px;color:var(--muted);line-height:1.5;margin-bottom:30px;max-width:460px">
+      Colle le lien d'une vidéo de recette (YouTube, Shorts, Instagram, TikTok, Facebook). Tu récupères les ingrédients, les portions ajustables et un mode cuisson étape par étape.
+    </p>
+  </div>
 
   <label style="display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:8px">LIEN VIDÉO</label>
   <input id="url" placeholder="YouTube, Instagram, TikTok, Facebook…" style="margin-bottom:14px" />
@@ -194,7 +196,6 @@
   <div style="margin-top:28px;border-top:1px solid var(--line);padding-top:20px">
     <button id="manualToggle" style="background:none;border:none;color:var(--muted);font-size:14px;font-weight:600;padding:0">+ Coller la description à la main</button>
     <div id="manualBox" class="hidden rise" style="margin-top:12px">
-      <p style="font-size:13px;color:var(--muted);margin-bottom:8px;line-height:1.5">Si l'extraction auto cale, copie la description de la vidéo et colle-la ici.</p>
       <textarea id="manualText" rows="6" placeholder="Ingrédients : 250g de farine…&#10;Étapes : 1. Mélanger…" style="resize:vertical"></textarea>
       <button id="manualBtn" class="press" style="margin-top:10px;font-size:15px;font-weight:600;padding:12px 20px;border-radius:10px;border:1.5px solid var(--ink);background:transparent;color:var(--ink)">Structurer ce texte</button>
     </div>
@@ -290,12 +291,12 @@
       <button id="shareCta">Créer mon compte</button>
     </div>
     <div class="servings-card">
-      <span style="color:#fff;font-size:14px;font-weight:500;opacity:.7">Pour</span>
-      <div style="display:flex;align-items:center;gap:18px">
+      <span style="color:var(--muted);font-size:14px;font-weight:600">Pour</span>
+      <div style="display:flex;align-items:center;gap:14px">
         <button id="minus" class="step-btn press" aria-label="moins">−</button>
-        <div style="text-align:center;min-width:70px">
-          <div id="servings" class="mono" style="color:#fff;font-size:40px;font-weight:700;line-height:1">4</div>
-          <div id="servLabel" style="color:#fff;font-size:12px;opacity:.6;margin-top:2px">personnes</div>
+        <div style="text-align:center;min-width:54px">
+          <div id="servings" class="mono" style="color:var(--ink);font-size:28px;font-weight:700;line-height:1">4</div>
+          <div id="servLabel" style="color:var(--muted);font-size:11px;margin-top:2px">personnes</div>
         </div>
         <button id="plus" class="step-btn press" aria-label="plus">+</button>
       </div>
@@ -363,7 +364,7 @@
   <div style="background:var(--surface);color:var(--ink);width:100%;max-width:620px;border-radius:20px 20px 0 0;padding:24px 22px calc(28px + env(safe-area-inset-bottom))">
     <div class="mono" style="font-size:20px;font-weight:700;margin-bottom:14px">Installer mise. 📲</div>
     <ol style="font-size:15px;line-height:1.9;padding-left:20px;margin-bottom:18px">
-      <li>Appuie sur <b>Partager</b> ⬆️ en bas de Safari</li>
+      <li>Appuie sur le bouton <b>Partager</b> ⬆️ (ou le menu <b>⋮</b>) de ton navigateur</li>
       <li>Choisis <b>« Sur l'écran d'accueil »</b></li>
       <li>Appuie sur <b>Ajouter</b> — et c'est fait !</li>
     </ol>
@@ -821,6 +822,7 @@ let listTab="saved";
 $("tabSaved").addEventListener("click",()=>{ listTab="saved"; renderList(); });
 $("tabHistory").addEventListener("click",()=>{ listTab="history"; renderList(); });
 function renderList(){
+  const intro=$("introBlock"); if(intro) intro.classList.toggle("hidden", allCache.length>0);
   if(!allCache.length){ $("listSection").classList.add("hidden"); return; }
   $("listSection").classList.remove("hidden");
   $("tabSaved").classList.toggle("active", listTab==="saved");
