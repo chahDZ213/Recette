@@ -112,7 +112,9 @@
   #shareBanner{ display:flex; align-items:center; gap:12px; justify-content:space-between; background:var(--cream); border:1px solid var(--line); border-radius:14px; padding:14px 16px; margin-bottom:22px; font-size:15px; font-weight:600; }
   #shareBanner button{ flex:none; font-family:inherit; font-size:13px; font-weight:600; padding:10px 14px; border-radius:10px; border:none; background:var(--accent); color:#fff; }
   .public-mode #photoBtn, .public-mode #photoRemove, .public-mode #noteBtn, .public-mode #saveBtn, .public-mode #shareBtn, .public-mode #editIngBtn{ display:none !important; }
-  .saved-row{ display:flex; align-items:center; gap:12px; padding:15px 16px; border-bottom:1px solid var(--line); cursor:pointer; transition:background .15s; }
+  .saved-row{ display:flex; align-items:center; gap:8px; padding:15px 16px; border-bottom:1px solid var(--line); cursor:pointer; transition:background .15s; }
+  .saved-row .sr-share{ width:32px; height:32px; border-radius:9px; background:transparent; border:none; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; }
+  .saved-row .sr-share svg{ width:18px; height:18px; }
   .saved-row:last-child{ border-bottom:none; }
   .saved-row:active{ background:var(--rowhover); }
   .saved-row .sr-name{ flex:1; font-size:16px; font-weight:500; line-height:1.3; }
@@ -820,14 +822,16 @@ function renderList(){
   list.forEach(r=>{
     const row=document.createElement("div"); row.className="saved-row";
     let actions;
+    const shareHtml=`<button class="sr-share" aria-label="partager"><svg viewBox="0 0 24 24" fill="none" stroke="#B0A79B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="2.4"/><circle cx="6" cy="12" r="2.4"/><circle cx="18" cy="19" r="2.4"/><path d="M8.1 13.2l7.8 4.6M15.9 6.2l-7.8 4.6"/></svg></button>`;
     if(listTab==="saved"){
-      actions=`<button class="sr-fav" aria-label="favori">${r.fav?HEART_FILL:HEART_LINE}</button><button class="sr-del" aria-label="retirer">✕</button>`;
+      actions=`<button class="sr-fav" aria-label="favori">${r.fav?HEART_FILL:HEART_LINE}</button>${shareHtml}<button class="sr-del" aria-label="retirer">✕</button>`;
     } else {
-      actions=`<button class="sr-save" aria-label="enregistrer">${r.saved?BM_FILL:BM_LINE}</button><button class="sr-del" aria-label="supprimer">✕</button>`;
+      actions=`<button class="sr-save" aria-label="enregistrer">${r.saved?BM_FILL:BM_LINE}</button>${shareHtml}<button class="sr-del" aria-label="supprimer">✕</button>`;
     }
     row.innerHTML=`<span class="sr-name">${esc(r.title)}</span><button class="sr-cook" aria-label="cuisiner"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>${actions}`;
     row.addEventListener("click",(e)=>{
       if(e.target.closest(".sr-cook")){ loadRecipe({...r}); cookStep=0; show("cook"); renderCook(); return; }
+      if(e.target.closest(".sr-share")){ shareRecipeData(r); return; }
       if(e.target.closest(".sr-fav")){ toggleFav(r._id); return; }
       if(e.target.closest(".sr-save")){ toggleSaved(r._id); return; }
       if(e.target.closest(".sr-del")){ if(listTab==="saved") unsaveRecipe(r._id); else deleteRecipe(r._id); return; }
@@ -1102,18 +1106,19 @@ let pendingShareId=null, publicPreview=false;
 function checkShareParam(){
   try{ const id=new URLSearchParams(location.search).get("r"); if(id) pendingShareId=id; }catch(e){}
 }
-async function shareRecipe(){
-  if(!recipe || !sb || !currentUserId) return;
-  const snap={ title:recipe.title, baseServings:recipe.baseServings, ingredients:recipe.ingredients, steps:recipe.steps, image:recipe.image||null, platform:recipe.platform||null };
+async function shareRecipeData(r){
+  if(!r || !sb || !currentUserId) return;
+  const snap={ title:r.title, baseServings:r.baseServings, ingredients:r.ingredients, steps:r.steps, image:r.image||null, platform:r.platform||null };
   let url=location.origin+"/";
   try{
     const { data, error } = await sb.from("shares").insert({ owner_id: currentUserId, data: snap }).select("id").single();
     if(!error && data) url = location.origin + "/?r=" + data.id;
   }catch(e){}
-  const sd={ title:"mise.", text:"Recette : "+(recipe.title||"")+" — sur mise.", url };
+  const sd={ title:"mise.", text:"Recette : "+(r.title||"")+" — sur mise.", url };
   if(navigator.share){ try{ await navigator.share(sd); }catch(e){} }
   else { try{ await navigator.clipboard.writeText(url); alert("Lien copié ! Colle-le dans WhatsApp, Insta, SMS…"); }catch(e){ prompt("Copie ce lien :", url); } }
 }
+async function shareRecipe(){ await shareRecipeData(recipe); }
 async function openSharedRecipe(id){
   if(!sb) return false;
   try{
