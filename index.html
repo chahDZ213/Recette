@@ -111,7 +111,9 @@
   .list-tab.active{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
   #shareBanner{ display:flex; align-items:center; gap:12px; justify-content:space-between; background:var(--cream); border:1px solid var(--line); border-radius:14px; padding:14px 16px; margin-bottom:22px; font-size:15px; font-weight:600; }
   #shareBanner button{ flex:none; font-family:inherit; font-size:13px; font-weight:600; padding:10px 14px; border-radius:10px; border:none; background:var(--accent); color:#fff; }
-  .public-mode #photoBtn, .public-mode #photoRemove, .public-mode #noteBtn, .public-mode #saveBtn, .public-mode #shareBtn, .public-mode #editIngBtn{ display:none !important; }
+  .public-mode #photoBtn, .public-mode #photoRemove, .public-mode #noteBtn, .public-mode #saveBtn, .public-mode #shareBtn, .public-mode #editIngBtn, .public-mode #collBtn{ display:none !important; }
+  .coll-chip{ font-family:inherit; font-size:13px; font-weight:600; padding:7px 13px; border-radius:20px; border:1.5px solid var(--line); background:transparent; color:var(--muted); white-space:nowrap; flex:none; }
+  .coll-chip.active{ background:var(--accent); color:#fff; border-color:var(--accent); }
   .saved-row{ display:flex; align-items:center; gap:8px; padding:15px 16px; border-bottom:1px solid var(--line); cursor:pointer; transition:background .15s; }
   .saved-row .sr-share{ width:32px; height:32px; border-radius:9px; background:transparent; border:none; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; }
   .saved-row .sr-share svg{ width:18px; height:18px; }
@@ -225,6 +227,7 @@
       <button id="tabSaved" class="list-tab active">Mes recettes</button>
       <button id="tabHistory" class="list-tab">Historique</button>
     </div>
+    <div id="collFilters" class="hidden" style="display:flex;gap:7px;overflow-x:auto;margin-bottom:14px;padding-bottom:2px"></div>
     <div id="recipeList" class="saved-list"></div>
     <div id="listEmpty" class="hidden" style="color:var(--muted);font-size:14px;line-height:1.5;padding:10px 2px"></div>
   </div>
@@ -302,6 +305,8 @@
       </div>
     </div>
 
+    <button id="collBtn" class="press" style="display:inline-flex;align-items:center;gap:6px;font-family:inherit;font-size:13px;font-weight:600;padding:8px 14px;border-radius:20px;border:1.5px solid var(--line);background:transparent;color:var(--ink);margin-bottom:22px">🏷️ <span id="collBtnLabel">Classer</span></button>
+
     <div class="eyebrow">INGRÉDIENTS</div>
     <div id="ingList"></div>
 
@@ -358,6 +363,16 @@
   <textarea id="noteText" placeholder="Ex : cuire 2 min de plus, mettre moins de sucre, top avec du sirop d'érable…" style="flex:1;resize:none;line-height:1.5;margin-bottom:16px"></textarea>
   <button id="noteSave" class="press" style="width:100%;font-size:16px;font-weight:600;padding:15px;border-radius:12px;border:none;background:var(--accent);color:#fff">Enregistrer la note</button>
 </section>
+
+<!-- CLASSER (collections) -->
+<div id="collSheet" class="hidden" style="position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center">
+  <div style="background:var(--surface);color:var(--ink);width:100%;max-width:620px;border-radius:20px 20px 0 0;padding:22px 20px calc(24px + env(safe-area-inset-bottom))">
+    <div class="mono" style="font-size:19px;font-weight:700;margin-bottom:4px">Classer la recette</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:16px">Choisis une collection ou crées-en une.</div>
+    <div id="collSheetList" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px"></div>
+    <button id="collClose" style="width:100%;font-family:inherit;font-size:15px;font-weight:600;padding:12px;border-radius:12px;border:1.5px solid var(--line);background:transparent;color:var(--ink)">Fermer</button>
+  </div>
+</div>
 
 <!-- GUIDE INSTALLATION iPhone -->
 <div id="installSheet" class="hidden" style="position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center">
@@ -446,7 +461,11 @@ function smartVal(amount, unit){
   const noFraction = /^(g|gr|gramme|grammes|ml|cl)$/.test(u);
   return noFraction ? stepRound(amount) : niceFrac(amount);
 }
-function fmtTime(s){ const m=Math.floor(s/60); return m+":"+String(s%60).padStart(2,"0"); }
+function fmtTime(s){
+  const h=Math.floor(s/3600), m=Math.floor((s%3600)/60), sec=s%60;
+  if(h>0) return h+":"+String(m).padStart(2,"0")+":"+String(sec).padStart(2,"0");
+  return m+":"+String(sec).padStart(2,"0");
+}
 function show(id){ ["auth","home","recipe","cook","settings"].forEach(s=>$(s).classList.toggle("hidden", s!==id)); }
 function setError(msg){ const e=$("error"); if(!msg){e.classList.add("hidden");return;} e.textContent=msg; e.classList.remove("hidden"); }
 function esc(s){ return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
@@ -591,6 +610,7 @@ function loadRecipe(r){
   renderIngredients(false);
   renderNote();
   applyHeroPhoto();
+  updateCollLabel();
   refreshSaveBtn();
   show("recipe"); window.scrollTo(0,0);
   saveView("recipe");
@@ -827,9 +847,12 @@ function renderList(){
   $("listSection").classList.remove("hidden");
   $("tabSaved").classList.toggle("active", listTab==="saved");
   $("tabHistory").classList.toggle("active", listTab==="history");
+  renderCollFilters();
   let list;
   if(listTab==="saved"){
-    list=allCache.filter(x=>x.saved).sort((a,b)=>{ if(!!a.fav!==!!b.fav) return a.fav?-1:1; return (a.title||"").localeCompare(b.title||"","fr",{sensitivity:"base"}); });
+    let base=allCache.filter(x=>x.saved);
+    if(selectedColl!=="__all__") base=base.filter(x=>x.collection===selectedColl);
+    list=base.sort((a,b)=>{ if(!!a.fav!==!!b.fav) return a.fav?-1:1; return (a.title||"").localeCompare(b.title||"","fr",{sensitivity:"base"}); });
   } else {
     list=[...allCache].sort((a,b)=>(b._ts||0)-(a._ts||0));
   }
@@ -884,6 +907,61 @@ async function deleteRecipe(id){
   allCache=allCache.filter(x=>x._id!==id); renderList();
   if(sb && r && r._dbid){ try{ await sb.from("recipes").delete().eq("id", r._dbid); }catch(e){} }
 }
+// ---- collections (intercalaires) ----
+let selectedColl="__all__";
+function getCollections(){
+  const set=new Set();
+  allCache.forEach(r=>{ if(r.saved && r.collection) set.add(r.collection); });
+  return [...set].sort((a,b)=>a.localeCompare(b,"fr",{sensitivity:"base"}));
+}
+function renderCollFilters(){
+  const wrap=$("collFilters"); if(!wrap) return;
+  const colls=getCollections();
+  if(selectedColl!=="__all__" && !colls.includes(selectedColl)) selectedColl="__all__";
+  if(listTab!=="saved" || !colls.length){ wrap.classList.add("hidden"); wrap.innerHTML=""; return; }
+  wrap.classList.remove("hidden");
+  wrap.innerHTML="";
+  [["__all__","Toutes"]].concat(colls.map(c=>[c,c])).forEach(([val,label])=>{
+    const b=document.createElement("button");
+    b.className="coll-chip"+(selectedColl===val?" active":"");
+    b.textContent=label;
+    b.addEventListener("click",()=>{ selectedColl=val; renderList(); });
+    wrap.appendChild(b);
+  });
+}
+function updateCollLabel(){
+  const l=$("collBtnLabel"); if(!l) return;
+  l.textContent = (recipe&&recipe.collection) ? recipe.collection : "Classer";
+}
+function openCollSheet(){
+  if(!recipe) return;
+  const wrap=$("collSheetList"); wrap.innerHTML="";
+  const cur=recipe.collection||null;
+  const none=document.createElement("button"); none.className="coll-chip"+(!cur?" active":""); none.textContent="Aucune";
+  none.addEventListener("click",()=>assignCollection(null)); wrap.appendChild(none);
+  getCollections().forEach(c=>{
+    const b=document.createElement("button"); b.className="coll-chip"+(cur===c?" active":""); b.textContent=c;
+    b.addEventListener("click",()=>assignCollection(c)); wrap.appendChild(b);
+  });
+  const nw=document.createElement("button"); nw.className="coll-chip"; nw.style.borderStyle="dashed"; nw.textContent="+ Nouvelle";
+  nw.addEventListener("click",()=>{ const name=(prompt("Nom de la collection (Dessert, Salé, Rapide…) :","")||"").trim(); if(name) assignCollection(name); });
+  wrap.appendChild(nw);
+  $("collSheet").classList.remove("hidden");
+}
+async function assignCollection(name){
+  if(!recipe) return;
+  recipe.collection = name||null;
+  if(name){                                        // classer = garder dans Mes recettes
+    const entry=allCache.find(x=>x._id===recipe._id);
+    if(entry && !entry.saved){ entry.saved=true; recipe.saved=true; if(sb&&entry._dbid){ try{ await sb.from("recipes").update({saved:true}).eq("id",entry._dbid); }catch(e){} } refreshSaveBtn(); }
+  }
+  updateCollLabel();
+  $("collSheet").classList.add("hidden");
+  await persistRecipeChange();
+  renderList();
+}
+$("collBtn").addEventListener("click", openCollSheet);
+$("collClose").addEventListener("click",()=>$("collSheet").classList.add("hidden"));
 
 // ---- mode cuisson ----
 $("cookBtn").addEventListener("click",()=>{ cookStep=0; show("cook"); renderCook(); });
