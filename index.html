@@ -169,6 +169,9 @@
       <span class="mono" style="font-size:26px;font-weight:700;letter-spacing:-.02em">mise</span><span class="mono" style="font-size:26px;font-weight:700;color:var(--accent)">.</span>
     </div>
     <div style="display:flex;gap:10px">
+      <button id="cartBtn" class="theme-toggle press" aria-label="liste de courses">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>
+      </button>
       <button id="acctBtn" class="theme-toggle press" aria-label="compte">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
       </button>
@@ -246,6 +249,21 @@
     <div id="recipeList" class="saved-list"></div>
     <div id="listEmpty" class="hidden" style="color:var(--muted);font-size:14px;line-height:1.5;padding:10px 2px"></div>
   </div>
+</section>
+
+<!-- LISTE DE COURSES -->
+<section id="shopping" class="wrap hidden">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
+    <div style="display:flex;align-items:center;gap:14px">
+      <button id="shopBack" class="theme-toggle press" aria-label="retour">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <span class="mono" style="font-size:22px;font-weight:700">🛒 Courses</span>
+    </div>
+    <button id="shopClear" class="hidden" style="font-family:inherit;font-size:13px;font-weight:600;padding:8px 12px;border-radius:10px;border:1.5px solid var(--line);background:transparent;color:var(--muted)">Vider</button>
+  </div>
+  <div id="shoppingList"></div>
+  <div id="shoppingEmpty" class="hidden" style="color:var(--muted);font-size:15px;line-height:1.6;padding:20px 2px">Ta liste est vide.<br>Ouvre une recette et appuie sur <b>🛒 Ajouter aux courses</b>.</div>
 </section>
 
 <!-- IDÉES / FRIGO -->
@@ -364,7 +382,8 @@
       <div id="noteDisplay" style="font-size:15px;line-height:1.55;white-space:pre-wrap"></div>
     </div>
 
-    <button id="editIngBtn" class="press" style="margin-top:22px;width:100%;font-size:15px;font-weight:600;padding:13px;border-radius:12px;border:1.5px solid var(--line);background:transparent;color:var(--ink)">Modifier les ingrédients</button>
+    <button id="shopAddBtn" class="press" style="margin-top:12px;width:100%;font-size:15px;font-weight:600;padding:13px;border-radius:12px;border:1.5px solid var(--line);background:transparent;color:var(--ink)">🛒 Ajouter aux courses</button>
+    <button id="editIngBtn" class="press" style="margin-top:12px;width:100%;font-size:15px;font-weight:600;padding:13px;border-radius:12px;border:1.5px solid var(--line);background:transparent;color:var(--ink)">Modifier les ingrédients</button>
   </div>
 
   <button id="cookBtn" class="cook-cta press">Lancer le mode cuisson →</button>
@@ -518,7 +537,7 @@ function fmtTime(s){
   if(h>0) return h+":"+String(m).padStart(2,"0")+":"+String(sec).padStart(2,"0");
   return m+":"+String(sec).padStart(2,"0");
 }
-function show(id){ ["auth","home","recipe","cook","settings","ideas"].forEach(s=>$(s).classList.toggle("hidden", s!==id)); }
+function show(id){ ["auth","home","recipe","cook","settings","ideas","shopping"].forEach(s=>$(s).classList.toggle("hidden", s!==id)); }
 function setError(msg){ const e=$("error"); if(!msg){e.classList.add("hidden");return;} e.textContent=msg; e.classList.remove("hidden"); }
 function esc(s){ return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
 
@@ -805,6 +824,54 @@ function ingEmoji(name){
   for(const [keys,emo] of map){ for(const k of keys){ if(n.includes(k)) return emo; } }
   return "";
 }
+// ---- liste de courses ----
+function getShopping(){ try{ return JSON.parse(localStorage.getItem("mise_shopping")||"[]"); }catch(e){ return []; } }
+function setShopping(a){ try{ localStorage.setItem("mise_shopping", JSON.stringify(a)); }catch(e){} }
+function addRecipeToShopping(){
+  if(!recipe || !recipe.ingredients) return;
+  const list=getShopping();
+  recipe.ingredients.forEach(ing=>{
+    const amt = ing.amount==null ? null : (ing.amount*servings/base);
+    const key=(ing.name||"").trim().toLowerCase();
+    const unit=ing.unit||null;
+    const ex=list.find(x=>(x.name||"").trim().toLowerCase()===key && (x.unit||null)===unit);
+    if(ex && ex.amount!=null && amt!=null){ ex.amount+=amt; ex.checked=false; }
+    else if(!ex){ list.push({ name:ing.name, amount:amt, unit:unit, category:normCat(ing.category), checked:false }); }
+  });
+  setShopping(list);
+}
+function renderShopping(){
+  const box=$("shoppingList"), empty=$("shoppingEmpty");
+  const list=getShopping();
+  box.innerHTML="";
+  if(!list.length){ empty.classList.remove("hidden"); box.classList.add("hidden"); $("shopClear").classList.add("hidden"); return; }
+  empty.classList.add("hidden"); box.classList.remove("hidden"); $("shopClear").classList.remove("hidden");
+  const groups={};
+  list.forEach((it,i)=>{ (groups[normCat(it.category)]=groups[normCat(it.category)]||[]).push({it,i}); });
+  CAT_ORDER.forEach(cat=>{
+    const items=groups[cat]; if(!items||!items.length) return;
+    const block=document.createElement("div"); block.className="cat-block";
+    block.innerHTML=`<div class="cat-head"><span class="cat-dot" style="background:${CAT_COLOR[cat]}"></span><span class="cat-name">${cat.toUpperCase()}</span></div><div class="ing-card"></div>`;
+    const card=block.querySelector(".ing-card");
+    items.forEach(({it,i})=>{
+      const row=document.createElement("div"); row.className="ing-row"+(it.checked?" done":"");
+      const qty = it.amount==null ? `<span class="ing-qty empty"></span>` : `<span class="ing-qty">${smartVal(it.amount, it.unit)}${it.unit?`<span class="u">${esc(it.unit)}</span>`:""}</span>`;
+      row.innerHTML=`<span class="ing-check">${it.checked?"✓":""}</span>${qty}<span class="ing-emoji">${ingEmoji(it.name)}</span><span class="ing-name">${esc(it.name)}</span>`;
+      row.addEventListener("click",()=>{ const l=getShopping(); if(l[i]){ l[i].checked=!l[i].checked; setShopping(l); renderShopping(); } });
+      card.appendChild(row);
+    });
+    box.appendChild(block);
+  });
+}
+$("cartBtn").addEventListener("click", ()=>{ renderShopping(); show("shopping"); window.scrollTo(0,0); });
+$("shopBack").addEventListener("click", ()=>show("home"));
+$("shopClear").addEventListener("click", ()=>{ setShopping([]); renderShopping(); });
+$("shopAddBtn").addEventListener("click", ()=>{
+  addRecipeToShopping();
+  const b=$("shopAddBtn"), t="🛒 Ajouter aux courses";
+  b.textContent="✓ Ajouté aux courses"; b.disabled=true;
+  setTimeout(()=>{ b.textContent=t; b.disabled=false; }, 1600);
+});
 function renderIngredients(flash){
   const wrap=$("ingList"); wrap.innerHTML="";
   // grouper en gardant l'index d'origine
