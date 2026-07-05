@@ -89,6 +89,8 @@
   .ing-check{ width:22px; height:22px; border-radius:7px; border:1.5px solid var(--line); flex-shrink:0; display:flex; align-items:center; justify-content:center; color:#fff; font-size:13px; transition:all .15s; }
   .ing-row.done .ing-check{ background:var(--green); border-color:var(--green); }
   .ing-qty{ font-family:'Space Grotesk',monospace; font-weight:700; font-size:14px; background:var(--cream); color:var(--ink); padding:5px 9px; border-radius:8px; white-space:nowrap; min-width:50px; text-align:center; transition:background .35s,color .35s; }
+  .ing-qty.nb{ font-family:Inter,sans-serif; font-size:12.5px; min-width:0; }
+  #noBalBtn.on{ background:var(--accent); color:#fff; border-color:var(--accent); }
   .ing-qty.empty{ background:transparent; }
   .ing-qty.flash{ background:var(--accent); color:#fff; }
   .ing-qty .u{ font-size:11px; font-weight:500; margin-left:1px; }
@@ -356,6 +358,8 @@
     <div id="notifStatus" style="font-size:13px;color:var(--muted);margin-top:10px;line-height:1.5"></div>
   </div>
 
+  <button id="shareAppBtn" class="press" style="width:100%;text-align:left;font-size:15px;font-weight:600;padding:15px;border-radius:12px;border:none;background:var(--accent);color:#fff;margin-bottom:16px">📲 Partager mise. à un ami</button>
+
   <button id="convertBtn" class="press" style="width:100%;text-align:left;font-size:15px;font-weight:600;padding:15px;border-radius:12px;border:1.5px solid var(--line);background:transparent;color:var(--ink);margin-bottom:16px">🥄 Cuisiner sans balance</button>
 
   <button id="logoutBtn" class="press" style="width:100%;font-size:16px;font-weight:600;padding:15px;border-radius:12px;border:1.5px solid var(--line);background:transparent;color:var(--ink)">Se déconnecter / changer de compte</button>
@@ -411,7 +415,10 @@
 
     <button id="collBtn" class="press" style="display:inline-flex;align-items:center;gap:6px;font-family:inherit;font-size:13px;font-weight:600;padding:8px 14px;border-radius:20px;border:1.5px solid var(--line);background:transparent;color:var(--ink);margin-bottom:22px">🏷️ <span id="collBtnLabel">Classer</span></button>
 
-    <div class="eyebrow">INGRÉDIENTS</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
+      <div class="eyebrow" style="margin:0">INGRÉDIENTS</div>
+      <button id="noBalBtn" class="press" style="font-family:inherit;font-size:12px;font-weight:600;padding:6px 11px;border-radius:16px;border:1.5px solid var(--line);background:transparent;color:var(--muted)">🥄 Sans balance</button>
+    </div>
     <div id="ingList"></div>
 
     <div id="noteBlock" class="hidden" style="margin-top:24px;background:var(--cream);border-radius:14px;padding:14px 16px;border:1px solid var(--line)">
@@ -783,6 +790,7 @@ $("manualBtn").addEventListener("click", async ()=>{
 // ---- recette ----
 function loadRecipe(r){
   recipe=r; base=r.baseServings||4; servings=base; checked={};
+  noBalanceMode=false; { const nbb=$("noBalBtn"); if(nbb) nbb.classList.remove("on"); }
   if(!recipe.original){ recipe.original = JSON.parse(JSON.stringify(recipe.ingredients||[])); }
   $("rTitle").textContent=r.title;
   if(r.platform){ const b=platBadge(r.platform); $("rPlatform").innerHTML=`<span class="hero-plat-badge" style="background:${b.bg}">${b.svg}</span>${r.platform}`; }
@@ -926,6 +934,12 @@ function renderConv(){
 }
 $("convertBtn").addEventListener("click", ()=>{ renderConv(); show("convert"); window.scrollTo(0,0); });
 $("convertBack").addEventListener("click", ()=>show("settings"));
+$("shareAppBtn").addEventListener("click", async ()=>{
+  const url=location.origin+"/";
+  const sd={ title:"mise.", text:"Découvre mise. 🍳 — transforme les vidéos de recettes (YouTube, TikTok, Insta…) en recettes prêtes à cuisiner. Essaie :", url };
+  if(navigator.share){ try{ await navigator.share(sd); }catch(e){} }
+  else { try{ await navigator.clipboard.writeText(url); alert("Lien de l'app copié ! Colle-le dans WhatsApp, Insta…"); }catch(e){ prompt("Copie ce lien :", url); } }
+});
 $("shopClear").addEventListener("click", ()=>{ setShopping([]); renderShopping(); });
 $("shopAddBtn").addEventListener("click", ()=>{
   addRecipeToShopping();
@@ -933,6 +947,40 @@ $("shopAddBtn").addEventListener("click", ()=>{
   b.textContent="✓ Ajouté aux courses"; b.disabled=true;
   setTimeout(()=>{ b.textContent=t; b.disabled=false; }, 1600);
 });
+// ---- mode sans balance (conversion en verres/cuillères) ----
+let noBalanceMode=false;
+const DENSITY=[
+  [["sucre glace"],{v:110,s:10,c:3}],
+  [["farine","maïzena","maizena","fécule","fecule"],{v:100,s:10,c:3}],
+  [["sucre"],{v:150,s:15,c:5}],
+  [["cacao","chocolat en poudre"],{v:110,s:10,c:3}],
+  [["riz"],{v:180,s:18,c:6}],
+  [["semoule","couscous"],{v:150,s:15,c:5}],
+  [["beurre"],{v:200,s:15,c:5}],
+  [["miel","sirop","confiture"],{v:280,s:20,c:7}],
+  [["sel"],{v:250,s:15,c:5}],
+  [["crème","creme"],{v:200,s:15,c:5}],
+  [["levure"],{s:11,c:5}],
+];
+function noBalance(name, amount, unit){
+  if(amount==null) return null;
+  const u=(unit||"").toLowerCase().trim();
+  let d=null;
+  if(/^(ml|millilitres?)$/.test(u)){ d={v:200,s:15,c:5}; }
+  else if(/^(cl|centilitres?)$/.test(u)){ d={v:20,s:1.5,c:0.5}; }
+  else if(/^(g|gr|grammes?)$/.test(u)){
+    const n=(name||"").toLowerCase();
+    for(const [keys,dens] of DENSITY){ if(keys.some(k=>n.includes(k))){ d=dens; break; } }
+    if(!d) return null;   // solide inconnu -> on garde les grammes
+  } else return null;
+  const pl=(x)=> x>1.0001?"s":"";
+  if(d.v && amount>=d.v*0.7){ const q=amount/d.v; return niceFrac(q)+" verre"+pl(q); }
+  if(d.s && amount>=d.s*0.8){ const q=amount/d.s; return niceFrac(q)+" c. à soupe"; }
+  if(d.c){ const q=amount/d.c; return niceFrac(q)+" c. à café"; }
+  return null;
+}
+$("noBalBtn").addEventListener("click", ()=>{ noBalanceMode=!noBalanceMode; $("noBalBtn").classList.toggle("on", noBalanceMode); renderIngredients(false); });
+
 function renderIngredients(flash){
   const wrap=$("ingList"); wrap.innerHTML="";
   // grouper en gardant l'index d'origine
@@ -953,9 +1001,12 @@ function renderIngredients(flash){
       const on=checked[i];
       const row=document.createElement("div");
       row.className="ing-row"+(on?" done":"");
-      const qty = val==null
-        ? `<span class="ing-qty empty"></span>`
-        : `<span class="ing-qty${flash?" flash":""}">${smartVal(val, ing.unit)}${ing.unit?`<span class="u">${esc(ing.unit)}</span>`:""}</span>`;
+      const nb = noBalanceMode ? noBalance(ing.name, val, ing.unit) : null;
+      const qty = nb
+        ? `<span class="ing-qty nb">${esc(nb)}</span>`
+        : (val==null
+          ? `<span class="ing-qty empty"></span>`
+          : `<span class="ing-qty${flash?" flash":""}">${smartVal(val, ing.unit)}${ing.unit?`<span class="u">${esc(ing.unit)}</span>`:""}</span>`);
       row.innerHTML=`<span class="ing-check">${on?"✓":""}</span>${qty}<span class="ing-emoji">${ingEmoji(ing.name)}</span><span class="ing-name">${esc(ing.name)}</span>`;
       row.addEventListener("click",()=>{ checked[i]=!checked[i]; renderIngredients(false); });
       card.appendChild(row);
