@@ -126,10 +126,40 @@ async function askClaudeVision(dataUrl) {
   return extractJSON(text);
 }
 
+async function askClaudeText(prompt, maxTokens) {
+  const r = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01" },
+    body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: maxTokens || 700, messages: [{ role: "user", content: prompt }] }),
+  });
+  const data = await r.json();
+  const t = (data.content || []).filter((b) => b.type === "text").map((b) => b.text).join("\n");
+  return extractJSON(t);
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ found: false, error: "Méthode non autorisée" });
   try {
-    const { url, text, image: imgInput } = req.body || {};
+    const body = req.body || {};
+    const { url, text, image: imgInput } = body;
+
+    // 0) Idées "frigo" -> liste de suggestions à partir d'ingrédients
+    if (body.ideas) {
+      const ing = (body.ingredients || "").slice(0, 400);
+      const type = body.type || "";
+      const cons = [body.quick ? "très rapide (moins de 20 min)" : null, body.cheap ? "pas cher / économique" : null].filter(Boolean).join(", ");
+      const prompt = `Propose 4 idées de recettes ${type} réalistes et simples, en utilisant SURTOUT ces ingrédients que la personne a chez elle : ${ing || "(non précisé)"}.${cons ? " Contraintes : " + cons + "." : ""}
+On peut supposer qu'elle a des basiques (sel, poivre, huile, eau, farine).
+Renvoie UNIQUEMENT un objet JSON, sans texte ni backticks, format exact :
+{"ideas":[{"title":"Nom du plat","desc":"description en une phrase","time":"15 min"}]}
+Exactement 4 idées, variées.`;
+      try {
+        const out = await askClaudeText(prompt, 700);
+        return res.status(200).json({ ideas: (out && out.ideas) || [] });
+      } catch (e) {
+        return res.status(200).json({ ideas: [], error: "Impossible de générer des idées." });
+      }
+    }
 
     // 1) Image (capture d'écran / photo d'un texte) -> Claude vision
     if (imgInput && typeof imgInput === "string" && imgInput.startsWith("data:image")) {
