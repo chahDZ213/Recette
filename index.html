@@ -266,6 +266,41 @@
   <div id="shoppingEmpty" class="hidden" style="color:var(--muted);font-size:15px;line-height:1.6;padding:20px 2px">Ta liste est vide.<br>Ouvre une recette et appuie sur <b>🛒 Ajouter aux courses</b>.</div>
 </section>
 
+<!-- CUISINER SANS BALANCE -->
+<section id="convert" class="wrap hidden">
+  <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
+    <button id="convertBack" class="theme-toggle press" aria-label="retour">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <span class="mono" style="font-size:22px;font-weight:700">🥄 Sans balance</span>
+  </div>
+  <p style="font-size:15px;color:var(--muted);line-height:1.5;margin-bottom:22px">Pas de balance ? Voici les équivalences pour doser au verre et à la cuillère.</p>
+
+  <div style="background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:22px;font-size:14px;line-height:1.9">
+    <div style="font-weight:700;margin-bottom:6px">📏 Les repères</div>
+    1 verre (à moutarde) = <b>20 cl</b> = 200 ml<br>
+    1 cuillère à soupe = <b>15 ml</b> (≈ 3 c. à café)<br>
+    1 cuillère à café = <b>5 ml</b><br>
+    1 œuf moyen ≈ <b>50 g</b> · 1 sachet de levure ≈ <b>11 g</b>
+  </div>
+
+  <div style="font-size:13px;font-weight:600;color:var(--muted);margin-bottom:10px">POIDS PAR MESURE</div>
+  <div style="overflow-x:auto">
+  <table style="width:100%;border-collapse:collapse;font-size:14px">
+    <thead>
+      <tr style="text-align:left;color:var(--muted);font-size:12px">
+        <th style="padding:8px 6px;font-weight:600">Ingrédient</th>
+        <th style="padding:8px 6px;font-weight:600;text-align:center">1 verre</th>
+        <th style="padding:8px 6px;font-weight:600;text-align:center">1 c.à.s</th>
+        <th style="padding:8px 6px;font-weight:600;text-align:center">1 c.à.c</th>
+      </tr>
+    </thead>
+    <tbody id="convBody"></tbody>
+  </table>
+  </div>
+  <p style="font-size:12px;color:var(--muted);margin-top:16px;line-height:1.5">Valeurs approximatives (mesures rases). Ça suffit largement pour cuisiner 👌</p>
+</section>
+
 <!-- IDÉES / FRIGO -->
 <section id="ideas" class="wrap hidden">
   <div style="display:flex;align-items:center;gap:14px;margin-bottom:26px">
@@ -320,6 +355,8 @@
     <button id="notifBtn" class="press" style="width:100%;font-size:15px;font-weight:600;padding:13px;border-radius:12px;border:none;background:var(--accent);color:#fff">🔔 Activer les notifications</button>
     <div id="notifStatus" style="font-size:13px;color:var(--muted);margin-top:10px;line-height:1.5"></div>
   </div>
+
+  <button id="convertBtn" class="press" style="width:100%;text-align:left;font-size:15px;font-weight:600;padding:15px;border-radius:12px;border:1.5px solid var(--line);background:transparent;color:var(--ink);margin-bottom:16px">🥄 Cuisiner sans balance</button>
 
   <button id="logoutBtn" class="press" style="width:100%;font-size:16px;font-weight:600;padding:15px;border-radius:12px;border:1.5px solid var(--line);background:transparent;color:var(--ink)">Se déconnecter / changer de compte</button>
 </section>
@@ -537,7 +574,7 @@ function fmtTime(s){
   if(h>0) return h+":"+String(m).padStart(2,"0")+":"+String(sec).padStart(2,"0");
   return m+":"+String(sec).padStart(2,"0");
 }
-function show(id){ ["auth","home","recipe","cook","settings","ideas","shopping"].forEach(s=>$(s).classList.toggle("hidden", s!==id)); }
+function show(id){ ["auth","home","recipe","cook","settings","ideas","shopping","convert"].forEach(s=>$(s).classList.toggle("hidden", s!==id)); }
 function setError(msg){ const e=$("error"); if(!msg){e.classList.add("hidden");return;} e.textContent=msg; e.classList.remove("hidden"); }
 function esc(s){ return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
 
@@ -865,6 +902,30 @@ function renderShopping(){
 }
 $("cartBtn").addEventListener("click", ()=>{ renderShopping(); show("shopping"); window.scrollTo(0,0); });
 $("shopBack").addEventListener("click", ()=>show("home"));
+// ---- cuisiner sans balance ----
+const CONV=[
+  ["Farine","100 g","10 g","3 g"],
+  ["Sucre","150 g","15 g","5 g"],
+  ["Sucre glace","110 g","10 g","—"],
+  ["Cacao en poudre","—","10 g","3 g"],
+  ["Maïzena","—","10 g","3 g"],
+  ["Riz (cru)","180 g","—","—"],
+  ["Semoule","150 g","—","—"],
+  ["Beurre fondu","—","15 g","5 g"],
+  ["Huile","—","15 g","5 g"],
+  ["Lait / eau","200 g","15 g","5 g"],
+  ["Crème","200 g","15 g","—"],
+  ["Miel","—","20 g","7 g"],
+  ["Sel fin","—","15 g","5 g"],
+  ["Levure chimique","—","—","5 g"],
+];
+function renderConv(){
+  const b=$("convBody"); if(!b || b.dataset.done) return;
+  b.innerHTML=CONV.map(r=>`<tr style="border-top:1px solid var(--line)"><td style="padding:10px 6px;font-weight:500">${r[0]}</td><td style="padding:10px 6px;text-align:center;color:var(--muted)">${r[1]}</td><td style="padding:10px 6px;text-align:center;color:var(--muted)">${r[2]}</td><td style="padding:10px 6px;text-align:center;color:var(--muted)">${r[3]}</td></tr>`).join("");
+  b.dataset.done="1";
+}
+$("convertBtn").addEventListener("click", ()=>{ renderConv(); show("convert"); window.scrollTo(0,0); });
+$("convertBack").addEventListener("click", ()=>show("settings"));
 $("shopClear").addEventListener("click", ()=>{ setShopping([]); renderShopping(); });
 $("shopAddBtn").addEventListener("click", ()=>{
   addRecipeToShopping();
