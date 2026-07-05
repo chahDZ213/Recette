@@ -114,6 +114,9 @@
   .public-mode #photoBtn, .public-mode #photoRemove, .public-mode #noteBtn, .public-mode #saveBtn, .public-mode #shareBtn, .public-mode #editIngBtn, .public-mode #collBtn{ display:none !important; }
   .coll-chip{ font-family:inherit; font-size:13px; font-weight:600; padding:7px 13px; border-radius:20px; border:1.5px solid var(--line); background:transparent; color:var(--muted); white-space:nowrap; flex:none; }
   .coll-chip.active{ background:var(--accent); color:#fff; border-color:var(--accent); }
+  .idea-chip{ font-family:inherit; font-size:14px; font-weight:600; padding:9px 15px; border-radius:20px; border:1.5px solid var(--line); background:transparent; color:var(--muted); }
+  .idea-chip.active{ background:var(--accent); color:#fff; border-color:var(--accent); }
+  .idea-card{ display:block; width:100%; text-align:left; background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:14px 16px; margin-bottom:10px; color:var(--ink); }
   .saved-row{ display:flex; align-items:center; gap:8px; padding:15px 16px; border-bottom:1px solid var(--line); cursor:pointer; transition:background .15s; }
   .saved-row .sr-share{ width:32px; height:32px; border-radius:9px; background:transparent; border:none; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; }
   .saved-row .sr-share svg{ width:18px; height:18px; }
@@ -195,6 +198,11 @@
   </button>
   <p id="error" class="hidden rise" style="font-size:14px;color:var(--accent);margin-top:14px;line-height:1.5"></p>
 
+  <button id="ideasOpen" class="press" style="width:100%;text-align:left;margin-top:16px;background:var(--cream);border:1px solid var(--line);border-radius:14px;padding:15px 16px;display:flex;align-items:center;gap:12px;color:var(--ink)">
+    <span style="font-size:22px">💡</span>
+    <span style="line-height:1.35"><b>Pas d'inspiration ?</b><br><span style="font-size:13px;color:var(--muted)">Dis ce que t'as dans le frigo → mise. te trouve des idées</span></span>
+  </button>
+
   <div style="margin-top:28px;border-top:1px solid var(--line);padding-top:20px">
     <button id="manualToggle" style="background:none;border:none;color:var(--muted);font-size:14px;font-weight:600;padding:0">+ Coller la description à la main</button>
     <div id="manualBox" class="hidden rise" style="margin-top:12px">
@@ -231,6 +239,39 @@
     <div id="recipeList" class="saved-list"></div>
     <div id="listEmpty" class="hidden" style="color:var(--muted);font-size:14px;line-height:1.5;padding:10px 2px"></div>
   </div>
+</section>
+
+<!-- IDÉES / FRIGO -->
+<section id="ideas" class="wrap hidden">
+  <div style="display:flex;align-items:center;gap:14px;margin-bottom:26px">
+    <button id="ideasBack" class="theme-toggle press" aria-label="retour">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <span class="mono" style="font-size:22px;font-weight:700">💡 Idées recettes</span>
+  </div>
+
+  <div style="font-size:13px;font-weight:600;color:var(--muted);margin-bottom:8px">TYPE</div>
+  <div id="ideaTypes" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px">
+    <button class="idea-chip active" data-val="">Peu importe</button>
+    <button class="idea-chip" data-val="salé">Salé</button>
+    <button class="idea-chip" data-val="sucré">Sucré</button>
+    <button class="idea-chip" data-val="dessert">Dessert</button>
+    <button class="idea-chip" data-val="petit-déjeuner">Petit-déj</button>
+    <button class="idea-chip" data-val="apéro">Apéro</button>
+  </div>
+
+  <div style="font-size:13px;font-weight:600;color:var(--muted);margin-bottom:8px">OPTIONS</div>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px">
+    <button id="ideaQuick" class="idea-chip" data-on="0">⚡ Rapide</button>
+    <button id="ideaCheap" class="idea-chip" data-on="0">💸 Pas cher</button>
+  </div>
+
+  <div style="font-size:13px;font-weight:600;color:var(--muted);margin-bottom:8px">CE QUE TU AS</div>
+  <textarea id="ideaIngredients" rows="3" placeholder="Ex : œufs, pâtes, tomates, fromage, oignon…" style="resize:vertical;margin-bottom:14px"></textarea>
+  <button id="ideaFind" class="press" style="width:100%;font-size:16px;font-weight:600;padding:15px;border-radius:12px;border:none;background:var(--accent);color:#fff">Trouver des idées</button>
+  <p id="ideaMsg" class="hidden" style="font-size:14px;color:var(--accent);margin-top:14px;line-height:1.5"></p>
+
+  <div id="ideasResults" style="margin-top:24px"></div>
 </section>
 
 <!-- PARAMÈTRES -->
@@ -466,7 +507,7 @@ function fmtTime(s){
   if(h>0) return h+":"+String(m).padStart(2,"0")+":"+String(sec).padStart(2,"0");
   return m+":"+String(sec).padStart(2,"0");
 }
-function show(id){ ["auth","home","recipe","cook","settings"].forEach(s=>$(s).classList.toggle("hidden", s!==id)); }
+function show(id){ ["auth","home","recipe","cook","settings","ideas"].forEach(s=>$(s).classList.toggle("hidden", s!==id)); }
 function setError(msg){ const e=$("error"); if(!msg){e.classList.add("hidden");return;} e.textContent=msg; e.classList.remove("hidden"); }
 function esc(s){ return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
 
@@ -552,6 +593,51 @@ $("decodeBtn").addEventListener("click", async ()=>{
 });
 $("manualToggle").addEventListener("click", ()=> $("manualBox").classList.toggle("hidden"));
 $("createToggle").addEventListener("click", ()=> $("createBox").classList.toggle("hidden"));
+
+// ---- idées / frigo ----
+let ideaType="", ideaQuick=false, ideaCheap=false;
+const IDEA_STEPS=[{e:"🧠", m:"Je cherche des idées…"},{e:"🥕", m:"J'associe tes ingrédients…"},{e:"📝", m:"Presque prêt…"}];
+$("ideasOpen").addEventListener("click", ()=>{ show("ideas"); window.scrollTo(0,0); });
+$("ideasBack").addEventListener("click", ()=>{ show("home"); });
+document.querySelectorAll("#ideaTypes .idea-chip").forEach(ch=>{
+  ch.addEventListener("click", ()=>{ ideaType=ch.dataset.val||""; document.querySelectorAll("#ideaTypes .idea-chip").forEach(c=>c.classList.toggle("active", c===ch)); });
+});
+$("ideaQuick").addEventListener("click", ()=>{ ideaQuick=!ideaQuick; $("ideaQuick").classList.toggle("active", ideaQuick); });
+$("ideaCheap").addEventListener("click", ()=>{ ideaCheap=!ideaCheap; $("ideaCheap").classList.toggle("active", ideaCheap); });
+function setIdeaMsg(m){ const e=$("ideaMsg"); if(!e) return; if(!m){e.classList.add("hidden");return;} e.textContent=m; e.classList.remove("hidden"); }
+$("ideaFind").addEventListener("click", async ()=>{
+  const ing=($("ideaIngredients").value||"").trim();
+  if(ing.length<2){ setIdeaMsg("Dis au moins un ou deux ingrédients."); return; }
+  setIdeaMsg(""); $("ideasResults").innerHTML="";
+  $("ideaFind").disabled=true; showLoadOverlay(true, IDEA_STEPS);
+  let out=null;
+  try{ out=await callBackend({ ideas:true, ingredients:ing, type:ideaType, quick:ideaQuick, cheap:ideaCheap }); }catch(e){}
+  showLoadOverlay(false); $("ideaFind").disabled=false;
+  const ideas=(out&&out.ideas)||[];
+  if(!ideas.length){ setIdeaMsg("Aucune idée trouvée, réessaie avec d'autres ingrédients."); return; }
+  renderIdeas(ideas, ing);
+});
+function renderIdeas(ideas, ing){
+  const box=$("ideasResults"); box.innerHTML="";
+  const head=document.createElement("div"); head.className="eyebrow"; head.style.marginBottom="10px"; head.textContent="CHOISIS UNE IDÉE";
+  box.appendChild(head);
+  ideas.forEach(idea=>{
+    const card=document.createElement("button");
+    card.className="idea-card press";
+    card.innerHTML=`<div style="font-weight:700;font-size:16px;margin-bottom:3px">${esc(idea.title||"")}</div><div style="font-size:13px;color:var(--muted);line-height:1.4">${esc(idea.desc||"")}</div>${idea.time?`<div style="font-size:12px;color:var(--accent);font-weight:600;margin-top:6px">⏱️ ${esc(idea.time)}</div>`:""}`;
+    card.addEventListener("click", ()=>generateIdea(idea, ing));
+    box.appendChild(card);
+  });
+}
+async function generateIdea(idea, ing){
+  const prompt="Crée la recette complète, réaliste et savoureuse de « "+(idea.title||"")+" »"+(ing?(", en utilisant surtout ces ingrédients : "+ing):"")+(ideaQuick?" — version rapide":"")+(ideaCheap?" — version économique":"")+". Donne un titre, des ingrédients avec quantités et des étapes claires.";
+  showLoadOverlay(true, CREATE_STEPS);
+  let ok=null, err=null;
+  try{ const r=await callBackend({text:prompt}); if(!r.found) err=r.error||"Génération impossible, réessaie."; else ok=r; }catch(e){ err="Le serveur n'a pas répondu."; }
+  if(ok){ await addToHistory(ok); loadRecipe(ok); }
+  showLoadOverlay(false);
+  if(err) setIdeaMsg(err);
+}
 $("imgPickBtn").addEventListener("click", ()=> $("recipeImgInput").click());
 $("recipeImgInput").addEventListener("change", async (e)=>{
   setError("");
