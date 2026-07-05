@@ -161,6 +161,7 @@
 
   <button id="authSubmit" class="press" style="width:100%;font-size:17px;font-weight:600;padding:16px;border-radius:12px;border:none;background:var(--accent);color:#fff">Créer mon compte</button>
   <p id="authError" class="hidden rise" style="font-size:14px;color:var(--accent);margin-top:14px;line-height:1.5"></p>
+  <p id="authForgot" class="hidden" style="margin-top:16px;font-size:14px;color:var(--muted);cursor:pointer;text-decoration:underline">Mot de passe oublié ?</p>
   <p id="authSwitch" style="margin-top:24px;font-size:15px;color:var(--muted);cursor:pointer">Déjà un compte ? <b style="color:var(--ink)">Se connecter</b></p>
 </section>
 
@@ -499,6 +500,17 @@
       <li>Appuie sur <b>Ajouter</b> — et c'est fait !</li>
     </ol>
     <button id="installSheetClose" style="font-family:inherit;width:100%;font-size:15px;font-weight:600;padding:13px;border-radius:12px;border:1.5px solid var(--line);background:transparent;color:var(--ink)">Compris</button>
+  </div>
+</div>
+
+<!-- NOUVEAU MOT DE PASSE (récupération) -->
+<div id="resetSheet" class="hidden" style="position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center">
+  <div style="background:var(--surface);color:var(--ink);width:100%;max-width:620px;border-radius:20px 20px 0 0;padding:24px 22px calc(28px + env(safe-area-inset-bottom))">
+    <div class="mono" style="font-size:20px;font-weight:700;margin-bottom:6px">Nouveau mot de passe 🔑</div>
+    <p style="font-size:14px;color:var(--muted);margin-bottom:16px">Choisis ton nouveau mot de passe.</p>
+    <input id="resetPw" type="password" autocomplete="new-password" placeholder="Nouveau mot de passe (6+)" style="margin-bottom:14px" />
+    <button id="resetSave" style="width:100%;font-family:inherit;font-size:16px;font-weight:600;padding:14px;border-radius:12px;border:none;background:var(--accent);color:#fff">Enregistrer</button>
+    <p id="resetMsg" class="hidden" style="font-size:14px;color:var(--accent);margin-top:12px"></p>
   </div>
 </div>
 
@@ -1457,8 +1469,34 @@ function renderAuthMode(){
   $("authSwitch").innerHTML = authMode==="login"
     ? 'Pas encore de compte ? <b style="color:var(--ink)">Créer un compte</b>'
     : 'Déjà un compte ? <b style="color:var(--ink)">Se connecter</b>';
+  $("authForgot").classList.toggle("hidden", authMode!=="login");
   setAuthError("");
 }
+$("authForgot").addEventListener("click", async ()=>{
+  const email=($("authEmail").value||"").trim().toLowerCase();
+  if(!/.+@.+\..+/.test(email)){ setAuthError("Écris ton email ci-dessus, puis reclique sur « Mot de passe oublié ? »."); return; }
+  if(!sb) return;
+  try{
+    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin });
+    if(error){ setAuthError("Une erreur est survenue, réessaie."); return; }
+    setAuthError("");
+    $("authIntro").textContent="📧 Email de réinitialisation envoyé à "+email+". Regarde ta boîte (et les spams), clique le lien.";
+  }catch(e){ setAuthError("Une erreur est survenue, réessaie."); }
+});
+$("resetSave").addEventListener("click", async ()=>{
+  const pw=$("resetPw").value||"";
+  const msg=$("resetMsg");
+  if(pw.length<6){ msg.textContent="Mot de passe : 6 caractères minimum."; msg.classList.remove("hidden"); return; }
+  if(!sb) return;
+  try{
+    const { error } = await sb.auth.updateUser({ password: pw });
+    if(error){ msg.textContent="Erreur, réessaie."; msg.classList.remove("hidden"); return; }
+    $("resetSheet").classList.add("hidden"); $("resetPw").value="";
+    const { data } = await sb.auth.getSession();
+    if(data && data.session){ await onSignedIn(data.session); }
+  }catch(e){ msg.textContent="Erreur, réessaie."; msg.classList.remove("hidden"); }
+});
+if(sb){ sb.auth.onAuthStateChange((event)=>{ if(event==="PASSWORD_RECOVERY"){ $("resetSheet").classList.remove("hidden"); } }); }
 $("authSwitch").addEventListener("click",()=>{ authMode=authMode==="login"?"signup":"login"; renderAuthMode(); });
 $("authSubmit").addEventListener("click", doAuth);
 $("authPwd").addEventListener("keydown",e=>{ if(e.key==="Enter") doAuth(); });
