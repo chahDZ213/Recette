@@ -93,6 +93,8 @@
   .ing-qty.flash{ background:var(--accent); color:#fff; }
   .ing-qty .u{ font-size:11px; font-weight:500; margin-left:1px; }
   .ing-name{ font-size:16px; line-height:1.35; flex:1; }
+  .ing-emoji{ font-size:19px; line-height:1; margin-left:-2px; min-width:22px; text-align:center; }
+  .ing-emoji:empty{ display:none; }
 
   .cat-block{ margin-bottom:20px; }
   .cat-head{ display:flex; align-items:center; gap:8px; margin-bottom:9px; padding-left:2px; }
@@ -710,6 +712,61 @@ const CAT_ORDER=["Frais","Viandes & poissons","Crémerie","Épicerie","Épices",
 const CAT_COLOR={"Frais":"#5E7E5A","Viandes & poissons":"#C0492F","Crémerie":"#D9A53B","Épicerie":"#A9743B","Épices":"#C75B7C","Autre":"#9C8A84"};
 function normCat(c){ return CAT_ORDER.includes(c)?c:"Autre"; }
 
+function ingEmoji(name){
+  const n=(name||"").toLowerCase();
+  const map=[
+    [["oeuf","œuf"],"🥚"],
+    [["mozzarella","fromage","gruy","parmesan","cheddar","emmental","comt","chèvre","chevre","feta","ricotta","raclette"],"🧀"],
+    [["beurre"],"🧈"],
+    [["lait de coco","noix de coco","coco"],"🥥"],
+    [["lait"],"🥛"],
+    [["crème","creme","yaourt","yahourt"],"🥛"],
+    [["tomate"],"🍅"],
+    [["oignon","échalote","echalote"],"🧅"],
+    [["ail"],"🧄"],
+    [["poivron"],"🫑"],
+    [["piment"],"🌶️"],
+    [["pomme de terre","patate"],"🥔"],
+    [["carotte"],"🥕"],
+    [["champignon"],"🍄"],
+    [["courgette","concombre"],"🥒"],
+    [["aubergine"],"🍆"],
+    [["brocoli"],"🥦"],
+    [["salade","laitue","épinard","epinard","chou"],"🥬"],
+    [["maïs","mais"],"🌽"],
+    [["citron"],"🍋"],
+    [["orange"],"🍊"],
+    [["banane"],"🍌"],
+    [["fraise"],"🍓"],
+    [["pomme"],"🍎"],
+    [["avocat"],"🥑"],
+    [["poulet","dinde","volaille"],"🍗"],
+    [["boeuf","bœuf","steak","viande"],"🥩"],
+    [["jambon","bacon","lard","porc"],"🥓"],
+    [["saucisse","merguez","chorizo"],"🌭"],
+    [["saumon","thon","poisson","cabillaud","colin","truite"],"🐟"],
+    [["crevette","gambas"],"🦐"],
+    [["pâtes","pates","spaghetti","macaroni","nouilles","penne","tagliatelle","lasagne"],"🍝"],
+    [["riz"],"🍚"],
+    [["pain","baguette"],"🍞"],
+    [["farine","maïzena","maizena"],"🌾"],
+    [["sucre"],"🍬"],
+    [["sel"],"🧂"],
+    [["huile","olive"],"🫒"],
+    [["miel"],"🍯"],
+    [["chocolat","cacao"],"🍫"],
+    [["eau"],"💧"],
+    [["vin"],"🍷"],
+    [["noix","amande","noisette","cacahu","pistache"],"🥜"],
+    [["basilic","persil","coriandre","menthe","herbe","thym","romarin","aneth","ciboulette"],"🌿"],
+    [["gingembre"],"🫚"],
+    [["pois chiche","haricot","lentille","flageolet"],"🫘"],
+    [["petit pois","petits pois"],"🫛"],
+    [["curry","paprika","cumin","épice","epice","cannelle","muscade"],"🧂"],
+  ];
+  for(const [keys,emo] of map){ for(const k of keys){ if(n.includes(k)) return emo; } }
+  return "";
+}
 function renderIngredients(flash){
   const wrap=$("ingList"); wrap.innerHTML="";
   // grouper en gardant l'index d'origine
@@ -733,7 +790,7 @@ function renderIngredients(flash){
       const qty = val==null
         ? `<span class="ing-qty empty"></span>`
         : `<span class="ing-qty${flash?" flash":""}">${smartVal(val, ing.unit)}${ing.unit?`<span class="u">${esc(ing.unit)}</span>`:""}</span>`;
-      row.innerHTML=`<span class="ing-check">${on?"✓":""}</span>${qty}<span class="ing-name">${esc(ing.name)}</span>`;
+      row.innerHTML=`<span class="ing-check">${on?"✓":""}</span>${qty}<span class="ing-emoji">${ingEmoji(ing.name)}</span><span class="ing-name">${esc(ing.name)}</span>`;
       row.addEventListener("click",()=>{ checked[i]=!checked[i]; renderIngredients(false); });
       card.appendChild(row);
     });
