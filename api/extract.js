@@ -128,6 +128,37 @@ async function askClaudeVision(dataUrl) {
   return extractJSON(text);
 }
 
+// --- Lecture d'une photo de frigo/placard -> liste d'ingrédients ---
+async function readFridge(dataUrl) {
+  const m = /^data:(image\/[a-zA-Z0-9.+-]+);base64,([\s\S]+)$/.exec(dataUrl || "");
+  if (!m) throw new Error("image invalide");
+  const mediaType = m[1], b64 = m[2];
+  const r = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-api-key": ANTHROPIC_KEY,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-6",
+      max_tokens: 400,
+      messages: [{
+        role: "user",
+        content: [
+          { type: "image", source: { type: "base64", media_type: mediaType, data: b64 } },
+          { type: "text", text: `Cette photo montre l'intérieur d'un frigo, d'un placard ou un plan de travail avec des aliments. Liste UNIQUEMENT les ingrédients alimentaires que tu identifies clairement, séparés par des virgules, en français, au singulier, sans quantités ni marques. Ignore les objets non alimentaires et ce qui est trop flou pour être sûr. Réponds SEULEMENT par la liste, rien d'autre (pas de phrase, pas de puces, pas de backticks). Exemple : oeufs, lait, tomates, carottes, fromage, beurre. Si tu ne reconnais aucun aliment, réponds exactement : (aucun)` },
+        ],
+      }],
+    }),
+  });
+  const data = await r.json();
+  let txt = (data.content || []).filter((b) => b.type === "text").map((b) => b.text).join(" ").trim();
+  txt = txt.replace(/^["'\s]+|["'\s]+$/g, "").replace(/```/g, "").trim();
+  if (/^\(?\s*aucun\s*\)?\.?$/i.test(txt)) return "";
+  return txt;
+}
+
 async function askClaudeText(prompt, maxTokens) {
   const r = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -160,6 +191,16 @@ Exactement 4 idées, variées.`;
         return res.status(200).json({ ideas: (out && out.ideas) || [] });
       } catch (e) {
         return res.status(200).json({ ideas: [], error: "Impossible de générer des idées." });
+      }
+    }
+
+    // 0.5) Photo de frigo/placard -> liste d'ingrédients (pour l'écran Idées)
+    if (body.fridge && typeof body.fridge === "string" && body.fridge.startsWith("data:image")) {
+      try {
+        const ingredients = await readFridge(body.fridge);
+        return res.status(200).json({ ingredients });
+      } catch (e) {
+        return res.status(200).json({ ingredients: "", error: "Impossible de lire cette photo." });
       }
     }
 
