@@ -123,6 +123,9 @@
   .idea-card{ display:block; width:100%; text-align:left; background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:14px 16px; margin-bottom:10px; color:var(--ink); }
   .mic-btn{ font-family:inherit; font-size:13px; font-weight:600; padding:8px 14px; border-radius:20px; border:1.5px solid var(--line); background:transparent; color:var(--muted); display:inline-flex; align-items:center; gap:6px; margin-top:10px; }
   .mic-btn.rec{ background:#E5484D; color:#fff; border-color:#E5484D; animation:micpulse 1s ease-in-out infinite; }
+  .eye-btn{ position:absolute; right:6px; top:50%; transform:translateY(-50%); background:none; border:none; font-size:18px; padding:8px; cursor:pointer; opacity:.55; }
+  .cook-toggle{ background:none; border:none; font-size:20px; padding:4px; opacity:.5; transition:opacity .2s,transform .2s; }
+  .cook-toggle.on{ opacity:1; transform:scale(1.12); filter:drop-shadow(0 0 6px rgba(221,115,151,.8)); }
   @keyframes micpulse{ 0%,100%{ opacity:1; } 50%{ opacity:.55; } }
   .saved-row{ display:flex; align-items:center; gap:8px; padding:15px 16px; border-bottom:1px solid var(--line); cursor:pointer; transition:background .15s; }
   .saved-row .sr-share{ width:32px; height:32px; border-radius:9px; background:transparent; border:none; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; }
@@ -157,7 +160,10 @@
   <label style="display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:8px">EMAIL</label>
   <input id="authEmail" type="email" autocomplete="email" placeholder="ton@email.com" style="margin-bottom:16px" />
   <label style="display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:8px">MOT DE PASSE</label>
-  <input id="authPwd" type="password" autocomplete="current-password" placeholder="••••••••" style="margin-bottom:20px" />
+  <div style="position:relative;margin-bottom:20px">
+    <input id="authPwd" type="password" autocomplete="current-password" placeholder="••••••••" style="margin-bottom:0;padding-right:46px" />
+    <button type="button" class="eye-btn" data-target="authPwd" aria-label="afficher le mot de passe">👁️</button>
+  </div>
 
   <button id="authSubmit" class="press" style="width:100%;font-size:17px;font-weight:600;padding:16px;border-radius:12px;border:none;background:var(--accent);color:#fff">Créer mon compte</button>
   <p id="authError" class="hidden rise" style="font-size:14px;color:var(--accent);margin-top:14px;line-height:1.5"></p>
@@ -414,7 +420,8 @@
       </div>
     </div>
 
-    <button id="collBtn" class="press" style="display:inline-flex;align-items:center;gap:6px;font-family:inherit;font-size:13px;font-weight:600;padding:8px 14px;border-radius:20px;border:1.5px solid var(--line);background:transparent;color:var(--ink);margin-bottom:22px">🏷️ <span id="collBtnLabel">Classer</span></button>
+    <button id="collBtn" class="press" style="display:inline-flex;align-items:center;gap:6px;font-family:inherit;font-size:14px;font-weight:600;padding:10px 18px;border-radius:20px;border:none;background:var(--accent);color:#fff;margin-bottom:22px">🏷️ <span id="collBtnLabel">Classer</span></button>
+    <a id="sourceLink" target="_blank" rel="noopener" class="hidden" style="display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:600;padding:10px 16px;border-radius:20px;border:1.5px solid var(--line);background:transparent;color:var(--ink);text-decoration:none;margin-bottom:22px;margin-left:8px">🔗 Voir la vidéo</a>
 
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
       <div class="eyebrow" style="margin:0">INGRÉDIENTS</div>
@@ -438,13 +445,14 @@
 <section id="cook" class="hidden" style="position:fixed;inset:0;background:var(--panel);color:var(--panel-text);display:flex;flex-direction:column;padding:max(20px, calc(env(safe-area-inset-top) + 4px)) 24px calc(28px + env(safe-area-inset-bottom));max-width:620px;margin:0 auto">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
     <button id="exitCook" style="background:none;border:none;color:rgba(251,248,243,.6);font-size:15px;padding:4px">✕ Fermer</button>
-    <div style="display:flex;align-items:center;gap:16px">
-      <button id="voiceBtn" style="background:none;border:none;color:rgba(251,248,243,.6);font-size:15px;padding:4px">🔊 Voix</button>
+    <div style="display:flex;align-items:center;gap:14px">
+      <button id="handsFreeBtn" class="cook-toggle" aria-label="mains libres (dis « suivant »)">🎙️</button>
+      <button id="voiceBtn" class="cook-toggle" aria-label="lecture vocale">🔊</button>
       <span id="stepCount" class="mono" style="font-size:14px;color:rgba(251,248,243,.6)"></span>
     </div>
   </div>
   <div id="progress" style="display:flex;gap:4px;margin-bottom:40px"></div>
-  <div id="stepBody" style="flex:1;display:flex;flex-direction:column;justify-content:center"></div>
+  <div id="stepBody" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column"></div>
   <div style="display:flex;gap:12px;margin-top:24px">
     <button id="prevStep" class="press" style="flex:1;font-size:16px;font-weight:600;padding:16px;border-radius:14px;border:1.5px solid rgba(251,248,243,.2);background:transparent;color:var(--paper)">Précédent</button>
     <button id="nextStep" class="press" style="flex:2;font-size:16px;font-weight:600;padding:16px;border-radius:14px;border:none;background:var(--accent);color:#fff">Suivant →</button>
@@ -520,7 +528,10 @@
   <div style="background:var(--surface);color:var(--ink);width:100%;max-width:620px;border-radius:20px 20px 0 0;padding:24px 22px calc(28px + env(safe-area-inset-bottom))">
     <div class="mono" style="font-size:20px;font-weight:700;margin-bottom:6px">Nouveau mot de passe 🔑</div>
     <p style="font-size:14px;color:var(--muted);margin-bottom:16px">Choisis ton nouveau mot de passe.</p>
-    <input id="resetPw" type="password" autocomplete="new-password" placeholder="Nouveau mot de passe (6+)" style="margin-bottom:14px" />
+    <div style="position:relative;margin-bottom:14px">
+      <input id="resetPw" type="password" autocomplete="new-password" placeholder="Nouveau mot de passe (6+)" style="margin-bottom:0;padding-right:46px" />
+      <button type="button" class="eye-btn" data-target="resetPw" aria-label="afficher le mot de passe">👁️</button>
+    </div>
     <button id="resetSave" style="width:100%;font-family:inherit;font-size:16px;font-weight:600;padding:14px;border-radius:12px;border:none;background:var(--accent);color:#fff">Enregistrer</button>
     <p id="resetMsg" class="hidden" style="font-size:14px;color:var(--accent);margin-top:12px"></p>
   </div>
@@ -685,7 +696,7 @@ $("decodeBtn").addEventListener("click", async ()=>{
   try{
     const r=await callBackend({url:$("url").value});
     if(!r.found){ setError(r.error||"Recette introuvable. Colle la description ci-dessous."); $("manualBox").classList.remove("hidden"); }
-    else { r.platform=d.platform; await addToHistory(r); loadRecipe(r); }
+    else { r.platform=d.platform; r.sourceUrl=$("url").value.trim(); await addToHistory(r); loadRecipe(r); }
   }catch(e){ setError("Le serveur n'a pas répondu. Vérifie que /api/extract est déployé."); }
   loading(false);
 });
@@ -825,6 +836,7 @@ function loadRecipe(r){
   renderNote();
   applyHeroPhoto();
   updateCollLabel();
+  { const sl=$("sourceLink"); if(sl){ if(recipe.sourceUrl){ sl.href=recipe.sourceUrl; sl.classList.remove("hidden"); } else sl.classList.add("hidden"); } }
   refreshSaveBtn();
   show("recipe"); window.scrollTo(0,0);
   saveView("recipe");
@@ -1350,8 +1362,8 @@ $("collClose").addEventListener("click",()=>$("collSheet").classList.add("hidden
 // ---- mode cuisson ----
 $("cookBtn").addEventListener("click",()=>{ cookStep=0; show("cook"); renderCook(); });
 $("exitCook").addEventListener("click",()=>{ endCookExtras(); stopTimer(); show("recipe"); saveView("recipe"); });
-$("prevStep").addEventListener("click",()=>{ if(cookStep>0){cookStep--;renderCook();} });
-$("nextStep").addEventListener("click",()=>{
+function goPrev(){ if(cookStep>0){ cookStep--; renderCook(); } }
+function goNext(){
   const total=recipe.steps.length;
   if(cookStep<total-1){ cookStep++; renderCook(); return; }
   stopTimer(); endCookExtras();
@@ -1363,7 +1375,51 @@ $("nextStep").addEventListener("click",()=>{
     show("home"); saveView("home"); maybeShowInstall();
   }
   window.scrollTo(0,0);
+}
+$("prevStep").addEventListener("click", goPrev);
+$("nextStep").addEventListener("click", goNext);
+
+// glisser pour changer d'étape (gauche = suivant, droite = précédent)
+(function(){
+  const el=$("cook"); if(!el) return;
+  let x0=null, y0=null, t0=0;
+  el.addEventListener("touchstart",(e)=>{ if(e.touches.length!==1) return; x0=e.touches[0].clientX; y0=e.touches[0].clientY; t0=Date.now(); }, {passive:true});
+  el.addEventListener("touchend",(e)=>{
+    if(x0===null) return;
+    const t=e.changedTouches[0], dx=t.clientX-x0, dy=t.clientY-y0; x0=null;
+    if(Date.now()-t0>800) return;
+    if(Math.abs(dx)<60 || Math.abs(dx)<Math.abs(dy)*1.5) return;   // pas assez horizontal
+    if(dx<0) goNext(); else goPrev();
+  }, {passive:true});
+})();
+
+// ---- commande vocale mains libres ("suivant" / "précédent") ----
+const HF_SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let handsFree=false, hfRec=null, hfLast=0;
+function hfTrigger(fn){ const now=Date.now(); if(now-hfLast<1200) return; hfLast=now; fn(); }
+function startHandsFree(){
+  if(!HF_SR) return;
+  try{
+    hfRec=new HF_SR(); hfRec.lang="fr-FR"; hfRec.continuous=true; hfRec.interimResults=false;
+    hfRec.onresult=(e)=>{
+      for(let i=e.resultIndex;i<e.results.length;i++){
+        const txt=(e.results[i][0].transcript||"").toLowerCase();
+        if(/\b(pr[ée]c[ée]dent|retour|arri[èe]re|back)\b/.test(txt)){ hfTrigger(goPrev); return; }
+        if(/\b(suivant|suivante|next|prochaine?|apr[èe]s)\b/.test(txt)){ hfTrigger(goNext); return; }
+      }
+    };
+    hfRec.onend=()=>{ if(handsFree){ try{ hfRec.start(); }catch(e){} } };   // relancer si toujours actif
+    hfRec.onerror=()=>{};
+    hfRec.start();
+  }catch(e){}
+}
+function stopHandsFree(){ handsFree=false; if(hfRec){ try{ hfRec.onend=null; hfRec.stop(); }catch(e){} hfRec=null; } }
+$("handsFreeBtn").addEventListener("click", ()=>{
+  handsFree=!handsFree;
+  $("handsFreeBtn").classList.toggle("on", handsFree);
+  if(handsFree) startHandsFree(); else stopHandsFree();
 });
+if(!HF_SR){ const b=$("handsFreeBtn"); if(b) b.style.display="none"; }
 // ---- écran allumé (wake lock) + lecture vocale ----
 let wakeLock=null, voiceOn=false;
 async function acquireWakeLock(){
@@ -1377,11 +1433,10 @@ function speakStep(){
   try{ window.speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance((s.title?s.title+". ":"")+(s.content||"")); u.lang="fr-FR"; u.rate=1; window.speechSynthesis.speak(u); }catch(e){}
 }
 function stopSpeak(){ try{ window.speechSynthesis.cancel(); }catch(e){} }
-function endCookExtras(){ releaseWakeLock(); stopSpeak(); voiceOn=false; const b=$("voiceBtn"); if(b){ b.textContent="🔊 Voix"; b.style.color="rgba(251,248,243,.6)"; } }
+function endCookExtras(){ releaseWakeLock(); stopSpeak(); voiceOn=false; { const b=$("voiceBtn"); if(b) b.classList.remove("on"); } stopHandsFree(); { const h=$("handsFreeBtn"); if(h) h.classList.remove("on"); } }
 $("voiceBtn").addEventListener("click", ()=>{
   voiceOn=!voiceOn;
-  $("voiceBtn").textContent = voiceOn ? "🔊 Voix ●" : "🔊 Voix";
-  $("voiceBtn").style.color = voiceOn ? "#fff" : "rgba(251,248,243,.6)";
+  $("voiceBtn").classList.toggle("on", voiceOn);
   if(voiceOn) speakStep(); else stopSpeak();
 });
 if(!("speechSynthesis" in window)){ const b=$("voiceBtn"); if(b) b.style.display="none"; }
@@ -1391,7 +1446,7 @@ function renderCook(){
   const steps=recipe.steps, total=steps.length, s=steps[cookStep];
   $("stepCount").textContent=`${cookStep+1} / ${total}`;
   $("progress").innerHTML=steps.map((_,i)=>`<div style="flex:1;height:4px;border-radius:2px;background:${i<=cookStep?ACCENT:"rgba(251,248,243,.15)"};transition:background .3s"></div>`).join("");
-  let html=`<div class="rise"><div class="mono" style="font-size:14px;color:${ACCENT};font-weight:500;margin-bottom:14px;letter-spacing:.04em">ÉTAPE ${cookStep+1}</div>`;
+  let html=`<div class="rise" style="margin:auto 0;width:100%"><div class="mono" style="font-size:14px;color:${ACCENT};font-weight:500;margin-bottom:14px;letter-spacing:.04em">ÉTAPE ${cookStep+1}</div>`;
   if(s.title) html+=`<h2 class="mono" style="font-size:26px;font-weight:700;letter-spacing:-.02em;margin-bottom:18px;line-height:1.15">${esc(s.title)}</h2>`;
   html+=`<p style="font-size:22px;line-height:1.45">${esc(s.content)}</p>`;
   const firstTimer=steps.findIndex(st=>st.timerSeconds);
@@ -1416,7 +1471,7 @@ function renderTimer(slot){
   const t=timerState;
   slot.innerHTML=`<div style="margin-top:32px;display:flex;align-items:center;gap:16px;padding:16px 18px;background:${t.done?"rgba(79,111,82,.2)":"rgba(251,248,243,.06)"};border-radius:14px;border:1px solid ${t.done?GREEN:"rgba(251,248,243,.12)"}">
     <div class="mono" style="font-size:34px;font-weight:700;color:${t.done?GREEN:PAPER};min-width:92px">${t.done?"Prêt !":fmtTime(t.left)}</div>
-    <button id="timerBtn" class="press" style="font-size:15px;font-weight:600;padding:10px 20px;border-radius:10px;border:${t.done?"1.5px solid rgba(251,248,243,.25)":"none"};background:${t.done?"transparent":ACCENT};color:#fff">${t.done?"Relancer":(t.running?"Pause":(t.left===t.total?"Démarrer le minuteur":"Reprendre"))}</button>
+    <button id="timerBtn" class="press" style="font-size:13px;font-weight:600;padding:8px 15px;border-radius:9px;border:${t.done?"1.5px solid rgba(251,248,243,.25)":"none"};background:${t.done?"transparent":ACCENT};color:#fff">${t.done?"Relancer":(t.running?"Pause":(t.left===t.total?"Démarrer":"Reprendre"))}</button>
   </div>`;
   $("timerBtn").addEventListener("click", async ()=>{
     if(t.done){ if(t.pushId){ cancelTimerPush(t.pushId); t.pushId=null; } t.done=false; t.left=t.total; t.running=false; renderTimer(slot); return; }
@@ -1520,6 +1575,9 @@ $("resetSave").addEventListener("click", async ()=>{
 });
 if(sb){ sb.auth.onAuthStateChange((event)=>{ if(event==="PASSWORD_RECOVERY"){ $("resetSheet").classList.remove("hidden"); } }); }
 $("authSwitch").addEventListener("click",()=>{ authMode=authMode==="login"?"signup":"login"; renderAuthMode(); });
+document.querySelectorAll(".eye-btn").forEach(b=>{
+  b.addEventListener("click",()=>{ const inp=$(b.dataset.target); if(!inp) return; const showing=inp.type==="password"; inp.type=showing?"text":"password"; b.style.opacity=showing?"1":".55"; });
+});
 $("authSubmit").addEventListener("click", doAuth);
 $("authPwd").addEventListener("keydown",e=>{ if(e.key==="Enter") doAuth(); });
 async function doAuth(){
