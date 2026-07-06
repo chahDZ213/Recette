@@ -337,7 +337,11 @@
 
   <div style="font-size:13px;font-weight:600;color:var(--muted);margin-bottom:8px">CE QUE TU AS</div>
   <textarea id="ideaIngredients" rows="3" placeholder="Ex : œufs, pâtes, tomates, fromage, oignon…" style="resize:vertical;margin-bottom:14px"></textarea>
-  <button id="micIdea" class="mic-btn" style="margin-bottom:12px">🎤 Dicter mes ingrédients</button>
+  <div style="display:flex;gap:8px;margin-bottom:12px">
+    <button id="micIdea" class="mic-btn" style="flex:1;margin:0">🎤 Dicter</button>
+    <button id="photoIdea" class="mic-btn" style="flex:1;margin:0">📸 Photo du frigo</button>
+  </div>
+  <input type="file" id="fridgeInput" accept="image/*" capture="environment" style="display:none" />
   <button id="ideaFind" class="press" style="width:100%;font-size:16px;font-weight:600;padding:15px;border-radius:12px;border:none;background:var(--accent);color:#fff">Trouver des idées</button>
   <p id="ideaMsg" class="hidden" style="font-size:14px;color:var(--accent);margin-top:14px;line-height:1.5"></p>
 
@@ -659,6 +663,11 @@ const IMAGE_STEPS=[
   {e:"🥣", m:"Mise en forme de la recette…"},
   {e:"⏲️", m:"Presque prêt…"}
 ];
+const FRIDGE_STEPS=[
+  {e:"📸", m:"Lecture de ta photo…"},
+  {e:"🥕", m:"Repérage des ingrédients…"},
+  {e:"📝", m:"Presque prêt…"}
+];
 let activeSteps=LOAD_STEPS;
 function applyLoadStep(){ const s=activeSteps[loadStep]; $("loadSpin").textContent=s.e; $("loadMsg").textContent=s.m; }
 function showLoadOverlay(on, steps){
@@ -793,6 +802,32 @@ $("recipeImgInput").addEventListener("change", async (e)=>{
   if(ok){ await addToHistory(ok); loadRecipe(ok); }
   showLoadOverlay(false);
   if(err) setError(err);
+});
+// ---- Photo du frigo -> ingrédients (écran Idées) ----
+$("photoIdea").addEventListener("click", ()=>{ $("fridgeInput").click(); });
+$("fridgeInput").addEventListener("change", async (e)=>{
+  const f=e.target.files && e.target.files[0];
+  e.target.value="";
+  if(!f) return;
+  const msg=$("ideaMsg");
+  if(msg){ msg.classList.add("hidden"); msg.textContent=""; }
+  showLoadOverlay(true, FRIDGE_STEPS);
+  let list=null, err=null;
+  try{
+    const dataUrl=await fileToCompressed(f, 1280, 0.8);
+    const r=await callBackend({fridge:dataUrl});
+    if(r && r.ingredients && r.ingredients.trim()) list=r.ingredients.trim();
+    else err=(r && r.error) || "Je n'ai pas reconnu d'ingrédients. Réessaie avec une photo plus nette et bien éclairée.";
+  }catch(e2){ err="Impossible de lire cette photo. Réessaie."; }
+  showLoadOverlay(false);
+  if(list){
+    const ta=$("ideaIngredients");
+    const cur=(ta.value||"").trim().replace(/[,\s]+$/,"");
+    ta.value = cur ? (cur + ", " + list) : list;
+    ta.focus();
+    ta.scrollIntoView({behavior:"smooth", block:"center"});
+  }
+  if(err && msg){ msg.textContent=err; msg.classList.remove("hidden"); }
 });
 $("createBtn").addEventListener("click", async ()=>{
   setError("");
