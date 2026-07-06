@@ -1441,6 +1441,38 @@ $("voiceBtn").addEventListener("click", ()=>{
 });
 if(!("speechSynthesis" in window)){ const b=$("voiceBtn"); if(b) b.style.display="none"; }
 
+function fmtDur(sec){
+  sec=Math.round(sec||0);
+  const h=Math.floor(sec/3600), m=Math.round((sec%3600)/60);
+  if(h&&m) return `${h} h ${m}`;
+  if(h) return `${h} h`;
+  if(m) return `${m} min`;
+  return `${sec} s`;
+}
+function cookModeLabel(mode){
+  const m=(mode||"").toString().toLowerCase();
+  if(/four/.test(m)) return "🔥 Four";
+  if(/po[eê]le|plancha/.test(m)) return "🍳 Poêle";
+  if(/casserole|marmite|faitout|cocotte/.test(m)) return "🥘 Casserole";
+  if(/friture|frit/.test(m)) return "🍟 Friture";
+  if(/vapeur/.test(m)) return "♨️ Vapeur";
+  if(/micro/.test(m)) return "📡 Micro-ondes";
+  if(/grill|gril/.test(m)) return "🔥 Grill";
+  if(/barbecue|bbq/.test(m)) return "🍖 Barbecue";
+  if(/repos|frigo|r[ée]frig|lev[ée]e|marinade|refroid|reposer/.test(m)) return "⏸️ Repos";
+  return "";
+}
+function cookChips(s){
+  if(!s) return "";
+  const chips=[];
+  if(s.temp!=null && s.temp!=="" && !isNaN(parseFloat(s.temp))) chips.push(`🌡️ ${parseInt(s.temp,10)}°C`);
+  const ml=cookModeLabel(s.mode); if(ml) chips.push(ml);
+  if(s.timerSeconds) chips.push(`⏱️ ${fmtDur(s.timerSeconds)}`);
+  if(!chips.length) return "";
+  return `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px">`+
+    chips.map(c=>`<span style="display:inline-flex;align-items:center;gap:5px;font-size:14px;font-weight:600;padding:7px 13px;border-radius:11px;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.18);color:#fff;letter-spacing:.01em;white-space:nowrap">${c}</span>`).join("")+
+    `</div>`;
+}
 function renderCook(){
   stopTimer();
   const steps=recipe.steps, total=steps.length, s=steps[cookStep];
@@ -1448,6 +1480,7 @@ function renderCook(){
   $("progress").innerHTML=steps.map((_,i)=>`<div style="flex:1;height:4px;border-radius:2px;background:${i<=cookStep?ACCENT:"rgba(251,248,243,.15)"};transition:background .3s"></div>`).join("");
   let html=`<div class="rise" style="margin:auto 0;width:100%"><div class="mono" style="font-size:14px;color:${ACCENT};font-weight:500;margin-bottom:14px;letter-spacing:.04em">ÉTAPE ${cookStep+1}</div>`;
   if(s.title) html+=`<h2 class="mono" style="font-size:26px;font-weight:700;letter-spacing:-.02em;margin-bottom:18px;line-height:1.15">${esc(s.title)}</h2>`;
+  html+=cookChips(s);
   html+=`<p style="font-size:22px;line-height:1.45">${esc(s.content)}</p>`;
   const firstTimer=steps.findIndex(st=>st.timerSeconds);
   if(firstTimer>cookStep) html+=`<button id="skipToCook" class="press" style="margin-top:22px;font-size:14px;font-weight:600;padding:11px 18px;border-radius:11px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.09);color:#fff;display:inline-flex;align-items:center;gap:7px">⏲️ Passer à la cuisson</button>`;
