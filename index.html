@@ -1743,7 +1743,7 @@ function applyTheme(t){
   $("themeToggle").innerHTML = t==="dark" ? ICON_SUN : ICON_MOON;
   const m=document.querySelector('meta[name="theme-color"]');
   if(m) m.setAttribute("content", t==="dark" ? "#1C1614" : "#E9DFCC");
-  if(typeof refreshBgVars==="function") refreshBgVars();
+  try{ refreshBgVars(); }catch(e){}
 }
 function initTheme(){
   let t=null;
