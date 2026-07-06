@@ -138,10 +138,12 @@
   .saved-row .sr-fav svg{ width:20px; height:20px; }
   .saved-row .sr-fav:active{ background:var(--cream); }
   .saved-row .sr-del{ width:28px; height:28px; border-radius:8px; background:transparent; color:var(--muted); border:none; font-size:15px; flex-shrink:0; }
-  .saved-row .sr-thumb{ width:46px; height:46px; border-radius:10px; object-fit:cover; flex-shrink:0; background:var(--cream); }
+  .saved-row .sr-thumb{ width:56px; height:56px; border-radius:12px; object-fit:cover; flex-shrink:0; background:var(--cream); }
   .saved-row .sr-cook{ width:36px; height:36px; border-radius:50%; background:var(--accent); color:#fff; border:none; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; box-shadow:0 3px 10px rgba(0,0,0,.18); }
   .accent-dot{ width:38px; height:38px; border-radius:50%; border:3px solid transparent; flex-shrink:0; padding:0; }
   .accent-dot.active{ border-color:var(--ink); }
+  .bg-dot{ width:38px; height:38px; border-radius:12px; border:1.5px solid var(--line); flex-shrink:0; padding:0; }
+  .bg-dot.active{ border:3px solid var(--ink); }
   .saved-row .sr-cook svg{ width:16px; height:16px; margin-left:2px; }
   .saved-row .sr-save{ width:32px; height:32px; border-radius:9px; background:transparent; border:none; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; }
   .saved-row .sr-save svg{ width:19px; height:19px; }
@@ -230,7 +232,7 @@
   </button>
 
   <div style="margin-top:28px;border-top:1px solid var(--line);padding-top:20px">
-    <button id="manualToggle" style="background:none;border:none;color:var(--muted);font-size:14px;font-weight:600;padding:0">+ Coller la description à la main</button>
+    <button id="manualToggle" style="background:none;border:none;color:var(--muted);font-size:13px;font-weight:600;padding:0">📋 Coller un texte de recette</button>
     <div id="manualBox" class="hidden rise" style="margin-top:12px">
       <textarea id="manualText" rows="6" placeholder="Ingrédients : 250g de farine…&#10;Étapes : 1. Mélanger…" style="resize:vertical"></textarea>
       <button id="micManual" class="mic-btn">🎤 Dicter</button>
@@ -239,7 +241,7 @@
   </div>
 
   <div style="margin-top:20px;border-top:1px solid var(--line);padding-top:20px">
-    <button id="createToggle" style="background:none;border:none;color:var(--accent);font-size:14px;font-weight:700;padding:0">✨ Créer ma recette</button>
+    <button id="createToggle" style="background:none;border:none;color:var(--accent);font-size:13px;font-weight:700;padding:0">✨ Créer une recette avec l'IA</button>
     <div id="createBox" class="hidden rise" style="margin-top:12px">
       <p style="font-size:13px;color:var(--muted);margin-bottom:8px;line-height:1.5">Décris ce que tu veux cuisiner, mise. te génère la recette complète avec un titre.</p>
       <textarea id="createText" rows="4" placeholder="Ex : un gâteau au yaourt moelleux pour 6, sans beurre…" style="resize:vertical"></textarea>
@@ -409,9 +411,13 @@
   </div>
 
   <div style="background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px 20px;margin-bottom:16px">
-    <div style="font-size:15px;font-weight:600;margin-bottom:4px">Couleur de l'app</div>
-    <div style="font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:14px">Choisis la couleur des boutons et accents.</div>
-    <div id="accentRow" style="display:flex;gap:10px;flex-wrap:wrap"></div>
+    <div style="font-size:15px;font-weight:600;margin-bottom:4px">Apparence</div>
+    <div style="font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:14px">Personnalise les couleurs de ton app.</div>
+    <div style="font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.04em;margin-bottom:8px">COULEUR DES BOUTONS</div>
+    <div id="accentRow" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px"></div>
+    <div style="font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.04em;margin-bottom:8px">FOND DE L'APP</div>
+    <div id="bgRow" style="display:flex;gap:10px;flex-wrap:wrap"></div>
+    <div style="font-size:12px;color:var(--muted);line-height:1.5;margin-top:10px">Le fond s'applique en mode clair. Le mode sombre garde son ambiance.</div>
   </div>
 
   <button id="shareAppBtn" class="press" style="width:100%;text-align:left;font-size:15px;font-weight:600;padding:15px;border-radius:12px;border:none;background:var(--accent);color:#fff;margin-bottom:16px">📲 Partager mise. à un ami</button>
@@ -1737,6 +1743,7 @@ function applyTheme(t){
   $("themeToggle").innerHTML = t==="dark" ? ICON_SUN : ICON_MOON;
   const m=document.querySelector('meta[name="theme-color"]');
   if(m) m.setAttribute("content", t==="dark" ? "#1C1614" : "#E9DFCC");
+  if(typeof refreshBgVars==="function") refreshBgVars();
 }
 function initTheme(){
   let t=null;
@@ -1780,6 +1787,47 @@ function applyAccent(name){
   });
   let saved=null; try{ saved=localStorage.getItem("mise_accent"); }catch(e){}
   applyAccent(saved||"rose");
+})();
+
+// ---- fond de l'app personnalisable (mode clair) ----
+const BACKGROUNDS={
+  creme: null,
+  blanc: {paper:"#FFFFFF", surface:"#FAFAF8", cream:"#F1F0EB", line:"#E4E2DB", rowhover:"#F3F2ED"},
+  pierre:{paper:"#ECEAE5", surface:"#F9F8F6", cream:"#E1DED7", line:"#D5D1C8", rowhover:"#E6E3DC"},
+  sauge: {paper:"#E7ECE1", surface:"#F7F9F4", cream:"#DDE5D3", line:"#CCD6BF", rowhover:"#E1E8D8"},
+  ciel:  {paper:"#E3EAEF", surface:"#F5F9FB", cream:"#D9E3EA", line:"#C6D5DF", rowhover:"#DDE6EC"},
+  poudre:{paper:"#F1E4E4", surface:"#FBF5F5", cream:"#EBDADA", line:"#DFC9C9", rowhover:"#EDDEDE"}
+};
+let currentBg="creme";
+function refreshBgVars(){
+  const root=document.documentElement;
+  const dark=(root.getAttribute("data-theme")||"light")==="dark";
+  const t=BACKGROUNDS[currentBg];
+  ["paper","surface","cream","line","rowhover"].forEach(k=>{
+    if(!dark && t && t[k]) root.style.setProperty("--"+k, t[k]);
+    else root.style.removeProperty("--"+k);
+  });
+  const m=document.querySelector('meta[name="theme-color"]');
+  if(m && !dark) m.setAttribute("content", (t&&t.paper)||"#E9DFCC");
+}
+function applyBackground(name){
+  if(!Object.prototype.hasOwnProperty.call(BACKGROUNDS,name)) name="creme";
+  currentBg=name;
+  try{ localStorage.setItem("mise_bg",name); }catch(e){}
+  refreshBgVars();
+  document.querySelectorAll(".bg-dot").forEach(d=>d.classList.toggle("active", d.dataset.name===name));
+}
+(function initBackgrounds(){
+  const row=$("bgRow"); if(!row) return;
+  Object.entries(BACKGROUNDS).forEach(([name,t])=>{
+    const b=document.createElement("button");
+    b.className="bg-dot press"; b.dataset.name=name; b.setAttribute("aria-label","fond "+name);
+    b.style.background=(t&&t.paper)||"#E9DFCC";
+    b.addEventListener("click",()=>applyBackground(name));
+    row.appendChild(b);
+  });
+  let saved=null; try{ saved=localStorage.getItem("mise_bg"); }catch(e){}
+  applyBackground(saved||"creme");
 })();
 
 // ---- comptes (Supabase Auth) ----
