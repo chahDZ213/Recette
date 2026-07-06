@@ -203,7 +203,7 @@
       La recette,<br>sans le bouton pause.
     </h1>
     <p style="font-size:16px;color:var(--muted);line-height:1.5;margin-bottom:30px;max-width:460px">
-      Colle le lien d'une vidéo de recette (YouTube, Shorts, Instagram, TikTok, Facebook). Tu récupères les ingrédients, les portions ajustables et un mode cuisson étape par étape.
+      Colle le lien d’une vidéo (YouTube, Shorts, Instagram, TikTok, Facebook) ou d’un site de recettes (Marmiton, 750g…). Tu récupères les ingrédients, les portions ajustables et un mode cuisson étape par étape.
     </p>
   </div>
 
@@ -222,6 +222,11 @@
   <button id="ideasOpen" class="press" style="width:100%;text-align:left;margin-top:16px;background:var(--cream);border:1px solid var(--line);border-radius:14px;padding:15px 16px;display:flex;align-items:center;gap:12px;color:var(--ink)">
     <span style="font-size:22px">💡</span>
     <span style="line-height:1.35"><b>Pas d'inspiration ?</b><br><span style="font-size:13px;color:var(--muted)">Dis ce que t'as dans le frigo → mise. te trouve des idées</span></span>
+  </button>
+
+  <button id="weekOpen" class="press" style="width:100%;text-align:left;margin-top:12px;background:var(--cream);border:1px solid var(--line);border-radius:14px;padding:15px 16px;display:flex;align-items:center;gap:12px;color:var(--ink)">
+    <span style="font-size:22px">📅</span>
+    <span style="line-height:1.35"><b>Menu de la semaine</b><br><span style="font-size:13px;color:var(--muted)">Planifie tes repas → liste de courses en un coup</span></span>
   </button>
 
   <div style="margin-top:28px;border-top:1px solid var(--line);padding-top:20px">
@@ -357,6 +362,32 @@
 </section>
 
 <!-- PARAMÈTRES -->
+<!-- MENU DE LA SEMAINE -->
+<section id="week" class="wrap hidden">
+  <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
+    <button id="weekBack" class="theme-toggle press" aria-label="retour">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <span class="mono" style="font-size:22px;font-weight:700">📅 Menu de la semaine</span>
+  </div>
+  <p style="font-size:14px;color:var(--muted);line-height:1.5;margin-bottom:18px">Planifie tes repas, puis génère ta liste de courses en un coup.</p>
+  <div id="weekDays"></div>
+  <button id="weekToShop" class="press" style="width:100%;font-size:16px;font-weight:600;padding:16px;border-radius:14px;border:none;background:var(--accent);color:#fff;margin-top:6px">🛒 Tout ajouter aux courses</button>
+  <button id="weekClear" class="press hidden" style="width:100%;font-size:14px;font-weight:600;padding:13px;border-radius:12px;border:1.5px solid var(--line);background:transparent;color:var(--muted);margin-top:12px">Vider la semaine</button>
+</section>
+
+<!-- CHOIX D'UNE RECETTE (menu semaine) -->
+<div id="weekPicker" class="hidden" style="position:fixed;inset:0;background:var(--paper);z-index:60;display:flex;flex-direction:column;padding:max(20px, calc(env(safe-area-inset-top) + 4px)) 20px calc(24px + env(safe-area-inset-bottom));max-width:620px;margin:0 auto">
+  <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
+    <button id="weekPickClose" class="theme-toggle press" aria-label="fermer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+    <span class="mono" style="font-size:19px;font-weight:700">Choisir une recette</span>
+  </div>
+  <input type="search" id="weekPickSearch" placeholder="Rechercher…" autocomplete="off" style="margin-bottom:12px" />
+  <div id="weekPickList" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch"></div>
+</div>
+
 <section id="settings" class="wrap hidden">
   <div style="display:flex;align-items:center;gap:14px;margin-bottom:34px">
     <button id="settingsBack" class="theme-toggle press" aria-label="retour">
@@ -582,6 +613,7 @@ function detectPlatform(url){
   if(/instagram\.com\/(reel|reels|p|tv)\//i.test(url)) return {platform:"Instagram"};
   if(/(tiktok\.com|vm\.tiktok\.com)\//i.test(url)) return {platform:"TikTok"};
   if(/(facebook\.com|fb\.watch)\//i.test(url)) return {platform:"Facebook"};
+  if(/^https?:\/\/[^\s]+\.[a-z]{2,}(\/|\?|$)/i.test(url.trim())) return {platform:"Web"};
   return null;
 }
 function platBadge(p){
@@ -589,6 +621,7 @@ function platBadge(p){
   if(p==="Instagram") return {bg:"radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%)", svg:`<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5.5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.3" fill="#fff" stroke="none"/></svg>`};
   if(p==="TikTok") return {bg:"#111", svg:`<svg viewBox="0 0 24 24" fill="#fff"><path d="M16.6 5.82A4.28 4.28 0 0 1 15.54 3h-3.09v12.4a2.59 2.59 0 1 1-2.59-2.6c.27 0 .53.04.78.12v-3.2a5.7 5.7 0 0 0-.78-.06c-3.14 0-5.69 2.55-5.69 5.7s2.55 5.69 5.69 5.69 5.69-2.55 5.69-5.69V9.01a7.33 7.33 0 0 0 4.28 1.37V7.3a4.28 4.28 0 0 1-3.23-1.48z"/></svg>`};
   if(p==="Facebook") return {bg:"#1877F2", svg:`<svg viewBox="0 0 24 24" fill="#fff"><path d="M14.5 8.5h2.2V5.4c-.4 0-1.6-.1-3-.1-3 0-4.2 1.8-4.2 4v1.9H7v3.1h2.5V22h3.2v-7.6h2.5l.4-3.1h-2.9V9.6c0-.9.3-1.1 1.3-1.1z"/></svg>`};
+  if(p==="Web") return {bg:"#5E7E9B", svg:`<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.7 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.7-3.8-9s1.3-6.4 3.8-9z"/></svg>`};
   return {bg:"linear-gradient(135deg,var(--accent),var(--accent2))", svg:`<svg viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg>`};
 }
 function fmtAmount(a){
@@ -634,7 +667,7 @@ function fmtTime(s){
   if(h>0) return h+":"+String(m).padStart(2,"0")+":"+String(sec).padStart(2,"0");
   return m+":"+String(sec).padStart(2,"0");
 }
-function show(id){ ["auth","home","recipe","cook","settings","ideas","shopping","convert"].forEach(s=>$(s).classList.toggle("hidden", s!==id)); }
+function show(id){ ["auth","home","recipe","cook","settings","ideas","shopping","convert","week"].forEach(s=>$(s).classList.toggle("hidden", s!==id)); }
 function setError(msg){ const e=$("error"); if(!msg){e.classList.add("hidden");return;} e.textContent=msg; e.classList.remove("hidden"); }
 function esc(s){ return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
 
@@ -714,7 +747,7 @@ function loading(on){
 $("decodeBtn").addEventListener("click", async ()=>{
   setError("");
   const d=detectPlatform($("url").value);
-  if(!d){ setError("Lien non reconnu. Colle un lien YouTube, Instagram, TikTok ou Facebook complet."); return; }
+  if(!d){ setError("Lien non reconnu. Colle un lien complet (vidéo ou site de recettes) commençant par https://."); return; }
   loading(true);
   try{
     const r=await callBackend({url:$("url").value});
@@ -957,11 +990,12 @@ function ingEmoji(name){
 // ---- liste de courses ----
 function getShopping(){ try{ return JSON.parse(localStorage.getItem("mise_shopping")||"[]"); }catch(e){ return []; } }
 function setShopping(a){ try{ localStorage.setItem("mise_shopping", JSON.stringify(a)); }catch(e){} }
-function addRecipeToShopping(){
-  if(!recipe || !recipe.ingredients) return;
+function addIngredientsToShopping(r, ratio){
+  if(!r || !r.ingredients) return;
+  ratio = ratio==null ? 1 : ratio;
   const list=getShopping();
-  recipe.ingredients.forEach(ing=>{
-    const amt = ing.amount==null ? null : (ing.amount*servings/base);
+  r.ingredients.forEach(ing=>{
+    const amt = ing.amount==null ? null : (ing.amount*ratio);
     const key=(ing.name||"").trim().toLowerCase();
     const unit=ing.unit||null;
     const ex=list.find(x=>(x.name||"").trim().toLowerCase()===key && (x.unit||null)===unit);
@@ -969,6 +1003,10 @@ function addRecipeToShopping(){
     else if(!ex){ list.push({ name:ing.name, amount:amt, unit:unit, category:normCat(ing.category), checked:false }); }
   });
   setShopping(list);
+}
+function addRecipeToShopping(){
+  if(!recipe) return;
+  addIngredientsToShopping(recipe, servings/base);
 }
 function renderShopping(){
   const box=$("shoppingList"), empty=$("shoppingEmpty");
@@ -1139,6 +1177,100 @@ async function persistRecipeChange(){
   if(sb && entry._dbid){ try{ await sb.from("recipes").update({ data: clean }).eq("id", entry._dbid); }catch(e){} }
   renderList();
 }
+
+// ---- menu de la semaine ----
+const WEEK_DAYS=["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"];
+function getWeek(){ try{ const w=JSON.parse(localStorage.getItem("mise_week")||"{}"); return (w&&typeof w==="object")?w:{}; }catch(e){ return {}; } }
+function setWeek(w){ try{ localStorage.setItem("mise_week", JSON.stringify(w)); }catch(e){} }
+let pickDay=null;
+function weekThumb(r,size){
+  return r.image
+    ? `<img src="${esc(r.image)}" loading="lazy" alt="" style="width:${size}px;height:${size}px;border-radius:9px;object-fit:cover;flex-shrink:0;background:var(--cream)">`
+    : `<span style="width:${size}px;height:${size}px;border-radius:9px;background:var(--cream);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:${Math.round(size*0.45)}px">🍽️</span>`;
+}
+function renderWeek(){
+  const box=$("weekDays"); if(!box) return;
+  const w=getWeek();
+  const today=(new Date().getDay()+6)%7; // 0 = lundi
+  box.innerHTML="";
+  let total=0;
+  WEEK_DAYS.forEach((name,d)=>{
+    let ids=(w[d]||[]).filter(id=>allCache.some(r=>r._id===id));
+    if(ids.length!==(w[d]||[]).length){ w[d]=ids; setWeek(w); }
+    total+=ids.length;
+    const card=document.createElement("div");
+    card.style.cssText="background:var(--surface);border:1px solid "+(d===today?"var(--accent)":"var(--line)")+";border-radius:16px;padding:14px 16px;margin-bottom:12px";
+    let inner=`<div style="display:flex;align-items:center;justify-content:space-between${ids.length?";margin-bottom:8px":""}">
+      <span style="font-size:15px;font-weight:700${d===today?";color:var(--accent)":""}">${name}${d===today?" · aujourd'hui":""}</span>
+      <button class="press wk-add" data-day="${d}" style="font-size:13px;font-weight:600;padding:7px 12px;border-radius:10px;border:1.5px solid var(--line);background:transparent;color:var(--ink)">+ Ajouter</button>
+    </div>`;
+    ids.forEach(id=>{
+      const r=allCache.find(x=>x._id===id);
+      inner+=`<div class="wk-row" data-id="${esc(id)}" style="display:flex;align-items:center;gap:10px;padding:8px 0;cursor:pointer">
+        ${weekThumb(r,38)}
+        <span style="flex:1;font-size:14px;font-weight:500;line-height:1.3">${esc(r.title)}</span>
+        <button class="wk-del press" data-day="${d}" data-id="${esc(id)}" aria-label="retirer" style="width:28px;height:28px;border-radius:8px;border:none;background:transparent;color:var(--muted);font-size:14px;flex-shrink:0">✕</button>
+      </div>`;
+    });
+    card.innerHTML=inner;
+    box.appendChild(card);
+  });
+  const btn=$("weekToShop");
+  btn.disabled = total===0;
+  btn.style.opacity = total ? "1" : ".5";
+  $("weekClear").classList.toggle("hidden", total===0);
+}
+$("weekDays").addEventListener("click",(e)=>{
+  const add=e.target.closest(".wk-add");
+  if(add){ pickDay=parseInt(add.dataset.day,10); openWeekPicker(); return; }
+  const del=e.target.closest(".wk-del");
+  if(del){ const w=getWeek(); const d=del.dataset.day; w[d]=(w[d]||[]).filter(x=>x!==del.dataset.id); setWeek(w); renderWeek(); return; }
+  const row=e.target.closest(".wk-row");
+  if(row){ const r=allCache.find(x=>x._id===row.dataset.id); if(r) loadRecipe({...r}); }
+});
+function openWeekPicker(){
+  $("weekPickSearch").value="";
+  renderWeekPick("");
+  $("weekPicker").classList.remove("hidden");
+}
+function renderWeekPick(q){
+  const box=$("weekPickList"); box.innerHTML="";
+  const nq=norm(q);
+  let list=[...allCache].sort((a,b)=>{ if(!!a.saved!==!!b.saved) return a.saved?-1:1; return (b._ts||0)-(a._ts||0); });
+  if(nq) list=list.filter(r=>norm(r.title||"").includes(nq)||(r.ingredients||[]).some(i=>norm((i&&i.name)||"").includes(nq)));
+  if(!list.length){ box.innerHTML=`<div style="color:var(--muted);font-size:14px;padding:14px 4px;line-height:1.5">Aucune recette trouvée.</div>`; return; }
+  list.slice(0,80).forEach(r=>{
+    const row=document.createElement("button");
+    row.className="press";
+    row.style.cssText="display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:transparent;border:none;border-bottom:1px solid var(--line);padding:11px 2px;color:var(--ink)";
+    row.innerHTML=`${weekThumb(r,38)}<span style="flex:1;font-size:15px;font-weight:500;line-height:1.3">${esc(r.title)}</span>${r.saved?`<span style="font-size:13px;flex-shrink:0">🔖</span>`:""}`;
+    row.addEventListener("click",()=>{
+      const w=getWeek();
+      (w[pickDay]=w[pickDay]||[]).push(r._id);
+      setWeek(w);
+      $("weekPicker").classList.add("hidden");
+      renderWeek();
+    });
+    box.appendChild(row);
+  });
+}
+$("weekPickSearch").addEventListener("input",(e)=>renderWeekPick(e.target.value.trim()));
+$("weekPickClose").addEventListener("click",()=>$("weekPicker").classList.add("hidden"));
+$("weekOpen").addEventListener("click",()=>{ renderWeek(); show("week"); window.scrollTo(0,0); });
+$("weekBack").addEventListener("click",()=>{ show("home"); });
+$("weekClear").addEventListener("click",()=>{ if(confirm("Vider tout le menu de la semaine ?")){ setWeek({}); renderWeek(); } });
+$("weekToShop").addEventListener("click",()=>{
+  const w=getWeek(); let n=0;
+  WEEK_DAYS.forEach((_,d)=>(w[d]||[]).forEach(id=>{
+    const r=allCache.find(x=>x._id===id);
+    if(r && r.ingredients){ addIngredientsToShopping(r,1); n++; }
+  }));
+  if(!n) return;
+  const b=$("weekToShop"), t="🛒 Tout ajouter aux courses";
+  b.textContent=`✓ ${n} recette${n>1?"s":""} ajoutée${n>1?"s":""} aux courses`;
+  b.disabled=true;
+  setTimeout(()=>{ b.textContent=t; b.disabled=false; },2200);
+});
 
 // ---- photo du plat ----
 function applyHeroPhoto(){
