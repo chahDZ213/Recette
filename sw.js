@@ -1,5 +1,5 @@
 // sw.js — service worker minimal (network-first)
-const CACHE = "mise-v44";
+const CACHE = "mise-v45";
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(["/", "/index.html"])).catch(() => {}));
