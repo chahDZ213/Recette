@@ -130,6 +130,52 @@ async function askClaudeVision(dataUrl) {
   return extractJSON(text);
 }
 
+// --- Lecture d'une page web de recette (Marmiton, 750g, blogs...) ---
+async function fetchWebText(rawUrl) {
+  try {
+    const url = (rawUrl || "").trim();
+    if (!/^https?:\/\//i.test(url)) return null;
+    const ctrl = new AbortController();
+    const to = setTimeout(() => ctrl.abort(), 10000);
+    const r = await fetch(url, {
+      headers: {
+        "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+        "accept": "text/html,application/xhtml+xml",
+        "accept-language": "fr-FR,fr;q=0.9,en;q=0.6",
+      },
+      redirect: "follow",
+      signal: ctrl.signal,
+    });
+    clearTimeout(to);
+    if (!r.ok) return null;
+    const html = (await r.text()).slice(0, 600000);
+    // photo du plat via og:image
+    const og =
+      /<meta[^>]+property=["']og:image["'][^>]*content=["']([^"']+)["']/i.exec(html) ||
+      /<meta[^>]+content=["']([^"']+)["'][^>]*property=["']og:image["']/i.exec(html);
+    let img = og ? og[1] : null;
+    if (img && !/^https?:\/\//i.test(img)) img = null;
+    // données structurées schema.org Recipe (très fiables quand présentes)
+    const lds = [];
+    const re = /<script[^>]*application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi;
+    let m;
+    while ((m = re.exec(html))) { if (/recipe/i.test(m[1])) lds.push(m[1].trim()); }
+    const ld = lds.join("\n").slice(0, 12000);
+    // texte visible de la page
+    const text = html
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&").replace(/&#\d+;/g, " ").replace(/&[a-zA-Z]+;/g, " ")
+      .replace(/\s+/g, " ").trim().slice(0, 12000);
+    if (!ld && text.length < 100) return null;
+    return {
+      text: (ld ? "DONNEES STRUCTUREES (schema.org Recipe):\n" + ld + "\n\n" : "") + "TEXTE DE LA PAGE:\n" + text,
+      image: img,
+    };
+  } catch (e) { return null; }
+}
+
 // --- Photo du plat via Pexels (gratuit, clé dans PEXELS_API_KEY) ---
 async function pexelsPhoto(query) {
   const key = process.env.PEXELS_API_KEY;
@@ -237,8 +283,15 @@ Exactement 4 idées, variées.`;
 
     if (text && text.trim().length > 20) {
       source = text;
+    } else if (!isSupportedUrl(url)) {
+      // site web de recette classique (Marmiton, 750g, blogs...)
+      const web = await fetchWebText(url);
+      if (!web) {
+        return res.status(200).json({ found: false, error: "Impossible de lire cette page. Colle le texte de la recette à la main." });
+      }
+      source = web.text;
+      image = web.image || null;
     } else {
-      if (!isSupportedUrl(url)) return res.status(400).json({ found: false, error: "Lien non supporté (YouTube, Instagram, TikTok, Facebook)" });
       const ytId = extractVideoId(url); // non-null seulement pour YouTube
       if (ytId) image = `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`;
       const [transcript, description] = await Promise.all([
