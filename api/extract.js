@@ -14,7 +14,8 @@ const INSTRUCTIONS = `Tu renvoies UNIQUEMENT un objet JSON, sans aucun texte aut
   "title": "Nom du plat",
   "baseServings": 4,
   "ingredients": [{"name": "farine", "amount": 250, "unit": "g", "category": "Épicerie"}],
-  "steps": [{"title": "Titre court", "content": "Instruction claire", "timerSeconds": 600, "temp": 180, "mode": "four"}]
+  "steps": [{"title": "Titre court", "content": "Instruction claire", "timerSeconds": 600, "temp": 180, "mode": "four"}],
+  "imageQuery": "creamy chicken pasta"
 }
 Règles :
 - "amount" est un nombre (ou null si non quantifiable). "unit" peut être null (ex: oeufs, gousses).
@@ -24,6 +25,7 @@ Règles :
 - "timerSeconds" : durée en secondes UNIQUEMENT si l'étape implique une attente (cuisson, repos, four). Sinon null.
 - "temp" : température de cuisson en °C (nombre entier) si l'étape en mentionne une (four à 180°C, four th.6, etc.). Convertis les thermostats en °C (th.6 ≈ 180). Sinon null.
 - "mode" : mode de cuisson de l'étape, EXACTEMENT une de ces valeurs en minuscules sans accent : "four", "poele", "casserole", "friture", "vapeur", "micro-ondes", "grill", "barbecue", "repos". "repos" = attente sans cuisson (frigo, levée, marinade, refroidissement). Si l'étape est une simple préparation sans cuisson ni attente, mets null.
+- "imageQuery" : 2 à 4 mots en ANGLAIS décrivant visuellement le plat fini (sert à chercher une photo). Toujours rempli. Exemples : "beef bourguignon stew", "chocolate lava cake".
 - Le texte fourni est une transcription parlée : déduis les quantités et étapes au mieux, corrige les approximations orales ("genre deux trois oeufs" -> 3).
 - Si aucune recette n'est trouvable, renvoie {"found": false}.`;
 
@@ -128,6 +130,22 @@ async function askClaudeVision(dataUrl) {
   return extractJSON(text);
 }
 
+// --- Photo du plat via Pexels (gratuit, clé dans PEXELS_API_KEY) ---
+async function pexelsPhoto(query) {
+  const key = process.env.PEXELS_API_KEY;
+  if (!key || !query) return null;
+  try {
+    const r = await fetch(
+      "https://api.pexels.com/v1/search?query=" + encodeURIComponent(query + " food") + "&per_page=1&orientation=landscape",
+      { headers: { Authorization: key } }
+    );
+    if (!r.ok) return null;
+    const d = await r.json();
+    const p = d.photos && d.photos[0];
+    return (p && p.src && (p.src.large || p.src.medium)) || null;
+  } catch (e) { return null; }
+}
+
 // --- Lecture d'une photo de frigo/placard -> liste d'ingrédients ---
 async function readFridge(dataUrl) {
   const m = /^data:(image\/[a-zA-Z0-9.+-]+);base64,([\s\S]+)$/.exec(dataUrl || "");
@@ -207,7 +225,11 @@ Exactement 4 idées, variées.`;
     // 1) Image (capture d'écran / photo d'un texte) -> Claude vision
     if (imgInput && typeof imgInput === "string" && imgInput.startsWith("data:image")) {
       const recipe = await askClaudeVision(imgInput);
-      return res.status(200).json(recipe); // pas de photo de plat auto ici
+      if (recipe && recipe.found !== false && !recipe.image) {
+        const ph = await pexelsPhoto(recipe.imageQuery || recipe.title);
+        if (ph) recipe.image = ph;
+      }
+      return res.status(200).json(recipe);
     }
 
     let source = "";
@@ -233,7 +255,13 @@ Exactement 4 idées, variées.`;
     }
 
     const recipe = await askClaude(source);
-    if (recipe && recipe.found !== false) recipe.image = image;
+    if (recipe && recipe.found !== false) {
+      recipe.image = image;
+      if (!recipe.image) {
+        const ph = await pexelsPhoto(recipe.imageQuery || recipe.title);
+        if (ph) recipe.image = ph;
+      }
+    }
     return res.status(200).json(recipe);
   } catch (e) {
     return res.status(200).json({ found: false, error: "Extraction impossible. Réessaie ou colle la description." });
