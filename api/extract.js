@@ -14,7 +14,7 @@ const INSTRUCTIONS = `Tu renvoies UNIQUEMENT un objet JSON, sans aucun texte aut
   "title": "Nom du plat",
   "baseServings": 4,
   "ingredients": [{"name": "farine", "amount": 250, "unit": "g", "category": "Épicerie"}],
-  "steps": [{"title": "Titre court", "content": "Instruction claire", "timerSeconds": 600}]
+  "steps": [{"title": "Titre court", "content": "Instruction claire", "timerSeconds": 600, "temp": 180, "mode": "four"}]
 }
 Règles :
 - "amount" est un nombre (ou null si non quantifiable). "unit" peut être null (ex: oeufs, gousses).
@@ -22,6 +22,8 @@ Règles :
 - "baseServings" = nombre de personnes de la recette d'origine. Si non précisé, mets 4.
 - Dans "steps", NE répète PAS les quantités chiffrées : réfère-toi aux ingrédients par leur nom, pour que l'ajustement des portions reste cohérent.
 - "timerSeconds" : durée en secondes UNIQUEMENT si l'étape implique une attente (cuisson, repos, four). Sinon null.
+- "temp" : température de cuisson en °C (nombre entier) si l'étape en mentionne une (four à 180°C, four th.6, etc.). Convertis les thermostats en °C (th.6 ≈ 180). Sinon null.
+- "mode" : mode de cuisson de l'étape, EXACTEMENT une de ces valeurs en minuscules sans accent : "four", "poele", "casserole", "friture", "vapeur", "micro-ondes", "grill", "barbecue", "repos". "repos" = attente sans cuisson (frigo, levée, marinade, refroidissement). Si l'étape est une simple préparation sans cuisson ni attente, mets null.
 - Le texte fourni est une transcription parlée : déduis les quantités et étapes au mieux, corrige les approximations orales ("genre deux trois oeufs" -> 3).
 - Si aucune recette n'est trouvable, renvoie {"found": false}.`;
 
