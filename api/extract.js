@@ -314,6 +314,9 @@ Exactement 4 idées, variées.`;
       }
     }
 
+    if (body.lang === "en" && source) {
+      source = 'IMPORTANT: Write ALL recipe content (title, ingredients names, steps, imageQuery) in ENGLISH, but keep the "category" field values in French exactly as listed in the schema (they are internal keys).\n\n' + source;
+    }
     const recipe = await askClaude(source);
     if (recipe && recipe.found !== false) {
       recipe.image = image;
