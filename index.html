@@ -91,7 +91,7 @@
   .ing-row.done .ing-check{ background:var(--green); border-color:var(--green); }
   .ing-qty{ font-family:'Space Grotesk',monospace; font-weight:700; font-size:14px; background:var(--cream); color:var(--ink); padding:5px 9px; border-radius:8px; white-space:nowrap; min-width:50px; text-align:center; transition:background .35s,color .35s; }
   .ing-qty.nb{ font-family:Inter,sans-serif; font-size:12.5px; min-width:0; }
-  #noBalBtn.on{ background:var(--accent); color:#fff; border-color:var(--accent); }
+  #noBalBtn.on{ background:var(--accent) !important; color:#fff !important; border-color:var(--accent) !important; }
   .ing-qty.empty{ background:transparent; }
   .ing-qty.flash{ background:var(--accent); color:#fff; }
   .ing-qty .u{ font-size:11px; font-weight:500; margin-left:1px; }
@@ -116,7 +116,7 @@
   .list-tab.active{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
   #shareBanner{ display:flex; align-items:center; gap:12px; justify-content:space-between; background:var(--cream); border:1px solid var(--line); border-radius:14px; padding:14px 16px; margin-bottom:22px; font-size:15px; font-weight:600; }
   #shareBanner button{ flex:none; font-family:inherit; font-size:13px; font-weight:600; padding:10px 14px; border-radius:10px; border:none; background:var(--accent); color:#fff; }
-  .public-mode #photoBtn, .public-mode #photoRemove, .public-mode #noteBtn, .public-mode #saveBtn, .public-mode #shareBtn, .public-mode #editIngBtn, .public-mode #collBtn{ display:none !important; }
+  .public-mode #photoBtn, .public-mode #photoRemove, .public-mode #noteBtn, .public-mode #saveBtn, .public-mode #shareBtn, .public-mode #editIngBtn, .public-mode #collBtn, .public-mode #transBtn{ display:none !important; }
   .coll-chip{ font-family:inherit; font-size:13px; font-weight:600; padding:7px 13px; border-radius:20px; border:1.5px solid var(--line); background:transparent; color:var(--muted); white-space:nowrap; flex:none; }
   .coll-chip.active{ background:var(--accent); color:#fff; border-color:var(--accent); }
   .idea-chip{ font-family:inherit; font-size:14px; font-weight:600; padding:9px 15px; border-radius:20px; border:1.5px solid var(--line); background:transparent; color:var(--muted); }
@@ -211,8 +211,8 @@
     </p>
   </div>
 
-  <label id="urlLabel" style="display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:8px">LIEN VIDÉO</label>
-  <input id="url" placeholder="YouTube, Instagram, TikTok, Facebook…" style="margin-bottom:14px" />
+  <label id="urlLabel" style="display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:8px">LIEN VIDÉO OU SITE</label>
+  <input id="url" placeholder="YouTube, TikTok, Marmiton, Google, blog…" style="margin-bottom:14px" />
   <div id="preview" class="hidden rise" style="display:flex;gap:13px;align-items:center;margin-bottom:16px;padding:11px 14px;background:var(--surface);border-radius:14px;border:1px solid var(--line)">
     <span id="platIcon" class="plat-badge"></span>
     <span id="detectLabel" style="font-size:14px;color:var(--green);font-weight:600">Vidéo détectée ✓</span>
@@ -510,6 +510,7 @@
 
     <button id="collBtn" class="press" style="display:inline-flex;align-items:center;gap:6px;font-family:inherit;font-size:14px;font-weight:600;padding:10px 18px;border-radius:20px;border:none;background:var(--accent);color:#fff;margin-bottom:22px">🏷️ <span id="collBtnLabel">Classer</span></button>
     <a id="sourceLink" target="_blank" rel="noopener" class="hidden" style="display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:600;padding:10px 16px;border-radius:20px;border:1.5px solid var(--line);background:transparent;color:var(--ink);text-decoration:none;margin-bottom:22px;margin-left:8px">🔗 Voir la vidéo</a>
+    <button id="transBtn" class="press" style="display:inline-flex;align-items:center;gap:6px;font-family:inherit;font-size:14px;font-weight:600;padding:10px 16px;border-radius:20px;border:1.5px solid var(--line);background:transparent;color:var(--ink);margin-bottom:22px;margin-left:8px">🌐 Traduire en français</button>
 
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
       <div id="ingLabel" class="eyebrow" style="margin:0">INGRÉDIENTS</div>
@@ -645,14 +646,31 @@ function videoId(url){
   for(const p of pats){ const m=url.match(p); if(m) return m[1]; }
   return null;
 }
+// nettoie l'URL collée : liens de redirection Google, liens sans https://, espaces…
+function normalizeRecipeUrl(raw){
+  let u=(raw||"").trim();
+  if(!u) return "";
+  // lien copié depuis les résultats Google (google.com/url?q=…) : on récupère l'URL cible
+  if(/^https?:\/\/(www\.)?google\.[a-z.]{2,10}\/url\?/i.test(u)){
+    try{
+      const q=new URL(u).searchParams;
+      const target=q.get("q")||q.get("url");
+      if(target && /^https?:\/\//i.test(target)) u=target;
+    }catch(e){}
+  }
+  // URL sans protocole (marmiton.org/…) : on ajoute https://
+  if(!/^https?:\/\//i.test(u) && /^[\w-]+(\.[\w-]+)+(\/|\?|$)/.test(u)) u="https://"+u;
+  return u;
+}
 function detectPlatform(url){
+  url=normalizeRecipeUrl(url);
   if(!url) return null;
   const yt=videoId(url);
-  if(yt) return {platform:"YouTube", ytId:yt};
-  if(/instagram\.com\/(reel|reels|p|tv)\//i.test(url)) return {platform:"Instagram"};
-  if(/(tiktok\.com|vm\.tiktok\.com)\//i.test(url)) return {platform:"TikTok"};
-  if(/(facebook\.com|fb\.watch)\//i.test(url)) return {platform:"Facebook"};
-  if(/^https?:\/\/[^\s]+\.[a-z]{2,}(\/|\?|$)/i.test(url.trim())) return {platform:"Web"};
+  if(yt) return {platform:"YouTube", ytId:yt, url};
+  if(/instagram\.com\/(reel|reels|p|tv)\//i.test(url)) return {platform:"Instagram", url};
+  if(/(tiktok\.com|vm\.tiktok\.com)\//i.test(url)) return {platform:"TikTok", url};
+  if(/(facebook\.com|fb\.watch)\//i.test(url)) return {platform:"Facebook", url};
+  if(/^https?:\/\/[^\s]+\.[a-z]{2,}(\/|\?|$)/i.test(url)) return {platform:"Web", url};
   return null;
 }
 function platBadge(p){
@@ -708,6 +726,19 @@ function fmtTime(s){
 }
 function show(id){ ["auth","home","recipe","cook","settings","ideas","shopping","convert","week"].forEach(s=>$(s).classList.toggle("hidden", s!==id)); }
 function setError(msg){ const e=$("error"); if(!msg){e.classList.add("hidden");return;} e.textContent=msg; e.classList.remove("hidden"); }
+// petit toast visible sur n'importe quel écran (erreurs hors accueil)
+let toastTimer=null;
+function toast(msg){
+  let el=$("miseToast");
+  if(!el){
+    el=document.createElement("div"); el.id="miseToast";
+    el.style.cssText="position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:var(--bg);font-size:14px;font-weight:600;padding:12px 18px;border-radius:12px;z-index:9999;max-width:86vw;text-align:center;box-shadow:0 6px 24px rgba(0,0,0,.25);transition:opacity .3s;pointer-events:none";
+    document.body.appendChild(el);
+  }
+  el.textContent=msg; el.style.opacity="1";
+  if(toastTimer) clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>{ el.style.opacity="0"; }, 3200);
+}
 function esc(s){ return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
 
 // ---- aperçu lien ----
@@ -734,10 +765,13 @@ const STR={
   // accueil (étape 1)
   heroTitle:"La recette,<br>sans le bouton pause.",
   heroSub:"Colle le lien d'une vidéo (YouTube, Shorts, Instagram, TikTok, Facebook) ou d'un site de recettes (Marmiton, 750g…). Tu récupères les ingrédients, les portions ajustables et un mode cuisson étape par étape.",
-  urlLabel:"LIEN VIDÉO", urlPh:"YouTube, Instagram, TikTok, Facebook…",
+  urlLabel:"LIEN VIDÉO OU SITE", urlPh:"YouTube, TikTok, Marmiton, Google, blog…",
   detected:"Vidéo détectée ✓",
-  detectedPlat:(p)=>`Vidéo ${p} détectée ✓`,
+  detectedPlat:(p)=>p==="Web"?"Site de recettes détecté ✓":`Vidéo ${p} détectée ✓`,
   decodeBtn:"Décoder la recette", decoding:"Décodage…",
+  errNotFound:"Recette introuvable. Colle la description ci-dessous.",
+  errServer:"Le serveur n'a pas répondu. Réessaie dans un instant.",
+  translateBtn:"🌐 Traduire en français", translateFail:"Traduction impossible. Réessaie dans un instant.",
   ideasTitle:"Pas d'inspiration ?", ideasSub:"Dis ce que t'as dans le frigo → mise. te trouve des idées",
   weekTitle:"Menu de la semaine", weekSub:"Planifie tes repas → liste de courses en un coup",
   manualToggle:"📋 Coller un texte de recette", manualPh:"Ingrédients : 250g de farine…\nÉtapes : 1. Mélanger…", manualBtn:"Structurer ce texte",
@@ -825,10 +859,13 @@ const STR={
   // home (step 1)
   heroTitle:"The recipe,<br>without the pause button.",
   heroSub:"Paste a video link (YouTube, Shorts, Instagram, TikTok, Facebook) or a recipe website (Allrecipes, BBC Good Food…). You get the ingredients, adjustable servings, and a step-by-step cooking mode.",
-  urlLabel:"VIDEO LINK", urlPh:"YouTube, Instagram, TikTok, Facebook…",
+  urlLabel:"VIDEO OR SITE LINK", urlPh:"YouTube, TikTok, recipe sites, Google, blogs…",
   detected:"Video detected ✓",
-  detectedPlat:(p)=>`${p} video detected ✓`,
+  detectedPlat:(p)=>p==="Web"?"Recipe site detected ✓":`${p} video detected ✓`,
   decodeBtn:"Decode the recipe", decoding:"Decoding…",
+  errNotFound:"Recipe not found. Paste the description below.",
+  errServer:"The server didn't respond. Try again in a moment.",
+  translateBtn:"🌐 Translate to English", translateFail:"Translation failed. Try again in a moment.",
   ideasTitle:"No inspiration?", ideasSub:"Tell mise. what's in your fridge → it finds ideas for you",
   weekTitle:"Weekly menu", weekSub:"Plan your meals → shopping list in one tap",
   manualToggle:"📋 Paste a recipe text", manualPh:"Ingredients: 250g flour…\nSteps: 1. Mix…", manualBtn:"Structure this text",
@@ -917,11 +954,20 @@ function t(k){ const L=STR[curLang]||STR.fr; return (L[k]!=null)?L[k]:STR.fr[k];
 function catName(c){ const m=t("cats"); return (m&&m[c])||c; }
 async function callBackend(payload){
   try{ payload.lang=curLang; }catch(e){}
-  const r=await fetch(BACKEND_URL,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(payload)});
-  return r.json();
+  // timeout : évite un overlay bloqué indéfiniment si le serveur ne répond jamais
+  const ctrl=new AbortController();
+  const to=setTimeout(()=>ctrl.abort(), 75000);
+  try{
+    const r=await fetch(BACKEND_URL,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(payload),signal:ctrl.signal});
+    return await r.json();
+  } finally { clearTimeout(to); }
 }
-let loadTimer=null, loadStep=0, loadStart=0;
-const STEP_MS=1800;   // durée d'affichage de chaque message
+// n'accepte que les URLs http(s) — bloque javascript: et data: (recettes partagées)
+function safeHttpUrl(u){ u=(typeof u==="string")?u.trim():""; return /^https?:\/\//i.test(u)?u:null; }
+let loadTimer=null, loadStep=0, loadStart=0, loadGen=0;
+const STEP_MS=2600;   // durée d'affichage de chaque message (hors dernier)
+const LAST_MIN=1400;  // temps mini d'affichage du dernier message ("Presque prêt…")
+const FAST_MS=700;    // défilement accéléré des messages restants quand le serveur a fini
 const LOAD_STEPS=[
   {e:"🍳", m:{fr:"Lecture de la vidéo…", en:"Reading the video…"}},
   {e:"📝", m:{fr:"Extraction des ingrédients…", en:"Extracting the ingredients…"}},
@@ -945,27 +991,41 @@ const FRIDGE_STEPS=[
   {e:"🥕", m:{fr:"Repérage des ingrédients…", en:"Spotting the ingredients…"}},
   {e:"📝", m:{fr:"Presque prêt…", en:"Almost ready…"}}
 ];
+const TRANSLATE_STEPS=[
+  {e:"🌐", m:{fr:"Traduction de la recette…", en:"Translating the recipe…"}},
+  {e:"📝", m:{fr:"Traduction des ingrédients…", en:"Translating the ingredients…"}},
+  {e:"⏲️", m:{fr:"Presque prêt…", en:"Almost ready…"}}
+];
 let activeSteps=LOAD_STEPS;
 function applyLoadStep(){ const s=activeSteps[loadStep]; $("loadSpin").textContent=s.e; $("loadMsg").textContent=(s.m&&typeof s.m==="object")?(s.m[curLang]||s.m.fr):s.m; }
 function showLoadOverlay(on, steps){
   const ov=$("loadOverlay");
+  const gen=++loadGen; // invalide les timers d'un affichage précédent
   if(on){
     activeSteps = steps || LOAD_STEPS;
     loadStep=0; applyLoadStep(); loadStart=Date.now(); ov.classList.remove("hidden");
     if(loadTimer){ clearInterval(loadTimer); }
+    // les premiers messages restent affichés STEP_MS ; le dernier ("Presque prêt…")
+    // n'arrive qu'en fin de cycle et reste tant que le serveur travaille.
     loadTimer=setInterval(()=>{
       if(loadStep < activeSteps.length-1){ loadStep++; applyLoadStep(); }
       else { clearInterval(loadTimer); loadTimer=null; }
     }, STEP_MS);
   } else {
-    // on laisse l'animation jouer son cycle COMPLET avant de masquer (jamais coupée en plein milieu).
-    // si le serveur a été plus lent que le cycle, on masque tout de suite (pas d'attente en trop).
-    const cycle = activeSteps.length * STEP_MS;
-    const wait = Math.max(0, cycle - (Date.now()-loadStart));
-    setTimeout(()=>{
-      ov.classList.add("hidden");
-      if(loadTimer){ clearInterval(loadTimer); loadTimer=null; }
-    }, wait);
+    // le serveur a fini : on fait défiler rapidement les messages restants
+    // (jamais coupés en plein milieu), puis on laisse lire le dernier avant de masquer.
+    if(loadTimer){ clearInterval(loadTimer); loadTimer=null; }
+    const finish=()=>{
+      if(gen!==loadGen) return; // un nouvel overlay a été ouvert entre-temps
+      if(loadStep < activeSteps.length-1){
+        loadStep++; applyLoadStep();
+        setTimeout(finish, FAST_MS);
+      } else {
+        setTimeout(()=>{ if(gen===loadGen) ov.classList.add("hidden"); }, LAST_MIN);
+      }
+    };
+    // on laisse le message en cours se terminer un court instant avant d'accélérer
+    setTimeout(finish, 400);
   }
 }
 function loading(on){
@@ -980,10 +1040,10 @@ $("decodeBtn").addEventListener("click", async ()=>{
   if(!d){ setError(t("errLink")); return; }
   loading(true);
   try{
-    const r=await callBackend({url:$("url").value});
-    if(!r.found){ setError(r.error||"Recette introuvable. Colle la description ci-dessous."); $("manualBox").classList.remove("hidden"); }
-    else { r.platform=d.platform; r.sourceUrl=$("url").value.trim(); await addToHistory(r); loadRecipe(r); }
-  }catch(e){ setError("Le serveur n'a pas répondu. Vérifie que /api/extract est déployé."); }
+    const r=await callBackend({url:d.url});
+    if(!r.found){ setError(r.error||t("errNotFound")); $("manualBox").classList.remove("hidden"); }
+    else { r.platform=d.platform; r.sourceUrl=d.url; await addToHistory(r); loadRecipe(r); }
+  }catch(e){ setError(t("errServer")); }
   loading(false);
 });
 $("manualToggle").addEventListener("click", ()=> $("manualBox").classList.toggle("hidden"));
@@ -1148,7 +1208,7 @@ function loadRecipe(r){
   renderNote();
   applyHeroPhoto();
   updateCollLabel();
-  { const sl=$("sourceLink"); if(sl){ if(recipe.sourceUrl){ sl.href=recipe.sourceUrl; sl.classList.remove("hidden"); } else sl.classList.add("hidden"); } }
+  { const sl=$("sourceLink"); const su=safeHttpUrl(recipe.sourceUrl); if(sl){ if(su){ sl.href=su; sl.classList.remove("hidden"); } else sl.classList.add("hidden"); } }
   refreshSaveBtn();
   show("recipe"); window.scrollTo(0,0);
   saveView("recipe");
@@ -1165,61 +1225,110 @@ function normCat(c){ return CAT_ORDER.includes(c)?c:"Autre"; }
 function ingEmoji(name){
   const n=(name||"").toLowerCase();
   const map=[
+    // -- produits laitiers & œufs --
     [["oeuf","œuf"],"🥚"],
-    [["mozzarella","fromage","gruy","parmesan","cheddar","emmental","comt","chèvre","chevre","feta","ricotta","raclette"],"🧀"],
+    [["mozzarella","fromage","gruy","parmesan","cheddar","emmental","comt","chèvre","chevre","feta","ricotta","raclette","mascarpone","reblochon","roquefort","bleu d'auvergne","boursin","kiri","vache qui rit"],"🧀"],
     [["beurre"],"🧈"],
     [["lait de coco","noix de coco","coco"],"🥥"],
+    [["chantilly","glace vanille","crème glacée"],"🍦"],
     [["lait"],"🥛"],
-    [["crème","creme","yaourt","yahourt"],"🥛"],
+    [["crème","creme","yaourt","yahourt","fromage blanc","petit suisse"],"🥛"],
+    // -- légumes (les plus précis d'abord) --
+    [["tomate cerise","concentré de tomate","sauce tomate","coulis"],"🥫"],
     [["tomate"],"🍅"],
-    [["oignon","échalote","echalote"],"🧅"],
-    [["ail"],"🧄"],
+    [["oignon","échalote","echalote","ciboule"],"🧅"],
     [["poivron"],"🫑"],
     [["piment"],"🌶️"],
+    [["patate douce"],"🍠"],
     [["pomme de terre","patate"],"🥔"],
     [["carotte"],"🥕"],
-    [["champignon"],"🍄"],
-    [["courgette","concombre"],"🥒"],
+    [["champignon","cèpe","girolle","shiitake"],"🍄"],
+    [["cornichon","courgette","concombre"],"🥒"],
     [["aubergine"],"🍆"],
     [["brocoli"],"🥦"],
-    [["salade","laitue","épinard","epinard","chou"],"🥬"],
+    [["salade","laitue","épinard","epinard","chou","poireau","céleri","celeri","fenouil","endive","roquette","mâche","cresson","blette"],"🥬"],
     [["maïs","mais"],"🌽"],
-    [["citron"],"🍋"],
-    [["orange"],"🍊"],
+    [["courge","potiron","citrouille","butternut","potimarron"],"🎃"],
+    // -- fruits --
+    [["citron vert","citron"],"🍋"],
+    [["orange","clémentine","clementine","mandarine"],"🍊"],
     [["banane"],"🍌"],
-    [["fraise"],"🍓"],
+    [["fraise","framboise","fruits rouges"],"🍓"],
+    [["myrtille","cassis","mûre","mure"],"🫐"],
     [["pomme"],"🍎"],
+    [["poire"],"🍐"],
+    [["pêche","peche","abricot","nectarine"],"🍑"],
+    [["cerise"],"🍒"],
+    [["raisin sec","raisin"],"🍇"],
+    [["melon"],"🍈"],
+    [["pastèque","pasteque"],"🍉"],
+    [["ananas"],"🍍"],
+    [["mangue"],"🥭"],
+    [["kiwi"],"🥝"],
     [["avocat"],"🥑"],
-    [["poulet","dinde","volaille"],"🍗"],
-    [["boeuf","bœuf","steak","viande"],"🥩"],
-    [["jambon","bacon","lard","porc"],"🥓"],
-    [["saucisse","merguez","chorizo"],"🌭"],
-    [["saumon","thon","poisson","cabillaud","colin","truite"],"🐟"],
-    [["crevette","gambas"],"🦐"],
-    [["pâtes","pates","spaghetti","macaroni","nouilles","penne","tagliatelle","lasagne"],"🍝"],
-    [["riz"],"🍚"],
-    [["pain","baguette"],"🍞"],
-    [["farine","maïzena","maizena"],"🌾"],
-    [["sucre"],"🥄"],
+    // -- viandes & poissons --
+    [["poulet","dinde","volaille","escalope"],"🍗"],
+    [["canard","magret"],"🦆"],
+    [["agneau","mouton","gigot","côtelette","cotelette"],"🍖"],
+    [["boeuf","bœuf","steak","viande","veau","entrecôte","entrecote"],"🥩"],
+    [["jambon","bacon","lard","porc","poitrine fumée"],"🥓"],
+    [["saucisse","merguez","chorizo","knack"],"🌭"],
+    [["saumon","thon","poisson","cabillaud","colin","truite","anchois","sardine","maquereau","dorade","bar","lieu","merlu"],"🐟"],
+    [["crevette","gambas","écrevisse","ecrevisse"],"🦐"],
+    [["crabe","tourteau"],"🦀"],
+    [["homard","langouste"],"🦞"],
+    [["moule","huître","huitre","saint-jacques","palourde","coque","coquillage"],"🦪"],
+    [["calamar","calmar","poulpe","encornet","seiche"],"🦑"],
+    // -- féculents & boulangerie --
+    [["pâtes","pates","spaghetti","macaroni","nouilles","penne","tagliatelle","lasagne","fusilli","ramen","udon"],"🍝"],
+    [["riz","risotto"],"🍚"],
+    [["pizza","pâte à pizza","pate a pizza"],"🍕"],
+    [["pâte feuilletée","pate feuilletee","pâte brisée","pate brisee","pâte sablée","pate sablee","tarte"],"🥧"],
+    [["croissant"],"🥐"],
+    [["tortilla","pita","naan","galette","wrap"],"🫓"],
+    [["pain","baguette","brioche","toast","biscotte"],"🍞"],
+    [["farine","maïzena","maizena","semoule","couscous","boulgour","quinoa","avoine","flocons"],"🌾"],
+    // -- sucré --
+    [["sucre glace","sucre roux","cassonade","sucre vanillé","sucre"],"🍬"],
+    [["vanille"],"🌼"],
+    [["miel","sirop d'agave","sirop d'érable","sirop"],"🍯"],
+    [["chocolat","cacao","nutella","pépites"],"🍫"],
+    [["confiture","gelée de"],"🍯"],
+    [["bonbon","caramel"],"🍬"],
+    // -- épicerie & condiments --
+    [["levure","bicarbonate"],"🫧"],
+    [["huile d'olive","huile olive"],"🫒"],
+    [["huile"],"🫒"],
+    [["olive"],"🫒"],
+    [["vinaigre","vinaigrette"],"🫗"],
+    [["moutarde","mayonnaise","ketchup"],"🫙"],
+    [["sauce soja","soja","nuoc"],"🍶"],
+    [["bouillon","fond de veau","fumet"],"🍲"],
     [["sel"],"🧂"],
     [["poivre"],"🧂"],
-    [["levure"],"🍞"],
-    [["vanille"],"🌼"],
-    [["huile d'olive","huile olive"],"🫒"],
-    [["huile"],"🫗"],
-    [["olive"],"🫒"],
-    [["miel"],"🍯"],
-    [["chocolat","cacao"],"🍫"],
-    [["eau"],"💧"],
-    [["vin"],"🍷"],
-    [["noix","amande","noisette","cacahu","pistache"],"🥜"],
-    [["basilic","persil","coriandre","menthe","herbe","thym","romarin","aneth","ciboulette"],"🌿"],
     [["gingembre"],"🫚"],
-    [["pois chiche","haricot","lentille","flageolet"],"🫘"],
+    [["pois chiche","haricot","lentille","flageolet","fève","feve"],"🫘"],
     [["petit pois","petits pois"],"🫛"],
-    [["curry","paprika","cumin","épice","epice","cannelle","muscade"],"🧂"],
+    [["curry","paprika","cumin","épice","epice","cannelle","muscade","safran","curcuma","ras el hanout","herbes de provence"],"🧂"],
+    [["basilic","persil","coriandre","menthe","herbe","thym","romarin","aneth","ciboulette","laurier","estragon","sauge","origan"],"🌿"],
+    [["noix de cajou","noix","amande","noisette","cacahu","pistache","pignon","sésame","sesame"],"🥜"],
+    [["ail"],"🧄"],
+    // -- boissons --
+    [["café","cafe"],"☕"],
+    [["thé","the vert","thé vert"],"🍵"],
+    [["bière","biere"],"🍺"],
+    [["rhum","whisky","cognac","calvados","grand marnier"],"🥃"],
+    [["vin"],"🍷"],
+    [["eau"],"💧"],
   ];
-  for(const [keys,emo] of map){ for(const k of keys){ if(n.includes(k)) return emo; } }
+  // les mots très courts (ail, sel, vin, eau, riz…) exigent une limite de mot pour
+  // éviter les faux positifs : "volaille"≠ail, "vinaigre"≠vin, "poireau"≠eau, "persil"≠sel…
+  const hit=(k)=>{
+    if(k.length>4) return n.includes(k);
+    const re=new RegExp("(^|[^a-zà-ÿ])"+k.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"($|[^a-zà-ÿ])","i");
+    return re.test(n);
+  };
+  for(const [keys,emo] of map){ for(const k of keys){ if(hit(k)) return emo; } }
   return "";
 }
 // ---- liste de courses ----
@@ -1337,6 +1446,24 @@ function noBalance(name, amount, unit){
   return null;
 }
 $("noBalBtn").addEventListener("click", ()=>{ noBalanceMode=!noBalanceMode; $("noBalBtn").classList.toggle("on", noBalanceMode); renderIngredients(false); });
+
+// ---- traduction d'une recette existante (vers la langue de l'app) ----
+$("transBtn").addEventListener("click", async ()=>{
+  if(!recipe) return;
+  showLoadOverlay(true, TRANSLATE_STEPS);
+  try{
+    const payload={ translate:true, recipe:{ title:recipe.title, baseServings:recipe.baseServings, ingredients:recipe.ingredients, steps:recipe.steps } };
+    const r=await callBackend(payload);
+    if(r && r.found!==false && r.title && Array.isArray(r.ingredients) && Array.isArray(r.steps)){
+      recipe.title=r.title; recipe.ingredients=r.ingredients; recipe.steps=r.steps;
+      recipe.original=JSON.parse(JSON.stringify(r.ingredients)); // nouvelle base pour l'ajustement des portions
+      checked={};
+      await persistRecipeChange();   // sauvegarde la version traduite (historique / Supabase)
+      loadRecipe(recipe);
+    } else { toast(t("translateFail")); }
+  }catch(e){ toast(t("translateFail")); }
+  showLoadOverlay(false);
+});
 
 function renderIngredients(flash){
   const wrap=$("ingList"); wrap.innerHTML="";
@@ -1510,8 +1637,9 @@ $("weekToShop").addEventListener("click",()=>{
 // ---- photo du plat ----
 function applyHeroPhoto(){
   const hero=$("hero");
-  if(recipe && recipe.image){
-    hero.style.backgroundImage=`url("${recipe.image}")`;
+  const img=recipe && (safeHttpUrl(recipe.image) || ((typeof recipe.image==="string" && recipe.image.startsWith("data:image/"))?recipe.image:null));
+  if(img){
+    hero.style.backgroundImage=`url("${img.replace(/["\\]/g,"")}")`;
     hero.style.backgroundSize="cover";
     hero.style.backgroundPosition="center";
     $("photoRemove").classList.remove("hidden");
@@ -2153,7 +2281,7 @@ function applyLang(){
   set("servFor","servFor");
   if($("servLabel")) $("servLabel").textContent = servings>1 ? t("servMany") : t("servOne");
   set("sourceLink","seeVideo");
-  set("ingLabel","ingLabel"); set("noBalBtn","noBalBtn"); set("noteLabel","noteLabel");
+  set("ingLabel","ingLabel"); set("noBalBtn","noBalBtn"); set("noteLabel","noteLabel"); set("transBtn","translateBtn");
   set("shopAddBtn","shopAdd"); set("editIngBtn","editIngOpen"); set("cookBtn","cookStart");
   set("collSheetTitle","collSheetTitle"); set("collSheetDesc","collSheetDesc"); set("collClose","collCloseBtn");
   set("editIngTitle","editIngTitle"); set("editIngHint","editIngHint");

@@ -89,7 +89,7 @@ async function askClaude(source) {
     },
     body: JSON.stringify({
       model: "claude-sonnet-4-6",
-      max_tokens: 1500,
+      max_tokens: 2200,
       messages: [{
         role: "user",
         content: `Voici le contenu d'une vidéo de recette (description et/ou transcription parlée). Structure-le.\n\n"""${source.slice(0, 14000)}"""\n\n${INSTRUCTIONS}`,
@@ -234,11 +234,59 @@ async function askClaudeText(prompt, maxTokens) {
   return extractJSON(t);
 }
 
+// liens copiés depuis les résultats Google : on récupère l'URL cible
+function unwrapGoogleUrl(u) {
+  if (typeof u !== "string") return u;
+  if (!/^https?:\/\/(www\.)?google\.[a-z.]{2,10}\/url\?/i.test(u)) return u;
+  try {
+    const q = new URL(u).searchParams;
+    const target = q.get("q") || q.get("url");
+    if (target && /^https?:\/\//i.test(target)) return target;
+  } catch {}
+  return u;
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ found: false, error: "Méthode non autorisée" });
+  // origine autorisée (opt-in : définir ALLOWED_ORIGINS="https://mon-app.vercel.app,https://…")
+  const allowed = (process.env.ALLOWED_ORIGINS || "").split(",").map((s) => s.trim()).filter(Boolean);
+  if (allowed.length) {
+    const src = req.headers.origin || req.headers.referer || "";
+    if (src && !allowed.some((a) => src.startsWith(a))) {
+      return res.status(403).json({ found: false, error: "Origine non autorisée" });
+    }
+  }
   try {
     const body = req.body || {};
-    const { url, text, image: imgInput } = body;
+    let { url, text, image: imgInput } = body;
+    // garde-fous sur la taille des entrées (protège la fonction et la facture API)
+    if (typeof url === "string") { url = unwrapGoogleUrl(url.trim().slice(0, 2000)); }
+    if (typeof text === "string") { text = text.slice(0, 30000); }
+    if (typeof imgInput === "string" && imgInput.length > 11_000_000) {
+      return res.status(200).json({ found: false, error: "Image trop lourde (max ~8 Mo)." });
+    }
+
+    // 0.2) Traduction d'une recette existante vers la langue de l'app
+    if (body.translate && body.recipe && typeof body.recipe === "object") {
+      try {
+        const target = body.lang === "en" ? "ANGLAIS" : "FRANÇAIS";
+        const rec = JSON.stringify(body.recipe).slice(0, 20000);
+        const prompt = `Traduis cette recette de cuisine en ${target}. Renvoie UNIQUEMENT l'objet JSON traduit, sans aucun texte autour, sans backticks, avec EXACTEMENT la même structure et les mêmes clés.
+Règles :
+- Traduis : "title", le "name" de chaque ingrédient, le "title" et le "content" de chaque étape, et "unit" seulement si c'est un mot ("c. à s." <-> "tbsp", "pincée" <-> "pinch" ; laisse "g", "ml", "cl", "kg" tels quels).
+- NE CHANGE PAS : les nombres ("amount", "baseServings", "timerSeconds", "temp"), "mode", "category" (clés internes, toujours en français), "imageQuery", ni l'ordre des éléments.
+- Si la recette est déjà entièrement dans la langue cible, renvoie-la telle quelle.
+
+RECETTE :
+${rec}`;
+        const out = await askClaudeText(prompt, 2500);
+        if (!out || !out.title || !Array.isArray(out.ingredients) || !Array.isArray(out.steps)) throw new Error("traduction invalide");
+        out.found = true;
+        return res.status(200).json(out);
+      } catch (e) {
+        return res.status(200).json({ found: false, error: "Traduction impossible. Réessaie." });
+      }
+    }
 
     // 0) Idées "frigo" -> liste de suggestions à partir d'ingrédients
     if (body.ideas) {
