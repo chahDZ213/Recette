@@ -116,7 +116,7 @@
   .list-tab.active{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
   #shareBanner{ display:flex; align-items:center; gap:12px; justify-content:space-between; background:var(--cream); border:1px solid var(--line); border-radius:14px; padding:14px 16px; margin-bottom:22px; font-size:15px; font-weight:600; }
   #shareBanner button{ flex:none; font-family:inherit; font-size:13px; font-weight:600; padding:10px 14px; border-radius:10px; border:none; background:var(--accent); color:#fff; }
-  .public-mode #photoBtn, .public-mode #photoRemove, .public-mode #noteBtn, .public-mode #saveBtn, .public-mode #shareBtn, .public-mode #editIngBtn, .public-mode #collBtn, .public-mode #transBtn{ display:none !important; }
+  .public-mode #photoBtn, .public-mode #photoRemove, .public-mode #noteBtn, .public-mode #saveBtn, .public-mode #shareBtn, .public-mode #editIngBtn, .public-mode #collBtn{ display:none !important; }
   .coll-chip{ font-family:inherit; font-size:13px; font-weight:600; padding:7px 13px; border-radius:20px; border:1.5px solid var(--line); background:transparent; color:var(--muted); white-space:nowrap; flex:none; }
   .coll-chip.active{ background:var(--accent); color:#fff; border-color:var(--accent); }
   .idea-chip{ font-family:inherit; font-size:14px; font-weight:600; padding:9px 15px; border-radius:20px; border:1.5px solid var(--line); background:transparent; color:var(--muted); }
@@ -510,7 +510,6 @@
 
     <button id="collBtn" class="press" style="display:inline-flex;align-items:center;gap:6px;font-family:inherit;font-size:14px;font-weight:600;padding:10px 18px;border-radius:20px;border:none;background:var(--accent);color:#fff;margin-bottom:22px">🏷️ <span id="collBtnLabel">Classer</span></button>
     <a id="sourceLink" target="_blank" rel="noopener" class="hidden" style="display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:600;padding:10px 16px;border-radius:20px;border:1.5px solid var(--line);background:transparent;color:var(--ink);text-decoration:none;margin-bottom:22px;margin-left:8px">🔗 Voir la vidéo</a>
-    <button id="transBtn" class="press" style="display:inline-flex;align-items:center;gap:6px;font-family:inherit;font-size:14px;font-weight:600;padding:10px 16px;border-radius:20px;border:1.5px solid var(--line);background:transparent;color:var(--ink);margin-bottom:22px;margin-left:8px">🌐 Traduire en français</button>
 
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
       <div id="ingLabel" class="eyebrow" style="margin:0">INGRÉDIENTS</div>
@@ -732,7 +731,7 @@ function toast(msg){
   let el=$("miseToast");
   if(!el){
     el=document.createElement("div"); el.id="miseToast";
-    el.style.cssText="position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:var(--bg);font-size:14px;font-weight:600;padding:12px 18px;border-radius:12px;z-index:9999;max-width:86vw;text-align:center;box-shadow:0 6px 24px rgba(0,0,0,.25);transition:opacity .3s;pointer-events:none";
+    el.style.cssText="position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:var(--paper);font-size:14px;font-weight:600;padding:12px 18px;border-radius:12px;z-index:9999;max-width:86vw;text-align:center;box-shadow:0 6px 24px rgba(0,0,0,.25);transition:opacity .3s;pointer-events:none";
     document.body.appendChild(el);
   }
   el.textContent=msg; el.style.opacity="1";
@@ -771,7 +770,6 @@ const STR={
   decodeBtn:"Décoder la recette", decoding:"Décodage…",
   errNotFound:"Recette introuvable. Colle la description ci-dessous.",
   errServer:"Le serveur n'a pas répondu. Réessaie dans un instant.",
-  translateBtn:"🌐 Traduire en français", translateFail:"Traduction impossible. Réessaie dans un instant.",
   transAllProg:(d,n)=>`🌐 Traduction de tes recettes… ${d}/${n}`,
   transAllDone:(n)=>`✅ ${n} recette${n>1?"s":""} traduite${n>1?"s":""}`,
   transAllFail:(n)=>`⚠️ ${n} recette${n>1?"s":""} n'${n>1?"ont":"a"} pas pu être traduite${n>1?"s":""} — réessaie en rechangeant la langue.`,
@@ -868,7 +866,6 @@ const STR={
   decodeBtn:"Decode the recipe", decoding:"Decoding…",
   errNotFound:"Recipe not found. Paste the description below.",
   errServer:"The server didn't respond. Try again in a moment.",
-  translateBtn:"🌐 Translate to English", translateFail:"Translation failed. Try again in a moment.",
   transAllProg:(d,n)=>`🌐 Translating your recipes… ${d}/${n}`,
   transAllDone:(n)=>`✅ ${n} recipe${n>1?"s":""} translated`,
   transAllFail:(n)=>`⚠️ ${n} recipe${n>1?"s":""} couldn't be translated — switch the language again to retry.`,
@@ -996,11 +993,6 @@ const FRIDGE_STEPS=[
   {e:"📸", m:{fr:"Lecture de ta photo…", en:"Reading your photo…"}},
   {e:"🥕", m:{fr:"Repérage des ingrédients…", en:"Spotting the ingredients…"}},
   {e:"📝", m:{fr:"Presque prêt…", en:"Almost ready…"}}
-];
-const TRANSLATE_STEPS=[
-  {e:"🌐", m:{fr:"Traduction de la recette…", en:"Translating the recipe…"}},
-  {e:"📝", m:{fr:"Traduction des ingrédients…", en:"Translating the ingredients…"}},
-  {e:"⏲️", m:{fr:"Presque prêt…", en:"Almost ready…"}}
 ];
 let activeSteps=LOAD_STEPS;
 function applyLoadStep(){ const s=activeSteps[loadStep]; $("loadSpin").textContent=s.e; $("loadMsg").textContent=(s.m&&typeof s.m==="object")?(s.m[curLang]||s.m.fr):s.m; }
@@ -1451,25 +1443,6 @@ function noBalance(name, amount, unit){
 }
 $("noBalBtn").addEventListener("click", ()=>{ noBalanceMode=!noBalanceMode; $("noBalBtn").classList.toggle("on", noBalanceMode); renderIngredients(false); });
 
-// ---- traduction d'une recette existante (vers la langue de l'app) ----
-$("transBtn").addEventListener("click", async ()=>{
-  if(!recipe) return;
-  showLoadOverlay(true, TRANSLATE_STEPS);
-  try{
-    const payload={ translate:true, recipe:{ title:recipe.title, baseServings:recipe.baseServings, ingredients:recipe.ingredients, steps:recipe.steps } };
-    const r=await callBackend(payload);
-    if(r && r.found!==false && r.title && Array.isArray(r.ingredients) && Array.isArray(r.steps)){
-      recipe.title=r.title; recipe.ingredients=r.ingredients; recipe.steps=r.steps;
-      recipe.original=JSON.parse(JSON.stringify(r.ingredients)); // nouvelle base pour l'ajustement des portions
-      recipe._lang=curLang;          // évite une re-traduction au prochain changement de langue
-      checked={};
-      await persistRecipeChange();   // sauvegarde la version traduite (historique / Supabase)
-      loadRecipe(recipe);
-    } else { toast(t("translateFail")); }
-  }catch(e){ toast(t("translateFail")); }
-  showLoadOverlay(false);
-});
-
 function renderIngredients(flash){
   const wrap=$("ingList"); wrap.innerHTML="";
   // grouper en gardant l'index d'origine
@@ -1545,6 +1518,7 @@ async function persistRecipeChange(){
 }
 
 // ---- traduction automatique de toutes les recettes (au changement de langue) ----
+// couvre TOUT allCache : recettes enregistrées, favoris ET historique.
 let transAllBusy=false;
 async function translateAllRecipes(){
   if(transAllBusy) return;
@@ -1573,6 +1547,7 @@ async function translateAllRecipes(){
             if(!$("recipe").classList.contains("hidden")) loadRecipe(recipe);
           }
           done++;
+          renderList(); // la liste se met à jour en direct, recette par recette
         } else fail++;
       }catch(e){ fail++; }
       toast(t("transAllProg")(done+fail, targets.length));
@@ -2326,7 +2301,7 @@ function applyLang(){
   set("servFor","servFor");
   if($("servLabel")) $("servLabel").textContent = servings>1 ? t("servMany") : t("servOne");
   set("sourceLink","seeVideo");
-  set("ingLabel","ingLabel"); set("noBalBtn","noBalBtn"); set("noteLabel","noteLabel"); set("transBtn","translateBtn");
+  set("ingLabel","ingLabel"); set("noBalBtn","noBalBtn"); set("noteLabel","noteLabel");
   set("shopAddBtn","shopAdd"); set("editIngBtn","editIngOpen"); set("cookBtn","cookStart");
   set("collSheetTitle","collSheetTitle"); set("collSheetDesc","collSheetDesc"); set("collClose","collCloseBtn");
   set("editIngTitle","editIngTitle"); set("editIngHint","editIngHint");

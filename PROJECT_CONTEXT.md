@@ -95,7 +95,7 @@ Recette/
 - ✅ Liste de courses par catégories (fusion des quantités) + menu de la semaine
 - ✅ Idées recettes depuis le frigo (photo ou liste d'ingrédients)
 - ✅ Partage de recettes (lien public en lecture seule)
-- ✅ i18n FR/EN complet + **traduction des recettes** : bouton 🌐 par recette + **traduction automatique de toutes les recettes au changement de langue de l'app** (marqueur `_lang` pour éviter les re-traductions)
+- ✅ i18n FR/EN complet + **traduction automatique de toutes les recettes** (enregistrées, favoris ET historique) au changement de langue de l'app — marqueur `_lang` pour éviter les re-traductions, liste mise à jour en direct, toast de progression
 - ✅ Emojis d'ingrédients (~90 ingrédients, détection par mot entier ; pas d'emoji si rien de représentatif — ex. sucre, levure)
 - ✅ Thème clair/sombre, notes personnelles, photos personnalisées, gating premium par codes
 - ✅ Sécurité : contrôle d'origine API (opt-in `ALLOWED_ORIGINS`), limites de taille des entrées, filtrage des URLs `javascript:`, timeout réseau 75 s
