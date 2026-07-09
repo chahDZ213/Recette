@@ -772,6 +772,9 @@ const STR={
   errNotFound:"Recette introuvable. Colle la description ci-dessous.",
   errServer:"Le serveur n'a pas répondu. Réessaie dans un instant.",
   translateBtn:"🌐 Traduire en français", translateFail:"Traduction impossible. Réessaie dans un instant.",
+  transAllProg:(d,n)=>`🌐 Traduction de tes recettes… ${d}/${n}`,
+  transAllDone:(n)=>`✅ ${n} recette${n>1?"s":""} traduite${n>1?"s":""}`,
+  transAllFail:(n)=>`⚠️ ${n} recette${n>1?"s":""} n'${n>1?"ont":"a"} pas pu être traduite${n>1?"s":""} — réessaie en rechangeant la langue.`,
   ideasTitle:"Pas d'inspiration ?", ideasSub:"Dis ce que t'as dans le frigo → mise. te trouve des idées",
   weekTitle:"Menu de la semaine", weekSub:"Planifie tes repas → liste de courses en un coup",
   manualToggle:"📋 Coller un texte de recette", manualPh:"Ingrédients : 250g de farine…\nÉtapes : 1. Mélanger…", manualBtn:"Structurer ce texte",
@@ -866,6 +869,9 @@ const STR={
   errNotFound:"Recipe not found. Paste the description below.",
   errServer:"The server didn't respond. Try again in a moment.",
   translateBtn:"🌐 Translate to English", translateFail:"Translation failed. Try again in a moment.",
+  transAllProg:(d,n)=>`🌐 Translating your recipes… ${d}/${n}`,
+  transAllDone:(n)=>`✅ ${n} recipe${n>1?"s":""} translated`,
+  transAllFail:(n)=>`⚠️ ${n} recipe${n>1?"s":""} couldn't be translated — switch the language again to retry.`,
   ideasTitle:"No inspiration?", ideasSub:"Tell mise. what's in your fridge → it finds ideas for you",
   weekTitle:"Weekly menu", weekSub:"Plan your meals → shopping list in one tap",
   manualToggle:"📋 Paste a recipe text", manualPh:"Ingredients: 250g flour…\nSteps: 1. Mix…", manualBtn:"Structure this text",
@@ -1288,15 +1294,13 @@ function ingEmoji(name){
     [["tortilla","pita","naan","galette","wrap"],"🫓"],
     [["pain","baguette","brioche","toast","biscotte"],"🍞"],
     [["farine","maïzena","maizena","semoule","couscous","boulgour","quinoa","avoine","flocons"],"🌾"],
-    // -- sucré --
-    [["sucre glace","sucre roux","cassonade","sucre vanillé","sucre"],"🍬"],
+    // -- sucré -- (pas d'emoji pour le sucre : rien de représentatif, mieux vaut ne rien afficher)
     [["vanille"],"🌼"],
     [["miel","sirop d'agave","sirop d'érable","sirop"],"🍯"],
     [["chocolat","cacao","nutella","pépites"],"🍫"],
     [["confiture","gelée de"],"🍯"],
     [["bonbon","caramel"],"🍬"],
-    // -- épicerie & condiments --
-    [["levure","bicarbonate"],"🫧"],
+    // -- épicerie & condiments -- (levure : pas d'emoji représentatif, on n'affiche rien)
     [["huile d'olive","huile olive"],"🫒"],
     [["huile"],"🫒"],
     [["olive"],"🫒"],
@@ -1457,6 +1461,7 @@ $("transBtn").addEventListener("click", async ()=>{
     if(r && r.found!==false && r.title && Array.isArray(r.ingredients) && Array.isArray(r.steps)){
       recipe.title=r.title; recipe.ingredients=r.ingredients; recipe.steps=r.steps;
       recipe.original=JSON.parse(JSON.stringify(r.ingredients)); // nouvelle base pour l'ajustement des portions
+      recipe._lang=curLang;          // évite une re-traduction au prochain changement de langue
       checked={};
       await persistRecipeChange();   // sauvegarde la version traduite (historique / Supabase)
       loadRecipe(recipe);
@@ -1537,6 +1542,45 @@ async function persistRecipeChange(){
   const clean = {...recipe}; delete clean._dbid;
   if(sb && entry._dbid){ try{ await sb.from("recipes").update({ data: clean }).eq("id", entry._dbid); }catch(e){} }
   renderList();
+}
+
+// ---- traduction automatique de toutes les recettes (au changement de langue) ----
+let transAllBusy=false;
+async function translateAllRecipes(){
+  if(transAllBusy) return;
+  if(!allCache || !allCache.length) return;
+  const targetLang=curLang;
+  // toutes les recettes pas encore dans la langue cible (_lang absent = jamais traduite)
+  const targets=allCache.filter(r=>(r._lang||null)!==targetLang && r.title && Array.isArray(r.ingredients) && Array.isArray(r.steps));
+  if(!targets.length) return;
+  transAllBusy=true;
+  let done=0, fail=0;
+  toast(t("transAllProg")(0, targets.length));
+  try{
+    for(const entry of targets){
+      if(curLang!==targetLang) break; // l'utilisateur a rechangé de langue entre-temps
+      try{
+        const r=await callBackend({ translate:true, recipe:{ title:entry.title, baseServings:entry.baseServings, ingredients:entry.ingredients, steps:entry.steps } });
+        if(r && r.found!==false && r.title && Array.isArray(r.ingredients) && Array.isArray(r.steps)){
+          entry.title=r.title; entry.ingredients=r.ingredients; entry.steps=r.steps;
+          entry.original=JSON.parse(JSON.stringify(r.ingredients));
+          entry._lang=targetLang;
+          const clean={...entry}; delete clean._dbid;
+          if(sb && entry._dbid){ try{ await sb.from("recipes").update({ data: clean }).eq("id", entry._dbid); }catch(e){} }
+          // si cette recette est ouverte à l'écran, on la rafraîchit
+          if(recipe && recipe._id===entry._id){
+            Object.assign(recipe, { title:entry.title, ingredients:entry.ingredients, steps:entry.steps, original:entry.original, _lang:targetLang });
+            if(!$("recipe").classList.contains("hidden")) loadRecipe(recipe);
+          }
+          done++;
+        } else fail++;
+      }catch(e){ fail++; }
+      toast(t("transAllProg")(done+fail, targets.length));
+    }
+  } finally { transAllBusy=false; }
+  renderList();
+  if(fail) toast(t("transAllFail")(fail));
+  else if(done) toast(t("transAllDone")(done));
 }
 
 // ---- menu de la semaine ----
@@ -1748,6 +1792,7 @@ async function loadRecipesFromDB(){
 async function addToHistory(r){
   if(!sb || !currentUserId) return;
   if(!r._id) r._id="r"+Date.now();
+  if(!r._lang) r._lang=curLang; // les extractions sont générées dans la langue de l'app
   r.saved=false; r.fav=false;
   const clean={...r}; delete clean._dbid;
   const entry={...clean, fav:false, saved:false, _ts:Date.now()};
@@ -2296,9 +2341,12 @@ function applyLang(){
   try{ refreshLocks(); }catch(e){}
 }
 function setLang(l){
+  const prev=curLang;
   curLang=(l==="en")?"en":"fr";
   try{ localStorage.setItem("mise_lang",curLang); }catch(e){}
   applyLang();
+  // changement effectif de langue → toutes les recettes enregistrées sont traduites automatiquement
+  if(prev!==curLang) translateAllRecipes();
   try{ renderList(); }catch(e){}
 }
 document.querySelectorAll(".lang-btn").forEach(b=>b.addEventListener("click",()=>setLang(b.dataset.lang)));
