@@ -78,6 +78,9 @@ Recette/
 │   ├── schedule-push.js ← planifie un push différé via QStash
 │   ├── send-push.js    ← appelé par QStash, envoie le push (protégé par SEND_SECRET)
 │   └── cancel-push.js  ← annule un push planifié
+├── icons/ing/          ← pack d'icônes d'ingrédients (WebP 96px, ~3,5 Ko/icône)
+│                          générées par ChatGPT (planches 3×3), découpées par icones-brutes/decoupe.py
+│                          (dossier hors dépôt, dans Projet/) ; affichées via ingEmoji() avec repli emoji
 ├── PROJECT_CONTEXT.md  ← ce fichier
 └── README.md
 ```
@@ -96,7 +99,7 @@ Recette/
 - ✅ Idées recettes depuis le frigo (photo ou liste d'ingrédients)
 - ✅ Partage de recettes (lien public en lecture seule)
 - ✅ i18n FR/EN complet + **traduction automatique de toutes les recettes** (enregistrées, favoris ET historique) au changement de langue de l'app — marqueur `_lang` pour éviter les re-traductions, liste mise à jour en direct, toast de progression
-- ✅ Emojis d'ingrédients (~90 ingrédients, détection par mot entier ; pas d'emoji si rien de représentatif — ex. sucre, levure)
+- ✅ Visuels d'ingrédients : **icônes personnalisées** (pack exclusif généré avec ChatGPT, style pâtisserie cohérent — 9 légumes livrés, ~80 à venir par planches 3×3) avec repli emoji (~90 ingrédients, détection par mot entier) puis rien si aucun visuel représentatif (ex. sucre, levure)
 - ✅ Thème clair/sombre, notes personnelles, photos personnalisées, gating premium par codes
 - ✅ Sécurité : contrôle d'origine API (opt-in `ALLOWED_ORIGINS`), limites de taille des entrées, filtrage des URLs `javascript:`, timeout réseau 75 s
 

@@ -98,6 +98,7 @@
   .ing-name{ font-size:16px; line-height:1.35; flex:1; }
   .ing-emoji{ font-size:19px; line-height:1; margin-left:-2px; min-width:22px; text-align:center; }
   .ing-emoji:empty{ display:none; }
+  .ing-emoji img{ width:22px; height:22px; object-fit:contain; display:block; }
 
   .cat-block{ margin-bottom:20px; }
   .cat-head{ display:flex; align-items:center; gap:8px; margin-bottom:9px; padding-left:2px; }
@@ -1222,6 +1223,8 @@ const CAT_ORDER=["Frais","Viandes & poissons","Crémerie","Épicerie","Épices",
 const CAT_COLOR={"Frais":"#5E7E5A","Viandes & poissons":"#C0492F","Crémerie":"#D9A53B","Épicerie":"#A9743B","Épices":"#C75B7C","Autre":"#9C8A84"};
 function normCat(c){ return CAT_ORDER.includes(c)?c:"Autre"; }
 
+// icône personnalisée si disponible (3e élément d'une entrée), sinon emoji, sinon rien.
+// les icônes (pack généré avec ChatGPT) vivent dans /icons/ing/<nom>.webp
 function ingEmoji(name){
   const n=(name||"").toLowerCase();
   const map=[
@@ -1235,16 +1238,17 @@ function ingEmoji(name){
     [["crème","creme","yaourt","yahourt","fromage blanc","petit suisse"],"🥛"],
     // -- légumes (les plus précis d'abord) --
     [["tomate cerise","concentré de tomate","sauce tomate","coulis"],"🥫"],
-    [["tomate"],"🍅"],
-    [["oignon","échalote","echalote","ciboule"],"🧅"],
-    [["poivron"],"🫑"],
+    [["tomate"],"🍅","tomate"],
+    [["oignon","échalote","echalote","ciboule"],"🧅","oignon"],
+    [["poivron"],"🫑","poivron"],
     [["piment"],"🌶️"],
-    [["patate douce"],"🍠"],
-    [["pomme de terre","patate"],"🥔"],
-    [["carotte"],"🥕"],
-    [["champignon","cèpe","girolle","shiitake"],"🍄"],
-    [["cornichon","courgette","concombre"],"🥒"],
-    [["aubergine"],"🍆"],
+    [["patate douce","patates douces"],"🍠"],
+    [["pomme de terre","pommes de terre","patate"],"🥔","pomme-de-terre"],
+    [["carotte"],"🥕","carotte"],
+    [["champignon","cèpe","girolle","shiitake"],"🍄","champignon"],
+    [["courgette"],"🥒","courgette"],
+    [["cornichon","concombre"],"🥒"],
+    [["aubergine"],"🍆","aubergine"],
     [["brocoli"],"🥦"],
     [["salade","laitue","épinard","epinard","chou","poireau","céleri","celeri","fenouil","endive","roquette","mâche","cresson","blette"],"🥬"],
     [["maïs","mais"],"🌽"],
@@ -1310,7 +1314,7 @@ function ingEmoji(name){
     [["curry","paprika","cumin","épice","epice","cannelle","muscade","safran","curcuma","ras el hanout","herbes de provence"],"🧂"],
     [["basilic","persil","coriandre","menthe","herbe","thym","romarin","aneth","ciboulette","laurier","estragon","sauge","origan"],"🌿"],
     [["noix de cajou","noix","amande","noisette","cacahu","pistache","pignon","sésame","sesame"],"🥜"],
-    [["ail"],"🧄"],
+    [["ail"],"🧄","ail"],
     // -- boissons --
     [["café","cafe"],"☕"],
     [["thé","the vert","thé vert"],"🍵"],
@@ -1326,7 +1330,11 @@ function ingEmoji(name){
     const re=new RegExp("(^|[^a-zà-ÿ])"+k.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"($|[^a-zà-ÿ])","i");
     return re.test(n);
   };
-  for(const [keys,emo] of map){ for(const k of keys){ if(hit(k)) return emo; } }
+  for(const [keys,emo,icon] of map){
+    for(const k of keys){
+      if(hit(k)) return icon ? `<img src="/icons/ing/${icon}.webp" alt="" loading="lazy">` : emo;
+    }
+  }
   return "";
 }
 // ---- liste de courses ----
