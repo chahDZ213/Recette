@@ -58,6 +58,37 @@
   @keyframes rise{ from{ opacity:0; transform:translateY(8px);} to{ opacity:1; transform:none;} }
   .rise{ animation:rise .4s ease both; }
 
+  /* ---- navigation persistante ---- */
+  /* mobile & tablette (<1024px) : barre inférieure — desktop (>=1024px) : barre supérieure */
+  #mainNav{ position:fixed; left:0; right:0; bottom:0; z-index:40; background:var(--surface); border-top:1px solid var(--line);
+    display:flex; justify-content:space-around; align-items:stretch; padding:0 calc(4px + env(safe-area-inset-right)) env(safe-area-inset-bottom) calc(4px + env(safe-area-inset-left)); }
+  #navLogo{ display:none; }
+  .nav-item{ flex:1; max-width:96px; min-height:56px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+    background:none; border:none; font-family:inherit; font-size:11px; font-weight:600; color:var(--muted); position:relative; padding:7px 4px 6px; }
+  .nav-item svg{ width:22px; height:22px; flex-shrink:0; }
+  .nav-item.active{ color:var(--accent); }
+  .nav-item.active::before{ content:""; position:absolute; top:0; left:26%; right:26%; height:3px; border-radius:0 0 3px 3px; background:var(--accent); }
+  .nav-item:focus-visible{ outline:2px solid var(--accent); outline-offset:-3px; border-radius:12px; }
+  .nav-add .nav-plus{ width:44px; height:44px; border-radius:14px; background:var(--accent); color:#fff; display:flex; align-items:center; justify-content:center;
+    font-size:25px; font-weight:600; line-height:1; margin-top:-16px; box-shadow:0 4px 14px rgba(199,91,124,.45); }
+  .nav-add{ color:var(--accent); }
+  .nav-plus-txt{ display:none; }
+  @media(min-width:1024px){ .nav-plus-txt{ display:inline; font-size:15px; margin-left:6px; } }
+  @media(min-width:1024px){
+    #mainNav{ top:0; bottom:auto; border-top:none; border-bottom:1px solid var(--line); justify-content:flex-start; gap:4px; padding:0 28px; height:60px; }
+    #navLogo{ display:flex; align-items:center; font-size:21px; font-weight:700; letter-spacing:-.02em; margin-right:22px; color:var(--ink); }
+    #navLogo b{ color:var(--accent); font-weight:700; }
+    .nav-item{ flex:none; max-width:none; min-height:0; flex-direction:row; gap:8px; font-size:14px; padding:0 14px; border-radius:12px; }
+    .nav-item svg{ width:19px; height:19px; }
+    .nav-item.active::before{ top:auto; bottom:0; left:14%; right:14%; }
+    .nav-add{ margin-left:auto; order:10; }
+    .nav-add .nav-plus{ width:auto; height:38px; padding:0 16px; margin-top:0; border-radius:11px; font-size:15px; font-weight:600; gap:7px; }
+    .nav-add .nav-add-lbl{ display:none; }
+    body.nav-on section.wrap{ padding-top:84px; }
+    body.nav-on #homeHeadLogo{ visibility:hidden; }
+  }
+  .public-mode #mainNav{ display:none !important; }
+
   /* ---- recette ---- */
   #recipe{ max-width:620px; margin:0 auto; padding-bottom:120px; }
   #hero{ position:relative; height:calc(210px + env(safe-area-inset-top)); overflow:hidden; border-radius:0 0 26px 26px;
@@ -159,6 +190,30 @@
 <body>
 
 <!-- AUTH -->
+<nav id="mainNav" class="hidden" aria-label="Navigation principale">
+  <span id="navLogo" class="mono" aria-hidden="true">mise<b>.</b></span>
+  <button class="nav-item" id="navHome" data-nav="home">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
+    <span id="navHomeLbl">Accueil</span>
+  </button>
+  <button class="nav-item" id="navRecipes" data-nav="recipes">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5v14z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/></svg>
+    <span id="navRecipesLbl">Recettes</span>
+  </button>
+  <button class="nav-item nav-add" id="navAdd" aria-haspopup="dialog" aria-label="Ajouter une recette">
+    <span class="nav-plus" aria-hidden="true">＋<span class="nav-plus-txt" id="navAddPlusTxt">Ajouter</span></span>
+    <span class="nav-add-lbl" id="navAddLbl">Ajouter</span>
+  </button>
+  <button class="nav-item" id="navWeek" data-nav="week">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+    <span id="navWeekLbl">Planning</span>
+  </button>
+  <button class="nav-item" id="navShop" data-nav="shopping">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>
+    <span id="navShopLbl">Courses</span>
+  </button>
+</nav>
+
 <section id="auth" class="wrap hidden">
   <div style="display:flex;align-items:baseline;gap:2px;margin:6vh 0 36px">
     <span class="mono" style="font-size:30px;font-weight:700;letter-spacing:-.02em">mise</span><span class="mono" style="font-size:30px;font-weight:700;color:var(--accent)">.</span>
@@ -183,7 +238,7 @@
 <!-- ACCUEIL -->
 <section id="home" class="wrap hidden">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:44px">
-    <div style="display:flex;align-items:baseline;gap:2px">
+    <div id="homeHeadLogo" style="display:flex;align-items:baseline;gap:2px">
       <span class="mono" style="font-size:26px;font-weight:700;letter-spacing:-.02em">mise</span><span class="mono" style="font-size:26px;font-weight:700;color:var(--accent)">.</span>
     </div>
     <div style="display:flex;gap:10px">
@@ -724,7 +779,30 @@ function fmtTime(s){
   if(h>0) return h+":"+String(m).padStart(2,"0")+":"+String(sec).padStart(2,"0");
   return m+":"+String(sec).padStart(2,"0");
 }
-function show(id){ ["auth","home","recipe","cook","settings","ideas","shopping","convert","week"].forEach(s=>$(s).classList.toggle("hidden", s!==id)); }
+function show(id){
+  ["auth","home","recipe","cook","settings","ideas","shopping","convert","week"].forEach(s=>$(s).classList.toggle("hidden", s!==id));
+  updateNav(id);
+}
+// ---- navigation persistante ----
+// le bouton "+" est une ACTION (ouvre la sheet), jamais une destination : pas d'état actif, pas de saveView.
+const NAV_TAB={ home:"navHome", week:"navWeek", shopping:"navShop" };          // "recipes" ajouté à l'étape 5
+const NAV_VISIBLE=["home","settings","ideas","shopping","convert","week"];     // écrans où la nav est affichée
+function updateNav(id){
+  const nav=$("mainNav"); if(!nav) return;
+  const visible=NAV_VISIBLE.includes(id);
+  nav.classList.toggle("hidden", !visible);
+  document.body.classList.toggle("nav-on", visible);
+  document.querySelectorAll("#mainNav .nav-item[data-nav]").forEach(b=>{
+    const active = NAV_TAB[id]===b.id;   // idées/réglages : aucun onglet actif plutôt qu'un état trompeur
+    b.classList.toggle("active", active);
+    if(active) b.setAttribute("aria-current","page"); else b.removeAttribute("aria-current");
+  });
+}
+$("navHome").addEventListener("click", ()=>{ renderList(); show("home"); saveView("home"); window.scrollTo(0,0); });
+$("navRecipes").addEventListener("click", ()=>{ renderList(); show("home"); saveView("home"); const ls=$("listSection"); if(ls && !ls.classList.contains("hidden")) ls.scrollIntoView({behavior:"smooth"}); });
+$("navWeek").addEventListener("click", ()=>{ renderWeek(); show("week"); window.scrollTo(0,0); });
+$("navShop").addEventListener("click", ()=>{ renderShopping(); show("shopping"); window.scrollTo(0,0); });
+$("navAdd").addEventListener("click", ()=>{ show("home"); window.scrollTo(0,0); const u=$("url"); if(u) u.focus(); }); // provisoire (étape 2) — la sheet Ajouter arrive à l'étape 3
 function setError(msg){ const e=$("error"); if(!msg){e.classList.add("hidden");return;} e.textContent=msg; e.classList.remove("hidden"); }
 // petit toast visible sur n'importe quel écran (erreurs hors accueil)
 let toastTimer=null;
@@ -773,6 +851,8 @@ const STR={
   decodeBtn:"Décoder la recette", decoding:"Décodage…",
   errNotFound:"Recette introuvable. Colle la description ci-dessous.",
   errServer:"Le serveur n'a pas répondu. Réessaie dans un instant.",
+  navHome:"Accueil", navRecipes:"Recettes", navAdd:"Ajouter", navWeek:"Planning", navShop:"Courses",
+  navAddAria:"Ajouter une recette",
   transAllProg:(d,n)=>`🌐 Traduction de tes recettes… ${d}/${n}`,
   transAllDone:(n)=>`✅ ${n} recette${n>1?"s":""} traduite${n>1?"s":""}`,
   transAllFail:(n)=>`⚠️ ${n} recette${n>1?"s":""} n'${n>1?"ont":"a"} pas pu être traduite${n>1?"s":""} — réessaie en rechangeant la langue.`,
@@ -869,6 +949,8 @@ const STR={
   decodeBtn:"Decode the recipe", decoding:"Decoding…",
   errNotFound:"Recipe not found. Paste the description below.",
   errServer:"The server didn't respond. Try again in a moment.",
+  navHome:"Home", navRecipes:"Recipes", navAdd:"Add", navWeek:"Planner", navShop:"Groceries",
+  navAddAria:"Add a recipe",
   transAllProg:(d,n)=>`🌐 Translating your recipes… ${d}/${n}`,
   transAllDone:(n)=>`✅ ${n} recipe${n>1?"s":""} translated`,
   transAllFail:(n)=>`⚠️ ${n} recipe${n>1?"s":""} couldn't be translated — switch the language again to retry.`,
@@ -2320,6 +2402,9 @@ function applyLang(){
   const set=(id,key,html)=>{ const el=$(id); if(!el) return; if(html) el.innerHTML=t(key); else el.textContent=t(key); };
   // accueil (étape 1)
   set("heroTitle","heroTitle",true); set("heroSub","heroSub");
+  set("navHomeLbl","navHome"); set("navRecipesLbl","navRecipes"); set("navAddLbl","navAdd"); set("navAddPlusTxt","navAdd");
+  set("navWeekLbl","navWeek"); set("navShopLbl","navShop");
+  if($("navAdd")) $("navAdd").setAttribute("aria-label", t("navAddAria"));
   set("urlLabel","urlLabel"); if($("url")) $("url").placeholder=t("urlPh");
   set("detectLabel","detected");
   set("decodeBtn","decodeBtn");
