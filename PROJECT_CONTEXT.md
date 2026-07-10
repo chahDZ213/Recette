@@ -99,7 +99,7 @@ Recette/
 - ✅ Idées recettes depuis le frigo (photo ou liste d'ingrédients)
 - ✅ Partage de recettes (lien public en lecture seule)
 - ✅ i18n FR/EN complet + **traduction automatique de toutes les recettes** (enregistrées, favoris ET historique) au changement de langue de l'app — marqueur `_lang` pour éviter les re-traductions, liste mise à jour en direct, toast de progression
-- ✅ Visuels d'ingrédients : **pack complet de 90 icônes personnalisées** (généré avec ChatGPT, style pâtisserie cohérent — légumes, fruits, viandes, poissons, crémerie, féculents, épicerie, condiments, boissons) avec repli emoji pour les ingrédients sans icône, détection par mot entier avec règles de priorité (« semoule » ≠ « moule », « confiture de fraises » ≠ fraise…)
+- ✅ Visuels d'ingrédients : **pack complet de 126 icônes personnalisées** (14 planches générées avec ChatGPT, style cohérent — légumes, fruits, viandes, poissons, crémerie, féculents, épicerie, condiments, légumineuses, boissons) couvrant la quasi-totalité des ingrédients détectés, repli emoji pour le reste, détection par mot entier avec règles de priorité (« semoule » ≠ « moule », « caramel au beurre salé » ≠ beurre…)
 - ✅ Thème clair/sombre, notes personnelles, photos personnalisées, gating premium par codes
 - ✅ Sécurité : contrôle d'origine API (opt-in `ALLOWED_ORIGINS`), limites de taille des entrées, filtrage des URLs `javascript:`, timeout réseau 75 s
 
