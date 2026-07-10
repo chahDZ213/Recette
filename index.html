@@ -55,6 +55,7 @@
   @keyframes bob{ 0%,100%{ transform:translateY(0) rotate(-6deg);} 50%{ transform:translateY(-14px) rotate(6deg);} }
   @keyframes blinkpulse{ 0%,100%{ transform:scale(1); box-shadow:0 0 0 0 rgba(255,255,255,0);} 50%{ transform:scale(1.18); box-shadow:0 0 0 9px rgba(255,255,255,.25);} }
   .blink{ animation:blinkpulse 1s ease-in-out 4; }
+  .timer-dot{ width:10px; height:10px; border-radius:50%; background:var(--accent); flex-shrink:0; animation:blinkpulse 1.2s ease-in-out infinite; }
   @keyframes rise{ from{ opacity:0; transform:translateY(8px);} to{ opacity:1; transform:none;} }
   .rise{ animation:rise .4s ease both; }
 
@@ -591,7 +592,7 @@
       <span id="stepCount" class="mono" style="font-size:14px;color:rgba(251,248,243,.6)"></span>
     </div>
   </div>
-  <div id="progress" style="display:flex;gap:4px;margin-bottom:40px"></div>
+  <div id="progress" style="display:flex;gap:4px;margin-bottom:24px"></div>
   <div id="stepBody" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column"></div>
   <div style="display:flex;gap:12px;margin-top:24px">
     <button id="prevStep" class="press" style="flex:1;font-size:16px;font-weight:600;padding:16px;border-radius:14px;border:1.5px solid rgba(251,248,243,.2);background:transparent;color:#FBF8F3">Précédent</button>
@@ -922,6 +923,8 @@ const STR={
   delConfirmTitle:"Supprimer la recette ?", delConfirmDesc:"Cette recette sera supprimée définitivement.",
   delConfirmOk:"Supprimer", confirmCancel:"Annuler",
   saveRecipeBtn:"Enregistrer la recette", savedToast:"Recette enregistrée ✓",
+  stepOf:(n,total)=>`Étape ${n} sur ${total}`,
+  cookExitTitle:"Quitter le mode cuisson ?", cookExitDesc:"Un minuteur est encore en cours.", cookExitOk:"Quitter",
   morePhoto:"Photo du plat", morePhotoRm:"Retirer la photo", moreNote:"Ma note", moreShare:"Partager",
   moreBtnAria:"Plus d'actions",
   urlLabel:"Lien de la vidéo ou du site", urlPh:"YouTube, TikTok, Marmiton, Google, blog…",
@@ -1032,6 +1035,8 @@ const STR={
   delConfirmTitle:"Delete this recipe?", delConfirmDesc:"This recipe will be permanently deleted.",
   delConfirmOk:"Delete", confirmCancel:"Cancel",
   saveRecipeBtn:"Save the recipe", savedToast:"Recipe saved ✓",
+  stepOf:(n,total)=>`Step ${n} of ${total}`,
+  cookExitTitle:"Leave cooking mode?", cookExitDesc:"A timer is still running.", cookExitOk:"Leave",
   morePhoto:"Dish photo", morePhotoRm:"Remove photo", moreNote:"My note", moreShare:"Share",
   moreBtnAria:"More actions",
   urlLabel:"Video or website link", urlPh:"YouTube, TikTok, recipe sites, Google, blogs…",
@@ -2312,7 +2317,11 @@ $("collClose").addEventListener("click",()=>$("collSheet").classList.add("hidden
 
 // ---- mode cuisson ----
 $("cookBtn").addEventListener("click",()=>{ cookStep=0; show("cook"); renderCook(); });
-$("exitCook").addEventListener("click",()=>{ endCookExtras(); stopTimer(); show("recipe"); saveView("recipe"); });
+$("exitCook").addEventListener("click",()=>{
+  const leave=()=>{ endCookExtras(); stopTimer(); show("recipe"); saveView("recipe"); };
+  if(timerState && timerState.running){ askConfirm(t("cookExitTitle"), t("cookExitDesc"), t("cookExitOk"), leave); return; }
+  leave();
+});
 function goPrev(){ if(cookStep>0){ cookStep--; renderCook(); } }
 function goNext(){
   const total=recipe.steps.length;
@@ -2435,9 +2444,9 @@ function cookChips(s){
 function renderCook(){
   stopTimer();
   const steps=recipe.steps, total=steps.length, s=steps[cookStep];
-  $("stepCount").textContent=`${cookStep+1} / ${total}`;
+  $("stepCount").textContent=t("stepOf")(cookStep+1, total);
   $("progress").innerHTML=steps.map((_,i)=>`<div style="flex:1;height:4px;border-radius:2px;background:${i<=cookStep?ACCENT:"rgba(251,248,243,.15)"};transition:background .3s"></div>`).join("");
-  let html=`<div class="rise" style="margin:auto 0;width:100%"><div class="mono" style="font-size:14px;color:${ACCENT};font-weight:500;margin-bottom:14px;letter-spacing:.04em">${t("stepWord")} ${cookStep+1}</div>`;
+  let html=`<div class="rise" style="margin:10px 0 auto;width:100%"><div class="mono" style="font-size:14px;color:${ACCENT};font-weight:500;margin-bottom:14px;letter-spacing:.04em">${t("stepWord")} ${cookStep+1}</div>`;
   if(s.title) html+=`<h2 class="mono" style="font-size:26px;font-weight:700;letter-spacing:-.02em;margin-bottom:18px;line-height:1.15">${esc(s.title)}</h2>`;
   html+=cookChips(s);
   html+=`<p style="font-size:22px;line-height:1.45">${esc(s.content)}</p>`;
@@ -2461,8 +2470,11 @@ function renderCook(){
 function mountTimer(sec){ const slot=$("timerSlot"); timerState={left:sec,total:sec,running:false,done:false,handle:null,pushId:null}; renderTimer(slot); }
 function renderTimer(slot){
   const t=timerState;
-  slot.innerHTML=`<div style="margin-top:18px;display:inline-flex;align-items:center;gap:12px;padding:9px 14px;background:${t.done?"rgba(79,111,82,.2)":"rgba(251,248,243,.06)"};border-radius:12px;border:1px solid ${t.done?GREEN:"rgba(251,248,243,.12)"}">
-    <div class="mono" style="font-size:23px;font-weight:700;color:${t.done?GREEN:PAPER};min-width:64px">${t.done?window.t("timerReady"):fmtTime(t.left)}</div>
+  slot.innerHTML=`<div style="margin-top:18px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:${t.running?"14px 16px":"9px 14px"};background:${t.done?"rgba(79,111,82,.2)":(t.running?"rgba(199,91,124,.18)":"rgba(251,248,243,.06)")};border-radius:14px;border:1.5px solid ${t.done?GREEN:(t.running?ACCENT:"rgba(251,248,243,.12)")};transition:all .25s">
+    <div style="display:flex;align-items:center;gap:11px">
+      ${t.running?`<span class="timer-dot" aria-hidden="true"></span>`:""}
+      <div class="mono" role="timer" aria-live="off" style="font-size:${t.running?"30px":"23px"};font-weight:700;color:${t.done?GREEN:PAPER};min-width:64px;transition:font-size .25s">${t.done?window.t("timerReady"):fmtTime(t.left)}</div>
+    </div>
     <button id="timerBtn" class="press" style="font-size:13px;font-weight:600;padding:8px 15px;border-radius:9px;border:${t.done?"1.5px solid rgba(251,248,243,.25)":"none"};background:${t.done?"transparent":ACCENT};color:#fff">${t.done?window.t("timerRestart"):(t.running?window.t("timerPause"):(t.left===t.total?window.t("timerStart"):window.t("timerResume")))}</button>
   </div>`;
   $("timerBtn").addEventListener("click", async ()=>{
