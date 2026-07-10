@@ -90,6 +90,18 @@
   }
   .public-mode #mainNav{ display:none !important; }
 
+  /* ---- responsive : largeurs par type d'écran ---- */
+  #homeShortcuts{ display:grid; gap:12px; margin-top:16px; }
+  @media(min-width:768px){
+    #home.wrap{ max-width:720px; }        /* accueil */
+    #recipes.wrap{ max-width:840px; }     /* grille de recettes */
+    #recipe{ max-width:720px; }           /* détail recette */
+    #homeShortcuts{ grid-template-columns:1fr 1fr; }
+    #recipeList.saved-list{ display:grid; grid-template-columns:1fr 1fr; gap:12px; align-items:start; background:transparent; box-shadow:none; overflow:visible; }
+    #recipeList .saved-row{ background:var(--surface); border:1px solid var(--line); border-radius:14px; }
+  }
+  /* courses, planning, réglages, formulaires, cuisson : 620px inchangé (une colonne) */
+
   /* ---- sheet "Ajouter une recette" ---- */
   .add-method{ width:100%; text-align:left; display:flex; align-items:center; gap:14px; padding:15px 14px; border:1px solid var(--line);
     background:var(--cream); border-radius:14px; margin-bottom:10px; color:var(--ink); font-family:inherit; font-size:15px; }
@@ -276,15 +288,16 @@
     ＋ <span id="addRecipeLbl">Ajouter une recette</span>
   </button>
 
-  <button id="ideasOpen" class="press" style="width:100%;text-align:left;margin-top:16px;background:var(--cream);border:1px solid var(--line);border-radius:14px;padding:15px 16px;display:flex;align-items:center;gap:12px;color:var(--ink)">
-    <span style="font-size:22px">💡</span>
-    <span style="line-height:1.35"><b id="ideasTitle">Pas d'inspiration ?</b><br><span id="ideasSub" style="font-size:13px;color:var(--muted)">Dis ce que t'as dans le frigo → mise. te trouve des idées</span></span>
-  </button>
-
-  <button id="weekOpen" class="press" style="width:100%;text-align:left;margin-top:12px;background:var(--cream);border:1px solid var(--line);border-radius:14px;padding:15px 16px;display:flex;align-items:center;gap:12px;color:var(--ink)">
-    <span style="font-size:22px">📅</span>
-    <span style="line-height:1.35"><b id="weekTitle">Menu de la semaine</b><br><span id="weekSub" style="font-size:13px;color:var(--muted)">Planifie tes repas → liste de courses en un coup</span></span>
-  </button>
+  <div id="homeShortcuts">
+    <button id="ideasOpen" class="press" style="width:100%;text-align:left;background:var(--cream);border:1px solid var(--line);border-radius:14px;padding:15px 16px;display:flex;align-items:center;gap:12px;color:var(--ink)">
+      <span style="font-size:22px">💡</span>
+      <span style="line-height:1.35"><b id="ideasTitle">Trouver une idée avec mes ingrédients</b><br><span id="ideasSub" style="font-size:13px;color:var(--muted)">Dis ce que t'as dans le frigo → mise. te trouve des idées</span></span>
+    </button>
+    <button id="weekOpen" class="press" style="width:100%;text-align:left;background:var(--cream);border:1px solid var(--line);border-radius:14px;padding:15px 16px;display:flex;align-items:center;gap:12px;color:var(--ink)">
+      <span style="font-size:22px">📅</span>
+      <span style="line-height:1.35"><b id="weekTitle">Planifier ma semaine</b><br><span id="weekSub" style="font-size:13px;color:var(--muted)">Planifie tes repas → liste de courses en un coup</span></span>
+    </button>
+  </div>
 
   <!-- Recettes récentes (aperçu) -->
   <div id="homeRecent" class="hidden" style="margin-top:30px">
