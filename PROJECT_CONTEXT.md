@@ -112,8 +112,8 @@ Recette/
 ## 7. Problèmes et points faibles connus
 
 1. **Premium contournable** : le statut est un simple `localStorage.mise_premium="1"`, vérifiable côté client uniquement. À migrer côté serveur (table Supabase + vérification dans `/api/extract`) avant toute monétisation sérieuse.
-2. **RLS Supabase à vérifier** : s'assurer que la table `recipes` a des Row Level Security policies (chaque utilisateur ne lit/écrit que ses lignes).
-3. **`ALLOWED_ORIGINS` non activé par défaut** : tant que la variable n'est pas définie dans Vercel, l'API est appelable par n'importe quel site (risque de consommation des crédits Anthropic).
+2. ~~RLS Supabase~~ ✅ vérifié (2026-07-11) : RLS actif sur `recipes` (4 policies `auth.uid() = user_id` : SELECT/INSERT/UPDATE/DELETE) et `shares` (lecture publique, création/suppression propriétaire).
+3. ~~`ALLOWED_ORIGINS`~~ ✅ activé (2026-07-11) : `ALLOWED_ORIGINS=https://recette-xi.vercel.app` dans Vercel (Production). Testé : origine étrangère → 403, origine légitime → 200. Note : les requêtes sans header `Origin` (curl/scripts) passent — protection contre les sites tiers, pas contre les scripts directs (voir premium côté serveur).
 4. **`index.html` monolithique (~2500 lignes)** : voulu (zéro build), mais la maintenabilité baisse à mesure que l'app grossit. Si le fichier dépasse ~4000 lignes, envisager un découpage.
 5. **Traduction en masse séquentielle** : ~5-10 s par recette ; un utilisateur avec 50 recettes attendra plusieurs minutes (toast de progression, mais pas d'annulation).
 6. **YouTube depuis datacenter** : certains transcripts échouent (blocage IP) → fallback « coller la description » proposé à l'utilisateur.
@@ -121,14 +121,12 @@ Recette/
 
 ## 8. Prochaines améliorations recommandées
 
-1. Activer `ALLOWED_ORIGINS` dans Vercel (1 minute, gros gain sécurité).
-2. Vérifier/activer les RLS Supabase sur `recipes`.
-3. Premium côté serveur (Supabase + vérification API).
-4. Import/export des recettes (JSON, PDF).
-5. Mode hors-ligne complet (recettes sauvées consultables sans réseau — le SW cache déjà les GET, mais les données viennent de Supabase).
-6. Onboarding 3 écrans à la première ouverture.
-7. Recherche par ingrédient dans ses recettes + filtre par temps de cuisson.
-8. Tests E2E basiques (Playwright) sur les parcours critiques : extraction, portions, mode cuisson.
+1. Premium côté serveur (Supabase + vérification API).
+2. Import/export des recettes (JSON, PDF).
+3. Mode hors-ligne complet (recettes sauvées consultables sans réseau — le SW cache déjà les GET, mais les données viennent de Supabase).
+4. Onboarding 3 écrans à la première ouverture.
+5. Recherche par ingrédient dans ses recettes + filtre par temps de cuisson.
+6. Tests E2E basiques (Playwright) sur les parcours critiques : extraction, portions, mode cuisson.
 
 ---
 
