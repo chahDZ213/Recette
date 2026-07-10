@@ -770,7 +770,7 @@
 </div>
 
 <!-- CHARGEMENT -->
-<div id="loadOverlay" class="hidden" role="status" aria-live="polite" style="position:fixed;inset:0;background:var(--paper);z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px">
+<div id="loadOverlay" class="hidden" role="status" aria-live="polite" style="position:fixed;inset:0;background:var(--paper);z-index:75;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px">
   <div id="loadSpin" aria-hidden="true" style="font-size:60px;animation:bob 1s ease-in-out infinite">🍳</div>
   <div id="loadMsg" class="mono" style="font-size:18px;font-weight:600;color:var(--ink)">Lecture de la vidéo…</div>
   <div id="loadHint" style="font-size:13px;color:var(--muted)">quelques secondes…</div>
@@ -1475,7 +1475,7 @@ $("createBtn").addEventListener("click", async ()=>{
   try{
     const r=await callBackend({text:demande});
     if(!r.found) setError(r.error||"Je n'ai pas réussi à créer cette recette. Reformule ta demande.");
-    else { await addToHistory(r); loadRecipe(r); $("createBox").classList.add("hidden"); $("createText").value=""; }
+    else { await addToHistory(r); loadRecipe(r); $("createText").value=""; }
   }catch(e){ setError("Le serveur n'a pas répondu."); }
   showLoadOverlay(false);
   $("createBtn").disabled=false; $("createBtn").textContent=lbl;
@@ -1488,7 +1488,7 @@ $("manualBtn").addEventListener("click", async ()=>{
   try{
     const r=await callBackend({text:t});
     if(!r.found) setError(r.error||"Pas de recette claire dans ce texte.");
-    else { await addToHistory(r); loadRecipe(r); $("manualBox").classList.add("hidden"); }
+    else { await addToHistory(r); loadRecipe(r); $("manualText").value=""; }
   }catch(e){ setError("Échec de la structuration."); }
   showLoadOverlay(false);
   $("manualBtn").textContent="Structurer ce texte"; $("manualBtn").disabled=false;
