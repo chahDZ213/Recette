@@ -107,6 +107,7 @@ Recette/
 
 - 🔄 Traduction automatique globale au changement de langue — **livrée, à tester en production** (séquentielle, toast de progression `n/total`, persistée dans Supabase)
 - 🔄 Animations de chargement rééquilibrées — livrées (messages 2,6 s, rattrapage accéléré quand le serveur a fini)
+- 🔄 **Refonte UX (branche `refonte-ux`, en attente de validation avant fusion)** : navigation persistante (tabbar mobile <1024px / barre supérieure ≥1024px — Accueil · Recettes · ＋Ajouter · Planning · Courses ; « ＋ » = action pure, jamais une destination), sheet « Ajouter une recette » regroupant les 4 méthodes (dialog accessible : focus piégé, Échap, overlay), accueil simplifié (hero court + recherche déléguée + CTA unique + Récentes), page Recettes dédiée (`#recipes`, onglets Enregistrées/Récentes, confirmation de suppression avec focus sur Annuler), libellés clarifiés FR/EN (« Importer la recette », « Scanner une recette », « Ajouter à une collection »…), bouton contextuel Enregistrer/Collection (fin de l'enregistrement implicite d'assignCollection), menu « ⋯ » sur la recette, mode cuisson amélioré (contenu remonté, « Étape X sur Y », minuteur actif proéminent, confirmation de sortie si minuteur), responsive desktop (accueil 720px, recettes 840px + 2 colonnes ≥768px, détail 720px ; courses/planning/cuisson inchangés), accessibilité (focus-visible, rôles status/alert, aria-labels FR/EN, contrastes mesurés et corrigés ≥4,5:1 dans les deux thèmes)
 
 ## 7. Problèmes et points faibles connus
 

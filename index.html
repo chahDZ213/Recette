@@ -19,7 +19,7 @@
     color-scheme:light;
     --accent:#C75B7C; --accent2:#9E3F5E;
     --ink:#241D18; --paper:#E9DFCC; --surface:#FBF7F0;
-    --muted:#8C7E70; --line:#DCCFBB; --cream:#EFE6D5; --green:#5E7E5A;
+    --muted:#6B5F53; --line:#DCCFBB; --cream:#EFE6D5; --green:#5E7E5A;
     --rowhover:#F3ECDF;
     --panel:#2E2422; --panel-text:#F5EDE8;   /* blocs sombres (portions, cuisson) — fixes */
   }
@@ -42,6 +42,7 @@
     border:1.5px solid var(--line); background:var(--surface); color:var(--ink); }
   input::placeholder,textarea::placeholder{ color:var(--muted); opacity:.8; }
   input:focus,textarea:focus{ outline:2px solid var(--accent); outline-offset:1px; }
+  button:focus-visible, a:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
   .theme-toggle{ width:42px; height:42px; border-radius:12px; border:1.5px solid var(--line); background:var(--surface); color:var(--ink); display:flex; align-items:center; justify-content:center; }
   .theme-toggle svg{ width:20px; height:20px; }
   .edit-row{ display:flex; gap:7px; align-items:center; margin-bottom:10px; }
@@ -55,8 +56,62 @@
   @keyframes bob{ 0%,100%{ transform:translateY(0) rotate(-6deg);} 50%{ transform:translateY(-14px) rotate(6deg);} }
   @keyframes blinkpulse{ 0%,100%{ transform:scale(1); box-shadow:0 0 0 0 rgba(255,255,255,0);} 50%{ transform:scale(1.18); box-shadow:0 0 0 9px rgba(255,255,255,.25);} }
   .blink{ animation:blinkpulse 1s ease-in-out 4; }
+  .timer-dot{ width:10px; height:10px; border-radius:50%; background:var(--accent); flex-shrink:0; animation:blinkpulse 1.2s ease-in-out infinite; }
   @keyframes rise{ from{ opacity:0; transform:translateY(8px);} to{ opacity:1; transform:none;} }
   .rise{ animation:rise .4s ease both; }
+
+  /* ---- navigation persistante ---- */
+  /* mobile & tablette (<1024px) : barre inférieure — desktop (>=1024px) : barre supérieure */
+  #mainNav{ position:fixed; left:0; right:0; bottom:0; z-index:40; background:var(--surface); border-top:1px solid var(--line);
+    display:flex; justify-content:space-around; align-items:stretch; padding:0 calc(4px + env(safe-area-inset-right)) env(safe-area-inset-bottom) calc(4px + env(safe-area-inset-left)); }
+  #navLogo{ display:none; }
+  .nav-item{ flex:1; max-width:96px; min-height:56px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+    background:none; border:none; font-family:inherit; font-size:11px; font-weight:600; color:var(--muted); position:relative; padding:7px 4px 6px; }
+  .nav-item svg{ width:22px; height:22px; flex-shrink:0; }
+  .nav-item.active{ color:var(--accent2); }
+  [data-theme="dark"] .nav-item.active{ color:var(--accent); }
+  .nav-item.active::before{ content:""; position:absolute; top:0; left:26%; right:26%; height:3px; border-radius:0 0 3px 3px; background:var(--accent); }
+  .nav-item:focus-visible{ outline:2px solid var(--accent); outline-offset:-3px; border-radius:12px; }
+  .nav-add .nav-plus{ width:44px; height:44px; border-radius:14px; background:var(--accent); color:#fff; display:flex; align-items:center; justify-content:center;
+    font-size:25px; font-weight:600; line-height:1; margin-top:-16px; box-shadow:0 4px 14px rgba(199,91,124,.45); }
+  .nav-add{ color:var(--accent); }
+  .nav-plus-txt{ display:none; }
+  @media(min-width:1024px){ .nav-plus-txt{ display:inline; font-size:15px; margin-left:6px; } }
+  @media(min-width:1024px){
+    #mainNav{ top:0; bottom:auto; border-top:none; border-bottom:1px solid var(--line); justify-content:flex-start; gap:4px; padding:0 28px; height:60px; }
+    #navLogo{ display:flex; align-items:center; font-size:21px; font-weight:700; letter-spacing:-.02em; margin-right:22px; color:var(--ink); }
+    #navLogo b{ color:var(--accent); font-weight:700; }
+    .nav-item{ flex:none; max-width:none; min-height:0; flex-direction:row; gap:8px; font-size:14px; padding:0 14px; border-radius:12px; }
+    .nav-item svg{ width:19px; height:19px; }
+    .nav-item.active::before{ top:auto; bottom:0; left:14%; right:14%; }
+    .nav-add{ margin-left:auto; order:10; }
+    .nav-add .nav-plus{ width:auto; height:38px; padding:0 16px; margin-top:0; border-radius:11px; font-size:15px; font-weight:600; gap:7px; }
+    .nav-add .nav-add-lbl{ display:none; }
+    body.nav-on section.wrap{ padding-top:84px; }
+    body.nav-on #homeHeadLogo{ visibility:hidden; }
+  }
+  .public-mode #mainNav{ display:none !important; }
+
+  /* ---- responsive : largeurs par type d'écran ---- */
+  #homeShortcuts{ display:grid; gap:12px; margin-top:16px; }
+  @media(min-width:768px){
+    #home.wrap{ max-width:720px; }        /* accueil */
+    #recipes.wrap{ max-width:840px; }     /* grille de recettes */
+    #recipe{ max-width:720px; }           /* détail recette */
+    #homeShortcuts{ grid-template-columns:1fr 1fr; }
+    #recipeList.saved-list{ display:grid; grid-template-columns:1fr 1fr; gap:12px; align-items:start; background:transparent; box-shadow:none; overflow:visible; }
+    #recipeList .saved-row{ background:var(--surface); border:1px solid var(--line); border-radius:14px; }
+  }
+  /* courses, planning, réglages, formulaires, cuisson : 620px inchangé (une colonne) */
+
+  /* ---- sheet "Ajouter une recette" ---- */
+  .add-method{ width:100%; text-align:left; display:flex; align-items:center; gap:14px; padding:15px 14px; border:1px solid var(--line);
+    background:var(--cream); border-radius:14px; margin-bottom:10px; color:var(--ink); font-family:inherit; font-size:15px; }
+  .add-method .am-ico{ font-size:22px; width:30px; text-align:center; flex-shrink:0; }
+  .add-method b{ font-size:15px; }
+  .add-method .am-sub{ display:block; font-size:12.5px; color:var(--muted); margin-top:2px; line-height:1.35; font-weight:400; }
+  .add-method:focus-visible, .sheet-x:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+  .sheet-x{ width:36px; height:36px; border-radius:11px; border:none; background:var(--cream); color:var(--muted); font-size:15px; flex-shrink:0; }
 
   /* ---- recette ---- */
   #recipe{ max-width:620px; margin:0 auto; padding-bottom:120px; }
@@ -117,7 +172,10 @@
   .list-tab.active{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
   #shareBanner{ display:flex; align-items:center; gap:12px; justify-content:space-between; background:var(--cream); border:1px solid var(--line); border-radius:14px; padding:14px 16px; margin-bottom:22px; font-size:15px; font-weight:600; }
   #shareBanner button{ flex:none; font-family:inherit; font-size:13px; font-weight:600; padding:10px 14px; border-radius:10px; border:none; background:var(--accent); color:#fff; }
-  .public-mode #photoBtn, .public-mode #photoRemove, .public-mode #noteBtn, .public-mode #saveBtn, .public-mode #shareBtn, .public-mode #editIngBtn, .public-mode #collBtn{ display:none !important; }
+  .public-mode #photoBtn, .public-mode #photoRemove, .public-mode #noteBtn, .public-mode #saveBtn, .public-mode #shareBtn, .public-mode #editIngBtn, .public-mode #collBtn, .public-mode #moreBtn, .public-mode #moreMenu{ display:none !important; }
+  .more-item{ width:100%; display:flex; gap:11px; align-items:center; padding:11px 12px; border:none; background:none; color:var(--ink); font-family:inherit; font-size:14px; font-weight:600; border-radius:10px; text-align:left; }
+  .more-item:active, .more-item:hover{ background:var(--cream); }
+  .more-item:focus-visible{ outline:2px solid var(--accent); outline-offset:-2px; }
   .coll-chip{ font-family:inherit; font-size:13px; font-weight:600; padding:7px 13px; border-radius:20px; border:1.5px solid var(--line); background:transparent; color:var(--muted); white-space:nowrap; flex:none; }
   .coll-chip.active{ background:var(--accent); color:#fff; border-color:var(--accent); }
   .idea-chip{ font-family:inherit; font-size:14px; font-weight:600; padding:9px 15px; border-radius:20px; border:1.5px solid var(--line); background:transparent; color:var(--muted); }
@@ -138,7 +196,7 @@
   .saved-row .sr-fav{ width:32px; height:32px; border-radius:9px; background:transparent; border:none; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; }
   .saved-row .sr-fav svg{ width:20px; height:20px; }
   .saved-row .sr-fav:active{ background:var(--cream); }
-  .saved-row .sr-del{ width:28px; height:28px; border-radius:8px; background:transparent; color:var(--muted); border:none; font-size:15px; flex-shrink:0; }
+  .saved-row .sr-del{ width:34px; height:34px; border-radius:9px; background:transparent; color:var(--muted); border:none; font-size:15px; flex-shrink:0; }
   .saved-row .sr-thumb{ width:56px; height:56px; border-radius:12px; object-fit:cover; flex-shrink:0; background:var(--cream); }
   .saved-row .sr-cook{ width:36px; height:36px; border-radius:50%; background:var(--accent); color:#fff; border:none; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; box-shadow:0 3px 10px rgba(0,0,0,.18); }
   .accent-dot{ width:38px; height:38px; border-radius:50%; border:3px solid transparent; flex-shrink:0; padding:0; }
@@ -159,6 +217,30 @@
 <body>
 
 <!-- AUTH -->
+<nav id="mainNav" class="hidden" aria-label="Navigation principale">
+  <span id="navLogo" class="mono" aria-hidden="true">mise<b>.</b></span>
+  <button class="nav-item" id="navHome" data-nav="home">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
+    <span id="navHomeLbl">Accueil</span>
+  </button>
+  <button class="nav-item" id="navRecipes" data-nav="recipes">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5v14z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/></svg>
+    <span id="navRecipesLbl">Recettes</span>
+  </button>
+  <button class="nav-item nav-add" id="navAdd" aria-haspopup="dialog" aria-label="Ajouter une recette">
+    <span class="nav-plus" aria-hidden="true">＋<span class="nav-plus-txt" id="navAddPlusTxt">Ajouter</span></span>
+    <span class="nav-add-lbl" id="navAddLbl">Ajouter</span>
+  </button>
+  <button class="nav-item" id="navWeek" data-nav="week">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+    <span id="navWeekLbl">Planning</span>
+  </button>
+  <button class="nav-item" id="navShop" data-nav="shopping">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>
+    <span id="navShopLbl">Courses</span>
+  </button>
+</nav>
+
 <section id="auth" class="wrap hidden">
   <div style="display:flex;align-items:baseline;gap:2px;margin:6vh 0 36px">
     <span class="mono" style="font-size:30px;font-weight:700;letter-spacing:-.02em">mise</span><span class="mono" style="font-size:30px;font-weight:700;color:var(--accent)">.</span>
@@ -183,94 +265,72 @@
 <!-- ACCUEIL -->
 <section id="home" class="wrap hidden">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:44px">
-    <div style="display:flex;align-items:baseline;gap:2px">
+    <div id="homeHeadLogo" style="display:flex;align-items:baseline;gap:2px">
       <span class="mono" style="font-size:26px;font-weight:700;letter-spacing:-.02em">mise</span><span class="mono" style="font-size:26px;font-weight:700;color:var(--accent)">.</span>
     </div>
     <div style="display:flex;gap:10px">
-      <button id="cartBtn" class="theme-toggle press" aria-label="liste de courses">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>
-      </button>
+      <button id="themeToggle" class="theme-toggle press" aria-label="changer de thème"></button>
       <button id="acctBtn" class="theme-toggle press" aria-label="compte">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
       </button>
-      <button id="themeToggle" class="theme-toggle press" aria-label="changer de thème"></button>
     </div>
   </div>
-  <div id="installBanner" class="hidden" style="display:flex;align-items:center;gap:12px;justify-content:space-between;background:var(--cream);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:26px">
+  <div id="introBlock">
+    <h1 id="heroTitle" class="mono" style="font-size:29px;line-height:1.1;font-weight:700;letter-spacing:-.03em;margin-bottom:18px">
+      Qu'est-ce que tu veux cuisiner ?
+    </h1>
+  </div>
+
+  <div style="position:relative;margin-bottom:14px">
+    <svg viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);width:17px;height:17px;pointer-events:none"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+    <input type="search" id="homeSearch" autocomplete="off" placeholder="Rechercher dans mes recettes…" aria-label="Rechercher dans mes recettes" style="width:100%;font-family:inherit;font-size:15px;padding:13px 14px 13px 42px;border-radius:13px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);outline:none" />
+  </div>
+
+  <button id="addRecipeBtn" class="press" style="width:100%;font-size:17px;font-weight:600;padding:16px;border-radius:12px;border:none;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;gap:10px" aria-haspopup="dialog">
+    ＋ <span id="addRecipeLbl">Ajouter une recette</span>
+  </button>
+
+  <div id="homeShortcuts">
+    <button id="ideasOpen" class="press" style="width:100%;text-align:left;background:var(--cream);border:1px solid var(--line);border-radius:14px;padding:15px 16px;display:flex;align-items:center;gap:12px;color:var(--ink)">
+      <span style="font-size:22px">💡</span>
+      <span style="line-height:1.35"><b id="ideasTitle">Trouver une idée avec mes ingrédients</b><br><span id="ideasSub" style="font-size:13px;color:var(--muted)">Dis ce que t'as dans le frigo → mise. te trouve des idées</span></span>
+    </button>
+    <button id="weekOpen" class="press" style="width:100%;text-align:left;background:var(--cream);border:1px solid var(--line);border-radius:14px;padding:15px 16px;display:flex;align-items:center;gap:12px;color:var(--ink)">
+      <span style="font-size:22px">📅</span>
+      <span style="line-height:1.35"><b id="weekTitle">Planifier ma semaine</b><br><span id="weekSub" style="font-size:13px;color:var(--muted)">Planifie tes repas → liste de courses en un coup</span></span>
+    </button>
+  </div>
+
+  <!-- Recettes récentes (aperçu) -->
+  <div id="homeRecent" class="hidden" style="margin-top:30px">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px">
+      <div id="recentTitle" class="eyebrow" style="margin-bottom:0">RECETTES RÉCENTES</div>
+      <button id="seeAllBtn" style="background:none;border:none;color:var(--accent);font-size:13px;font-weight:700;padding:4px 0">Tout voir →</button>
+    </div>
+    <div id="homeRecentList" class="saved-list"></div>
+  </div>
+
+  <div id="installBanner" class="hidden" style="display:flex;align-items:center;gap:12px;justify-content:space-between;background:var(--cream);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-top:26px">
     <div style="font-size:13px;line-height:1.4;font-weight:600"><span id="installTitle">📲 Installe mise. sur ton écran d'accueil</span><br><span id="installSub" style="color:var(--muted);font-weight:400">Vraie app + notifications</span></div>
     <div style="display:flex;gap:6px;flex:none;align-items:center">
       <button id="installBtn" style="font-family:inherit;font-size:13px;font-weight:600;padding:9px 13px;border-radius:10px;border:none;background:var(--accent);color:#fff">Installer</button>
       <button id="installClose" aria-label="fermer" style="font-size:15px;padding:0 4px;border:none;background:transparent;color:var(--muted)">✕</button>
     </div>
   </div>
-  <div id="introBlock">
-    <h1 id="heroTitle" class="mono" style="font-size:34px;line-height:1.05;font-weight:700;letter-spacing:-.03em;margin-bottom:14px">
-      La recette,<br>sans le bouton pause.
-    </h1>
-    <p id="heroSub" style="font-size:16px;color:var(--muted);line-height:1.5;margin-bottom:30px;max-width:460px">
-      Colle le lien d’une vidéo (YouTube, Shorts, Instagram, TikTok, Facebook) ou d’un site de recettes (Marmiton, 750g…). Tu récupères les ingrédients, les portions ajustables et un mode cuisson étape par étape.
-    </p>
-  </div>
 
-  <label id="urlLabel" style="display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:8px">LIEN VIDÉO OU SITE</label>
-  <input id="url" placeholder="YouTube, TikTok, Marmiton, Google, blog…" style="margin-bottom:14px" />
-  <div id="preview" class="hidden rise" style="display:flex;gap:13px;align-items:center;margin-bottom:16px;padding:11px 14px;background:var(--surface);border-radius:14px;border:1px solid var(--line)">
-    <span id="platIcon" class="plat-badge"></span>
-    <span id="detectLabel" style="font-size:14px;color:var(--green);font-weight:600">Vidéo détectée ✓</span>
-  </div>
+</section>
 
-  <button id="decodeBtn" class="press" style="width:100%;font-size:17px;font-weight:600;padding:16px;border-radius:12px;border:none;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;gap:10px">
-    Décoder la recette
-  </button>
-  <p id="error" class="hidden rise" style="font-size:14px;color:var(--accent);margin-top:14px;line-height:1.5"></p>
-
-  <button id="ideasOpen" class="press" style="width:100%;text-align:left;margin-top:16px;background:var(--cream);border:1px solid var(--line);border-radius:14px;padding:15px 16px;display:flex;align-items:center;gap:12px;color:var(--ink)">
-    <span style="font-size:22px">💡</span>
-    <span style="line-height:1.35"><b id="ideasTitle">Pas d'inspiration ?</b><br><span id="ideasSub" style="font-size:13px;color:var(--muted)">Dis ce que t'as dans le frigo → mise. te trouve des idées</span></span>
-  </button>
-
-  <button id="weekOpen" class="press" style="width:100%;text-align:left;margin-top:12px;background:var(--cream);border:1px solid var(--line);border-radius:14px;padding:15px 16px;display:flex;align-items:center;gap:12px;color:var(--ink)">
-    <span style="font-size:22px">📅</span>
-    <span style="line-height:1.35"><b id="weekTitle">Menu de la semaine</b><br><span id="weekSub" style="font-size:13px;color:var(--muted)">Planifie tes repas → liste de courses en un coup</span></span>
-  </button>
-
-  <div style="margin-top:28px;border-top:1px solid var(--line);padding-top:20px">
-    <button id="manualToggle" style="background:none;border:none;color:var(--muted);font-size:13px;font-weight:600;padding:0">📋 Coller un texte de recette</button>
-    <div id="manualBox" class="hidden rise" style="margin-top:12px">
-      <textarea id="manualText" rows="6" placeholder="Ingrédients : 250g de farine…&#10;Étapes : 1. Mélanger…" style="resize:vertical"></textarea>
-      <button id="micManual" class="mic-btn">🎤 Dicter</button>
-      <button id="manualBtn" class="press" style="margin-top:10px;font-size:15px;font-weight:600;padding:12px 20px;border-radius:10px;border:1.5px solid var(--ink);background:transparent;color:var(--ink)">Structurer ce texte</button>
-    </div>
-  </div>
-
-  <div style="margin-top:20px;border-top:1px solid var(--line);padding-top:20px">
-    <button id="createToggle" style="background:none;border:none;color:var(--accent);font-size:13px;font-weight:700;padding:0">✨ Créer une recette avec l'IA</button>
-    <div id="createBox" class="hidden rise" style="margin-top:12px">
-      <p id="createDesc" style="font-size:13px;color:var(--muted);margin-bottom:8px;line-height:1.5">Décris ce que tu veux cuisiner, mise. te génère la recette complète avec un titre.</p>
-      <textarea id="createText" rows="4" placeholder="Ex : un gâteau au yaourt moelleux pour 6, sans beurre…" style="resize:vertical"></textarea>
-      <button id="micCreate" class="mic-btn">🎤 Dicter</button>
-      <button id="createBtn" class="press" style="margin-top:10px;font-size:15px;font-weight:600;padding:12px 20px;border-radius:10px;border:none;background:var(--accent);color:#fff">✨ Créer la recette</button>
-    </div>
-  </div>
-
-  <div style="margin-top:20px;border-top:1px solid var(--line);padding-top:20px">
-    <button id="imgPickBtn" class="press" style="width:100%;font-size:15px;font-weight:600;padding:12px 20px;border-radius:10px;border:1.5px solid var(--line);background:transparent;color:var(--ink);display:flex;align-items:center;justify-content:center;gap:8px">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-      <span id="imgPickLabel">Depuis une photo / capture</span>
-    </button>
-    <p id="imgPickDesc" style="font-size:13px;color:var(--muted);margin-top:10px;line-height:1.5">Une capture d'écran ou une photo d'une recette (texte, ingrédients) → mise. la lit pour toi.</p>
-    <input type="file" id="recipeImgInput" accept="image/*" style="display:none" />
-  </div>
-
-  <!-- Mes recettes / Historique -->
-  <div id="listSection" class="hidden" style="margin-top:40px">
+<!-- PAGE RECETTES -->
+<section id="recipes" class="wrap hidden">
+  <h1 id="recipesTitle" class="mono" style="font-size:26px;font-weight:700;letter-spacing:-.02em;margin-bottom:20px">Mes recettes</h1>
+  <div id="listSection">
     <div style="display:flex;gap:8px;margin-bottom:16px">
-      <button id="tabSaved" class="list-tab active">Mes recettes</button>
-      <button id="tabHistory" class="list-tab">Historique</button>
+      <button id="tabSaved" class="list-tab active">Enregistrées</button>
+      <button id="tabHistory" class="list-tab">Récentes</button>
     </div>
     <div id="collFilters" class="hidden" style="display:flex;gap:7px;overflow-x:auto;margin-bottom:14px;padding-bottom:2px"></div>
     <div style="position:relative;margin-bottom:14px">
-      <svg viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);width:17px;height:17px;pointer-events:none"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);width:17px;height:17px;pointer-events:none"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
       <input type="search" id="searchInput" placeholder="Rechercher un plat, un ingrédient…" autocomplete="off" style="width:100%;font-family:inherit;font-size:15px;padding:12px 14px 12px 42px;border-radius:13px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);outline:none" />
     </div>
     <div id="recipeList" class="saved-list"></div>
@@ -467,22 +527,29 @@
     <div class="hero-shade"></div>
     <div class="hero-top">
       <button id="backBtn" class="hero-btn press" aria-label="retour">←</button>
-      <div style="display:flex;gap:9px">
-        <button id="photoBtn" class="hero-btn press" aria-label="photo">
-          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-        </button>
-        <button id="photoRemove" class="hero-btn press hidden" aria-label="retirer la photo">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
-        </button>
-        <button id="noteBtn" class="hero-btn press" aria-label="note">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
-        </button>
-        <button id="shareBtn" class="hero-btn press" aria-label="partager">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
-        </button>
+      <div style="display:flex;gap:9px;position:relative">
         <button id="saveBtn" class="hero-btn press" aria-label="sauvegarder">
           <svg id="saveIcon" width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M6 4h12v16l-6-4-6 4V4z" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg>
         </button>
+        <button id="moreBtn" class="hero-btn press" aria-label="plus d'actions" aria-haspopup="true" aria-expanded="false" style="font-size:22px;line-height:0">⋯</button>
+        <div id="moreMenu" class="hidden" style="position:absolute;top:46px;right:0;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:14px;box-shadow:0 10px 28px rgba(0,0,0,.3);padding:6px;min-width:220px;z-index:30">
+          <button id="photoBtn" class="more-item">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            <span id="morePhotoLbl">Photo du plat</span>
+          </button>
+          <button id="photoRemove" class="more-item hidden">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+            <span id="morePhotoRmLbl">Retirer la photo</span>
+          </button>
+          <button id="noteBtn" class="more-item">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+            <span id="moreNoteLbl">Ma note</span>
+          </button>
+          <button id="shareBtn" class="more-item">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+            <span id="moreShareLbl">Partager</span>
+          </button>
+        </div>
       </div>
     </div>
     <div class="hero-title">
@@ -509,7 +576,7 @@
       </div>
     </div>
 
-    <button id="collBtn" class="press" style="display:inline-flex;align-items:center;gap:6px;font-family:inherit;font-size:14px;font-weight:600;padding:10px 18px;border-radius:20px;border:none;background:var(--accent);color:#fff;margin-bottom:22px">🏷️ <span id="collBtnLabel">Classer</span></button>
+    <button id="collBtn" class="press" style="display:inline-flex;align-items:center;gap:6px;font-family:inherit;font-size:14px;font-weight:600;padding:10px 18px;border-radius:20px;border:1.5px solid var(--line);background:transparent;color:var(--ink);margin-bottom:22px"><span id="collBtnIcon" aria-hidden="true">🏷️</span> <span id="collBtnLabel">Ajouter à une collection</span></button>
     <a id="sourceLink" target="_blank" rel="noopener" class="hidden" style="display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:600;padding:10px 16px;border-radius:20px;border:1.5px solid var(--line);background:transparent;color:var(--ink);text-decoration:none;margin-bottom:22px;margin-left:8px">🔗 Voir la vidéo</a>
 
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
@@ -540,7 +607,7 @@
       <span id="stepCount" class="mono" style="font-size:14px;color:rgba(251,248,243,.6)"></span>
     </div>
   </div>
-  <div id="progress" style="display:flex;gap:4px;margin-bottom:40px"></div>
+  <div id="progress" style="display:flex;gap:4px;margin-bottom:24px"></div>
   <div id="stepBody" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column"></div>
   <div style="display:flex;gap:12px;margin-top:24px">
     <button id="prevStep" class="press" style="flex:1;font-size:16px;font-weight:600;padding:16px;border-radius:14px;border:1.5px solid rgba(251,248,243,.2);background:transparent;color:#FBF8F3">Précédent</button>
@@ -580,7 +647,7 @@
 <!-- CLASSER (collections) -->
 <div id="collSheet" class="hidden" style="position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center">
   <div style="background:var(--surface);color:var(--ink);width:100%;max-width:620px;border-radius:20px 20px 0 0;padding:22px 20px calc(24px + env(safe-area-inset-bottom))">
-    <div id="collSheetTitle" class="mono" style="font-size:19px;font-weight:700;margin-bottom:4px">Classer la recette</div>
+    <div id="collSheetTitle" class="mono" style="font-size:19px;font-weight:700;margin-bottom:4px">Ajouter à une collection</div>
     <div id="collSheetDesc" style="font-size:13px;color:var(--muted);margin-bottom:16px">Choisis une collection ou crées-en une.</div>
     <div id="collSheetList" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px"></div>
     <button id="collClose" style="width:100%;font-family:inherit;font-size:15px;font-weight:600;padding:12px;border-radius:12px;border:1.5px solid var(--line);background:transparent;color:var(--ink)">Fermer</button>
@@ -597,6 +664,82 @@
       <li>Appuie sur <b>Ajouter</b> — et c'est fait !</li>
     </ol>
     <button id="installSheetClose" style="font-family:inherit;width:100%;font-size:15px;font-weight:600;padding:13px;border-radius:12px;border:1.5px solid var(--line);background:transparent;color:var(--ink)">Compris</button>
+  </div>
+</div>
+
+<!-- SHEET AJOUTER UNE RECETTE -->
+<div id="addSheet" class="hidden" style="position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center">
+  <div id="addSheetPanel" role="dialog" aria-modal="true" aria-labelledby="addSheetTitle"
+       style="background:var(--surface);color:var(--ink);width:100%;max-width:560px;border-radius:20px 20px 0 0;padding:22px 22px calc(26px + env(safe-area-inset-bottom));max-height:88vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:10px;min-width:0">
+        <button id="addSheetBack" class="sheet-x hidden" aria-label="revenir aux méthodes">←</button>
+        <div id="addSheetTitle" class="mono" style="font-size:20px;font-weight:700">Ajouter une recette</div>
+      </div>
+      <button id="addSheetClose" class="sheet-x" aria-label="fermer">✕</button>
+    </div>
+    <p id="error" class="hidden rise" role="alert" style="font-size:14px;color:var(--accent);margin:0 0 14px;line-height:1.5"></p>
+
+    <div id="addMethods">
+      <button class="add-method press" id="methodLink">
+        <span class="am-ico" aria-hidden="true">🔗</span>
+        <span><b id="methodLinkTitle">Depuis un lien</b><span class="am-sub" id="methodLinkSub">YouTube, TikTok, Instagram ou un site de cuisine</span></span>
+      </button>
+      <button class="add-method press" id="imgPickBtn">
+        <span class="am-ico" aria-hidden="true">📷</span>
+        <span><b id="imgPickLabel">Depuis une photo / capture</b><span class="am-sub" id="imgPickDesc">Une capture d'écran ou une photo d'une recette → mise. la lit pour toi.</span></span>
+      </button>
+      <button class="add-method press" id="manualToggle">
+        <span class="am-ico" aria-hidden="true">📋</span>
+        <span><b id="manualToggleLbl">Coller un texte de recette</b><span class="am-sub" id="methodTextSub">Colle les ingrédients et les étapes</span></span>
+      </button>
+      <button class="add-method press" id="createToggle">
+        <span class="am-ico" aria-hidden="true">✨</span>
+        <span><b id="createToggleLbl">Créer une recette avec l'IA</b><span class="am-sub" id="methodAISub">Décris le plat que tu aimerais préparer</span></span>
+      </button>
+    </div>
+
+    <div id="addPanelLink" class="hidden">
+      <label id="urlLabel" for="url" style="display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:8px">LIEN VIDÉO OU SITE</label>
+      <input id="url" placeholder="YouTube, TikTok, Marmiton, Google, blog…" style="margin-bottom:14px" />
+      <div id="preview" class="hidden rise" style="display:flex;gap:13px;align-items:center;margin-bottom:16px;padding:11px 14px;background:var(--cream);border-radius:14px;border:1px solid var(--line)">
+        <span id="platIcon" class="plat-badge"></span>
+        <span id="detectLabel" role="status" style="font-size:14px;color:var(--green);font-weight:600">Vidéo détectée ✓</span>
+      </div>
+      <button id="decodeBtn" class="press" style="width:100%;font-size:17px;font-weight:600;padding:16px;border-radius:12px;border:none;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;gap:10px">
+        Importer la recette
+      </button>
+    </div>
+
+    <div id="addPanelText" class="hidden">
+      <div id="manualBox">
+        <textarea id="manualText" rows="6" placeholder="Ingrédients : 250g de farine…&#10;Étapes : 1. Mélanger…" style="resize:vertical"></textarea>
+        <button id="micManual" class="mic-btn">🎤 Dicter</button>
+        <button id="manualBtn" class="press" style="margin-top:10px;width:100%;font-size:16px;font-weight:600;padding:14px 20px;border-radius:12px;border:none;background:var(--accent);color:#fff">Structurer ce texte</button>
+      </div>
+    </div>
+
+    <div id="addPanelAI" class="hidden">
+      <div id="createBox">
+        <p id="createDesc" style="font-size:13px;color:var(--muted);margin-bottom:8px;line-height:1.5">Décris ce que tu veux cuisiner, mise. te génère la recette complète avec un titre.</p>
+        <textarea id="createText" rows="4" placeholder="Ex : un gâteau au yaourt moelleux pour 6, sans beurre…" style="resize:vertical"></textarea>
+        <button id="micCreate" class="mic-btn">🎤 Dicter</button>
+        <button id="createBtn" class="press" style="margin-top:10px;width:100%;font-size:16px;font-weight:600;padding:14px 20px;border-radius:12px;border:none;background:var(--accent);color:#fff">✨ Créer la recette</button>
+      </div>
+    </div>
+    <input type="file" id="recipeImgInput" accept="image/*" style="display:none" />
+  </div>
+</div>
+
+<!-- CONFIRMATION (suppression, etc.) -->
+<div id="confirmSheet" class="hidden" style="position:fixed;inset:0;z-index:85;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:24px">
+  <div id="confirmPanel" role="dialog" aria-modal="true" aria-labelledby="confirmTitle" style="background:var(--surface);color:var(--ink);width:100%;max-width:340px;border-radius:18px;padding:22px">
+    <div id="confirmTitle" class="mono" style="font-size:17px;font-weight:700;margin-bottom:8px">Supprimer la recette ?</div>
+    <p id="confirmDesc" style="font-size:14px;color:var(--muted);line-height:1.5;margin-bottom:18px">Cette recette sera supprimée définitivement.</p>
+    <div style="display:flex;gap:10px">
+      <button id="confirmCancel" style="flex:1;font-family:inherit;font-size:15px;font-weight:600;padding:13px;border-radius:12px;border:1.5px solid var(--line);background:var(--cream);color:var(--ink)">Annuler</button>
+      <button id="confirmOk" style="flex:1;font-family:inherit;font-size:15px;font-weight:600;padding:13px;border-radius:12px;border:none;background:#C0492F;color:#fff">Supprimer</button>
+    </div>
   </div>
 </div>
 
@@ -627,8 +770,8 @@
 </div>
 
 <!-- CHARGEMENT -->
-<div id="loadOverlay" class="hidden" style="position:fixed;inset:0;background:var(--paper);z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px">
-  <div id="loadSpin" style="font-size:60px;animation:bob 1s ease-in-out infinite">🍳</div>
+<div id="loadOverlay" class="hidden" role="status" aria-live="polite" style="position:fixed;inset:0;background:var(--paper);z-index:75;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px">
+  <div id="loadSpin" aria-hidden="true" style="font-size:60px;animation:bob 1s ease-in-out infinite">🍳</div>
   <div id="loadMsg" class="mono" style="font-size:18px;font-weight:600;color:var(--ink)">Lecture de la vidéo…</div>
   <div id="loadHint" style="font-size:13px;color:var(--muted)">quelques secondes…</div>
 </div>
@@ -724,7 +867,30 @@ function fmtTime(s){
   if(h>0) return h+":"+String(m).padStart(2,"0")+":"+String(sec).padStart(2,"0");
   return m+":"+String(sec).padStart(2,"0");
 }
-function show(id){ ["auth","home","recipe","cook","settings","ideas","shopping","convert","week"].forEach(s=>$(s).classList.toggle("hidden", s!==id)); }
+function show(id){
+  ["auth","home","recipes","recipe","cook","settings","ideas","shopping","convert","week"].forEach(s=>$(s).classList.toggle("hidden", s!==id));
+  updateNav(id);
+}
+// ---- navigation persistante ----
+// le bouton "+" est une ACTION (ouvre la sheet), jamais une destination : pas d'état actif, pas de saveView.
+const NAV_TAB={ home:"navHome", recipes:"navRecipes", week:"navWeek", shopping:"navShop" };
+const NAV_VISIBLE=["home","recipes","settings","ideas","shopping","convert","week"];   // écrans où la nav est affichée
+function updateNav(id){
+  const nav=$("mainNav"); if(!nav) return;
+  const visible=NAV_VISIBLE.includes(id);
+  nav.classList.toggle("hidden", !visible);
+  document.body.classList.toggle("nav-on", visible);
+  document.querySelectorAll("#mainNav .nav-item[data-nav]").forEach(b=>{
+    const active = NAV_TAB[id]===b.id;   // idées/réglages : aucun onglet actif plutôt qu'un état trompeur
+    b.classList.toggle("active", active);
+    if(active) b.setAttribute("aria-current","page"); else b.removeAttribute("aria-current");
+  });
+}
+$("navHome").addEventListener("click", ()=>{ renderList(); show("home"); saveView("home"); window.scrollTo(0,0); });
+$("navRecipes").addEventListener("click", ()=>{ renderList(); show("recipes"); window.scrollTo(0,0); });
+$("navWeek").addEventListener("click", ()=>{ renderWeek(); show("week"); window.scrollTo(0,0); });
+$("navShop").addEventListener("click", ()=>{ renderShopping(); show("shopping"); window.scrollTo(0,0); });
+$("navAdd").addEventListener("click", ()=>openAddSheet($("navAdd"))); // ACTION pure : ouvre la sheet par-dessus l'écran courant, ne change pas la vue
 function setError(msg){ const e=$("error"); if(!msg){e.classList.add("hidden");return;} e.textContent=msg; e.classList.remove("hidden"); }
 // petit toast visible sur n'importe quel écran (erreurs hors accueil)
 let toastTimer=null;
@@ -732,6 +898,7 @@ function toast(msg){
   let el=$("miseToast");
   if(!el){
     el=document.createElement("div"); el.id="miseToast";
+    el.setAttribute("role","status"); el.setAttribute("aria-live","polite");
     // couleurs EN DUR (pas de variable CSS) : mêmes teintes que les blocs sombres de l'app
     // (#2E2422 / #F5EDE8 = --panel / --panel-text, identiques en thème clair et sombre). Contraste ~12:1 (WCAG AAA).
     el.style.cssText="position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#2E2422;color:#F5EDE8;border:1px solid rgba(245,237,232,.25);font-size:14px;font-weight:600;padding:12px 18px;border-radius:12px;z-index:9999;max-width:86vw;text-align:center;box-shadow:0 6px 24px rgba(0,0,0,.35);transition:opacity .3s;pointer-events:none";
@@ -765,25 +932,42 @@ try{ curLang=(localStorage.getItem("mise_lang")==="en")?"en":"fr"; }catch(e){}
 const STR={
  fr:{
   // accueil (étape 1)
-  heroTitle:"La recette,<br>sans le bouton pause.",
-  heroSub:"Colle le lien d'une vidéo (YouTube, Shorts, Instagram, TikTok, Facebook) ou d'un site de recettes (Marmiton, 750g…). Tu récupères les ingrédients, les portions ajustables et un mode cuisson étape par étape.",
-  urlLabel:"LIEN VIDÉO OU SITE", urlPh:"YouTube, TikTok, Marmiton, Google, blog…",
+  heroTitle:"Qu'est-ce que tu veux cuisiner ?",
+  homeSearchPh:"Rechercher dans mes recettes…",
+  recentTitle:"RECETTES RÉCENTES", seeAll:"Tout voir →",
+  recipesTitle:"Mes recettes",
+  delConfirmTitle:"Supprimer la recette ?", delConfirmDesc:"Cette recette sera supprimée définitivement.",
+  delConfirmOk:"Supprimer", confirmCancel:"Annuler",
+  saveRecipeBtn:"Enregistrer la recette", savedToast:"Recette enregistrée ✓",
+  stepOf:(n,total)=>`Étape ${n} sur ${total}`,
+  cookExitTitle:"Quitter le mode cuisson ?", cookExitDesc:"Un minuteur est encore en cours.", cookExitOk:"Quitter",
+  ariaCook:"cuisiner", ariaFav:"favori", ariaSave:"enregistrer", ariaShare:"partager", ariaRemove:"retirer des enregistrées", ariaDelete:"supprimer",
+  morePhoto:"Photo du plat", morePhotoRm:"Retirer la photo", moreNote:"Ma note", moreShare:"Partager",
+  moreBtnAria:"Plus d'actions",
+  urlLabel:"Lien de la vidéo ou du site", urlPh:"YouTube, TikTok, Marmiton, Google, blog…",
   detected:"Vidéo détectée ✓",
   detectedPlat:(p)=>p==="Web"?"Site de recettes détecté ✓":`Vidéo ${p} détectée ✓`,
-  decodeBtn:"Décoder la recette", decoding:"Décodage…",
+  decodeBtn:"Importer la recette", decoding:"Import en cours…",
   errNotFound:"Recette introuvable. Colle la description ci-dessous.",
   errServer:"Le serveur n'a pas répondu. Réessaie dans un instant.",
+  navHome:"Accueil", navRecipes:"Recettes", navAdd:"Ajouter", navWeek:"Planning", navShop:"Courses",
+  navAddAria:"Ajouter une recette",
+  addRecipeBtn:"Ajouter une recette", addSheetTitle:"Ajouter une recette",
+  methodLink:"Depuis un lien", methodLinkSub:"YouTube, TikTok, Instagram ou un site de cuisine",
+  methodTextSub:"Colle les ingrédients et les étapes",
+  methodAISub:"Décris le plat que tu aimerais préparer",
+  sheetClose:"Fermer", sheetBack:"Revenir aux méthodes",
   transAllProg:(d,n)=>`🌐 Traduction de tes recettes… ${d}/${n}`,
   transAllDone:(n)=>`✅ ${n} recette${n>1?"s":""} traduite${n>1?"s":""}`,
   transAllFail:(n)=>`⚠️ ${n} recette${n>1?"s":""} n'${n>1?"ont":"a"} pas pu être traduite${n>1?"s":""} — réessaie en rechangeant la langue.`,
-  ideasTitle:"Pas d'inspiration ?", ideasSub:"Dis ce que t'as dans le frigo → mise. te trouve des idées",
-  weekTitle:"Menu de la semaine", weekSub:"Planifie tes repas → liste de courses en un coup",
-  manualToggle:"📋 Coller un texte de recette", manualPh:"Ingrédients : 250g de farine…\nÉtapes : 1. Mélanger…", manualBtn:"Structurer ce texte",
-  createToggle:"✨ Créer une recette avec l'IA", createDesc:"Décris ce que tu veux cuisiner, mise. te génère la recette complète avec un titre.", createPh:"Ex : un gâteau au yaourt moelleux pour 6, sans beurre…", createBtn:"✨ Créer la recette",
+  ideasTitle:"Trouver une idée avec mes ingrédients", ideasSub:"Dis ce que t'as dans le frigo → mise. te trouve des idées",
+  weekTitle:"Planifier ma semaine", weekSub:"Planifie tes repas → liste de courses en un coup",
+  manualToggle:"Coller un texte de recette", manualPh:"Ingrédients : 250g de farine…\nÉtapes : 1. Mélanger…", manualBtn:"Créer la recette",
+  createToggle:"Créer une recette avec l'IA", createDesc:"Décris ce que tu veux cuisiner, mise. te génère la recette complète avec un titre.", createPh:"Ex : un gâteau au yaourt moelleux pour 6, sans beurre…", createBtn:"✨ Créer la recette",
   dictate:"🎤 Dicter", listening:"● En écoute…",
-  imgPickLabel:"Depuis une photo / capture", imgPickDesc:"Une capture d'écran ou une photo d'une recette (texte, ingrédients) → mise. la lit pour toi.",
-  tabSaved:"Mes recettes", tabHistory:"Historique", searchPh:"Rechercher un plat, un ingrédient…",
-  emptySaved:"Aucune recette enregistrée. Ouvre une recette et appuie sur le marque-page 🔖.", emptyHistory:"Ton historique est vide.",
+  imgPickLabel:"Scanner une recette", imgPickDesc:"Prends une photo ou importe une capture d'écran",
+  tabSaved:"Enregistrées", tabHistory:"Récentes", searchPh:"Rechercher un plat, un ingrédient…",
+  emptySaved:"Aucune recette enregistrée. Ouvre une recette et appuie sur le marque-page 🔖.", emptyHistory:"Aucune recette récente. Ajoute ta première recette avec le bouton ＋ !",
   emptySearch:(q)=>`Aucune recette ne correspond à « ${q} ».`,
   installTitle:"📲 Installe mise. sur ton écran d'accueil", installSub:"Vraie app + notifications", installBtn:"Installer",
   errLink:"Lien non reconnu. Colle un lien complet (vidéo ou site de recettes) commençant par https://.",
@@ -839,11 +1023,11 @@ const STR={
   shareBannerText:'<b>mise.</b> · recette partagée<br><span style="font-size:13px;color:var(--muted)">Décode tes propres recettes de vidéos, gratuitement.</span>',
   shareCtaSignup:"Créer mon compte", shareCtaAdd:"Ajouter à mes recettes",
   servFor:"Pour", servOne:"personne", servMany:"personnes",
-  collClassify:"Classer", seeVideo:"🔗 Voir la vidéo",
+  collClassify:"Ajouter à une collection", seeVideo:"🔗 Voir la source",
   ingLabel:"INGRÉDIENTS", noBalBtn:"🥄 Sans balance", noteLabel:"MA NOTE",
   shopAdd:"🛒 Ajouter aux courses", shopAddedOk:"✓ Ajouté aux courses",
   editIngOpen:"Modifier les ingrédients", cookStart:"Lancer le mode cuisson →",
-  collSheetTitle:"Classer la recette", collSheetDesc:"Choisis une collection ou crées-en une.",
+  collSheetTitle:"Ajouter à une collection", collSheetDesc:"Choisis une collection ou crées-en une.",
   collNone:"Aucune", collNew:"+ Nouvelle", collPrompt:"Nom de la collection (Dessert, Salé, Rapide…) :", collCloseBtn:"Fermer",
   editIngTitle:"Modifier", editIngHint:"Quantité · unité · ingrédient",
   editAddBtn:"+ Ajouter un ingrédient", editResetBtn:"Valeurs d'origine", editSaveBtn:"Enregistrer",
@@ -861,25 +1045,42 @@ const STR={
  },
  en:{
   // home (step 1)
-  heroTitle:"The recipe,<br>without the pause button.",
-  heroSub:"Paste a video link (YouTube, Shorts, Instagram, TikTok, Facebook) or a recipe website (Allrecipes, BBC Good Food…). You get the ingredients, adjustable servings, and a step-by-step cooking mode.",
-  urlLabel:"VIDEO OR SITE LINK", urlPh:"YouTube, TikTok, recipe sites, Google, blogs…",
+  heroTitle:"What do you want to cook?",
+  homeSearchPh:"Search my recipes…",
+  recentTitle:"RECENT RECIPES", seeAll:"See all →",
+  recipesTitle:"My recipes",
+  delConfirmTitle:"Delete this recipe?", delConfirmDesc:"This recipe will be permanently deleted.",
+  delConfirmOk:"Delete", confirmCancel:"Cancel",
+  saveRecipeBtn:"Save the recipe", savedToast:"Recipe saved ✓",
+  stepOf:(n,total)=>`Step ${n} of ${total}`,
+  cookExitTitle:"Leave cooking mode?", cookExitDesc:"A timer is still running.", cookExitOk:"Leave",
+  ariaCook:"cook", ariaFav:"favorite", ariaSave:"save", ariaShare:"share", ariaRemove:"remove from saved", ariaDelete:"delete",
+  morePhoto:"Dish photo", morePhotoRm:"Remove photo", moreNote:"My note", moreShare:"Share",
+  moreBtnAria:"More actions",
+  urlLabel:"Video or website link", urlPh:"YouTube, TikTok, recipe sites, Google, blogs…",
   detected:"Video detected ✓",
   detectedPlat:(p)=>p==="Web"?"Recipe site detected ✓":`${p} video detected ✓`,
-  decodeBtn:"Decode the recipe", decoding:"Decoding…",
+  decodeBtn:"Import the recipe", decoding:"Importing…",
   errNotFound:"Recipe not found. Paste the description below.",
   errServer:"The server didn't respond. Try again in a moment.",
+  navHome:"Home", navRecipes:"Recipes", navAdd:"Add", navWeek:"Planner", navShop:"Groceries",
+  navAddAria:"Add a recipe",
+  addRecipeBtn:"Add a recipe", addSheetTitle:"Add a recipe",
+  methodLink:"From a link", methodLinkSub:"YouTube, TikTok, Instagram or a cooking site",
+  methodTextSub:"Paste the ingredients and steps",
+  methodAISub:"Describe the dish you'd like to make",
+  sheetClose:"Close", sheetBack:"Back to methods",
   transAllProg:(d,n)=>`🌐 Translating your recipes… ${d}/${n}`,
   transAllDone:(n)=>`✅ ${n} recipe${n>1?"s":""} translated`,
   transAllFail:(n)=>`⚠️ ${n} recipe${n>1?"s":""} couldn't be translated — switch the language again to retry.`,
-  ideasTitle:"No inspiration?", ideasSub:"Tell mise. what's in your fridge → it finds ideas for you",
-  weekTitle:"Weekly menu", weekSub:"Plan your meals → shopping list in one tap",
-  manualToggle:"📋 Paste a recipe text", manualPh:"Ingredients: 250g flour…\nSteps: 1. Mix…", manualBtn:"Structure this text",
-  createToggle:"✨ Create a recipe with AI", createDesc:"Describe what you want to cook — mise. generates the full recipe with a title.", createPh:"E.g.: a soft yogurt cake for 6, butter-free…", createBtn:"✨ Create the recipe",
+  ideasTitle:"Find an idea with my ingredients", ideasSub:"Tell mise. what's in your fridge → it finds ideas for you",
+  weekTitle:"Plan my week", weekSub:"Plan your meals → shopping list in one tap",
+  manualToggle:"Paste a recipe text", manualPh:"Ingredients: 250g flour…\nSteps: 1. Mix…", manualBtn:"Create the recipe",
+  createToggle:"Create a recipe with AI", createDesc:"Describe what you want to cook — mise. generates the full recipe with a title.", createPh:"E.g.: a soft yogurt cake for 6, butter-free…", createBtn:"✨ Create the recipe",
   dictate:"🎤 Dictate", listening:"● Listening…",
-  imgPickLabel:"From a photo / screenshot", imgPickDesc:"A screenshot or photo of a recipe (text, ingredients) → mise. reads it for you.",
-  tabSaved:"My recipes", tabHistory:"History", searchPh:"Search a dish, an ingredient…",
-  emptySaved:"No saved recipes yet. Open a recipe and tap the bookmark 🔖.", emptyHistory:"Your history is empty.",
+  imgPickLabel:"Scan a recipe", imgPickDesc:"Take a photo or import a screenshot",
+  tabSaved:"Saved", tabHistory:"Recent", searchPh:"Search a dish, an ingredient…",
+  emptySaved:"No saved recipes yet. Open a recipe and tap the bookmark 🔖.", emptyHistory:"No recent recipes. Add your first one with the ＋ button!",
   emptySearch:(q)=>`No recipe matches “${q}”.`,
   installTitle:"📲 Install mise. on your home screen", installSub:"Real app + notifications", installBtn:"Install",
   errLink:"Link not recognized. Paste a full link (video or recipe site) starting with https://.",
@@ -935,11 +1136,11 @@ const STR={
   shareBannerText:'<b>mise.</b> · shared recipe<br><span style="font-size:13px;color:var(--muted)">Decode your own recipes from videos, for free.</span>',
   shareCtaSignup:"Create my account", shareCtaAdd:"Add to my recipes",
   servFor:"For", servOne:"person", servMany:"people",
-  collClassify:"Organize", seeVideo:"🔗 Watch the video",
+  collClassify:"Add to a collection", seeVideo:"🔗 View source",
   ingLabel:"INGREDIENTS", noBalBtn:"🥄 No scale", noteLabel:"MY NOTE",
   shopAdd:"🛒 Add to groceries", shopAddedOk:"✓ Added to groceries",
   editIngOpen:"Edit the ingredients", cookStart:"Start cooking mode →",
-  collSheetTitle:"Organize the recipe", collSheetDesc:"Pick a collection or create one.",
+  collSheetTitle:"Add to a collection", collSheetDesc:"Pick a collection or create one.",
   collNone:"None", collNew:"+ New", collPrompt:"Collection name (Dessert, Savory, Quick…):", collCloseBtn:"Close",
   editIngTitle:"Edit", editIngHint:"Amount · unit · ingredient",
   editAddBtn:"+ Add an ingredient", editResetBtn:"Original values", editSaveBtn:"Save",
@@ -1042,13 +1243,111 @@ $("decodeBtn").addEventListener("click", async ()=>{
   loading(true);
   try{
     const r=await callBackend({url:d.url});
-    if(!r.found){ setError(r.error||t("errNotFound")); $("manualBox").classList.remove("hidden"); }
+    if(!r.found){ setError(r.error||t("errNotFound")); showAddPanel("text"); }
     else { r.platform=d.platform; r.sourceUrl=d.url; await addToHistory(r); loadRecipe(r); }
   }catch(e){ setError(t("errServer")); }
   loading(false);
 });
-$("manualToggle").addEventListener("click", ()=> $("manualBox").classList.toggle("hidden"));
-$("createToggle").addEventListener("click", ()=> $("createBox").classList.toggle("hidden"));
+// ---- sheet "Ajouter une recette" ----
+// dialog accessible : focus initial dedans, focus piégé, Échap ferme, focus restauré à la fermeture.
+let addSheetReturnFocus=null;
+const ADD_PANELS={ link:"addPanelLink", text:"addPanelText", ai:"addPanelAI" };
+function showAddPanel(key){
+  $("addMethods").classList.toggle("hidden", !!key);
+  Object.entries(ADD_PANELS).forEach(([k,id])=> $(id).classList.toggle("hidden", k!==key));
+  $("addSheetBack").classList.toggle("hidden", !key);
+  if(key==="link") setTimeout(()=>{ try{ $("url").focus(); }catch(e){} },40);
+  if(key==="text") setTimeout(()=>{ try{ $("manualText").focus(); }catch(e){} },40);
+  if(key==="ai")   setTimeout(()=>{ try{ $("createText").focus(); }catch(e){} },40);
+}
+function addSheetKeydown(e){
+  if(e.key==="Escape"){ e.preventDefault(); closeAddSheet(); return; }
+  if(e.key!=="Tab") return;
+  const panel=$("addSheetPanel");
+  const f=[...panel.querySelectorAll("button,input,textarea,select,a[href]")].filter(el=>!el.disabled && el.offsetParent!==null);
+  if(!f.length) return;
+  const first=f[0], last=f[f.length-1];
+  if(e.shiftKey && document.activeElement===first){ e.preventDefault(); last.focus(); }
+  else if(!e.shiftKey && document.activeElement===last){ e.preventDefault(); first.focus(); }
+}
+function openAddSheet(fromEl){
+  addSheetReturnFocus = fromEl || document.activeElement;
+  setError("");
+  $("addSheet").classList.remove("hidden");
+  showAddPanel(null);
+  setTimeout(()=>{ try{ $("methodLink").focus(); }catch(e){} },40);
+  document.addEventListener("keydown", addSheetKeydown);
+}
+function closeAddSheet(){
+  if($("addSheet").classList.contains("hidden")) return;
+  $("addSheet").classList.add("hidden");
+  document.removeEventListener("keydown", addSheetKeydown);
+  if(addSheetReturnFocus && addSheetReturnFocus.focus){ try{ addSheetReturnFocus.focus(); }catch(e){} }
+  addSheetReturnFocus=null;
+}
+// clic sur l'overlay = fermer ; clic à l'intérieur du panneau = jamais
+$("addSheet").addEventListener("click",(e)=>{ if(e.target===$("addSheet")) closeAddSheet(); });
+$("addSheetClose").addEventListener("click", closeAddSheet);
+$("addSheetBack").addEventListener("click", ()=>{ setError(""); showAddPanel(null); setTimeout(()=>{ try{ $("methodLink").focus(); }catch(e){} },40); });
+$("methodLink").addEventListener("click", ()=>showAddPanel("link"));
+$("manualToggle").addEventListener("click", ()=>showAddPanel("text"));
+$("createToggle").addEventListener("click", ()=>showAddPanel("ai"));   // le verrou premium (écouteur capture) intercepte avant si non premium
+$("addRecipeBtn").addEventListener("click", ()=>openAddSheet($("addRecipeBtn")));
+
+// ---- dialogue de confirmation (focus initial sur Annuler pour éviter les suppressions accidentelles) ----
+let confirmCb=null, confirmReturnFocus=null;
+function confirmKeydown(e){
+  if(e.key==="Escape"){ e.preventDefault(); closeConfirm(false); return; }
+  if(e.key!=="Tab") return;
+  e.preventDefault();
+  (document.activeElement===$("confirmCancel") ? $("confirmOk") : $("confirmCancel")).focus();
+}
+function askConfirm(title, desc, okLabel, cb){
+  $("confirmTitle").textContent=title;
+  $("confirmDesc").textContent=desc;
+  $("confirmOk").textContent=okLabel;
+  confirmCb=cb; confirmReturnFocus=document.activeElement;
+  $("confirmSheet").classList.remove("hidden");
+  setTimeout(()=>{ try{ $("confirmCancel").focus(); }catch(e){} },40);
+  document.addEventListener("keydown", confirmKeydown);
+}
+function closeConfirm(ok){
+  $("confirmSheet").classList.add("hidden");
+  document.removeEventListener("keydown", confirmKeydown);
+  if(confirmReturnFocus && confirmReturnFocus.focus){ try{ confirmReturnFocus.focus(); }catch(e){} }
+  confirmReturnFocus=null;
+  const cb=confirmCb; confirmCb=null;
+  if(ok && cb) cb();
+}
+$("confirmCancel").addEventListener("click", ()=>closeConfirm(false));
+$("confirmOk").addEventListener("click", ()=>closeConfirm(true));
+$("confirmSheet").addEventListener("click",(e)=>{ if(e.target===$("confirmSheet")) closeConfirm(false); });
+
+// ---- accueil : recettes récentes + recherche ----
+function renderHomeRecent(){
+  const box=$("homeRecentList"); if(!box) return;
+  const items=(allCache||[]).slice(0,4);
+  $("homeRecent").classList.toggle("hidden", items.length===0);
+  box.innerHTML="";
+  items.forEach(r=>{
+    const row=document.createElement("div"); row.className="saved-row press";
+    row.innerHTML=`${r.image?`<img class="sr-thumb" src="${esc(r.image)}" loading="lazy" alt=""/>`:""}<span class="sr-name">${esc(r.title)}</span><button class="sr-cook" aria-label="${t("ariaCook")}"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>`;
+    row.addEventListener("click",(e)=>{
+      if(e.target.closest(".sr-cook")){ loadRecipe({...r}); cookStep=0; show("cook"); renderCook(); return; }
+      loadRecipe({...r});
+    });
+    box.appendChild(row);
+  });
+}
+// un seul moteur de recherche : le champ accueil délègue au filtre existant de la liste
+function goHomeSearch(){
+  const q=$("homeSearch").value.trim();
+  $("searchInput").value=q; searchQuery=q; renderList();
+  show("recipes"); window.scrollTo(0,0);
+  $("homeSearch").value="";
+}
+$("homeSearch").addEventListener("keydown",(e)=>{ if(e.key==="Enter"){ e.preventDefault(); goHomeSearch(); } });
+$("seeAllBtn").addEventListener("click", ()=>{ $("navRecipes").click(); });
 
 // ---- dictée vocale ----
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -1176,7 +1475,7 @@ $("createBtn").addEventListener("click", async ()=>{
   try{
     const r=await callBackend({text:demande});
     if(!r.found) setError(r.error||"Je n'ai pas réussi à créer cette recette. Reformule ta demande.");
-    else { await addToHistory(r); loadRecipe(r); $("createBox").classList.add("hidden"); $("createText").value=""; }
+    else { await addToHistory(r); loadRecipe(r); $("createText").value=""; }
   }catch(e){ setError("Le serveur n'a pas répondu."); }
   showLoadOverlay(false);
   $("createBtn").disabled=false; $("createBtn").textContent=lbl;
@@ -1189,7 +1488,7 @@ $("manualBtn").addEventListener("click", async ()=>{
   try{
     const r=await callBackend({text:t});
     if(!r.found) setError(r.error||"Pas de recette claire dans ce texte.");
-    else { await addToHistory(r); loadRecipe(r); $("manualBox").classList.add("hidden"); }
+    else { await addToHistory(r); loadRecipe(r); $("manualText").value=""; }
   }catch(e){ setError("Échec de la structuration."); }
   showLoadOverlay(false);
   $("manualBtn").textContent="Structurer ce texte"; $("manualBtn").disabled=false;
@@ -1199,6 +1498,7 @@ $("manualBtn").addEventListener("click", async ()=>{
 function loadRecipe(r){
   recipe=r; base=r.baseServings||4; servings=base; checked={};
   noBalanceMode=false; { const nbb=$("noBalBtn"); if(nbb) nbb.classList.remove("on"); }
+  closeMoreMenu();
   if(!recipe.original){ recipe.original = JSON.parse(JSON.stringify(recipe.ingredients||[])); }
   $("rTitle").textContent=r.title;
   if(r.platform){ const b=platBadge(r.platform); $("rPlatform").innerHTML=`<span class="hero-plat-badge" style="background:${b.bg}">${b.svg}</span>${r.platform}`; }
@@ -1211,6 +1511,7 @@ function loadRecipe(r){
   updateCollLabel();
   { const sl=$("sourceLink"); const su=safeHttpUrl(recipe.sourceUrl); if(sl){ if(su){ sl.href=su; sl.classList.remove("hidden"); } else sl.classList.add("hidden"); } }
   refreshSaveBtn();
+  closeAddSheet();               // import réussi depuis la sheet -> on la referme
   show("recipe"); window.scrollTo(0,0);
   saveView("recipe");
 }
@@ -1428,7 +1729,6 @@ function renderShopping(){
     box.appendChild(block);
   });
 }
-$("cartBtn").addEventListener("click", ()=>{ renderShopping(); show("shopping"); window.scrollTo(0,0); });
 $("shopBack").addEventListener("click", ()=>show("home"));
 // ---- cuisiner sans balance ----
 const CONV=[
@@ -1851,9 +2151,20 @@ $("saveBtn").addEventListener("click", async ()=>{
   let entry = recipe._id ? allCache.find(x=>x._id===recipe._id) : null;
   if(!entry){ await addToHistory(recipe); entry = allCache.find(x=>x._id===recipe._id); if(!entry) return; }
   entry.saved = !entry.saved; recipe.saved = entry.saved;
-  refreshSaveBtn(); renderList();
+  refreshSaveBtn(); renderList(); updateCollLabel();
   if(entry._dbid){ try{ await sb.from("recipes").update({ saved: entry.saved }).eq("id", entry._dbid); }catch(e){} }
 });
+// ---- menu "plus d'actions" (recette) ----
+function closeMoreMenu(){ const m=$("moreMenu"); if(m && !m.classList.contains("hidden")){ m.classList.add("hidden"); $("moreBtn").setAttribute("aria-expanded","false"); } }
+$("moreBtn").addEventListener("click",(e)=>{
+  e.stopPropagation();
+  const m=$("moreMenu");
+  const open=!m.classList.toggle("hidden");
+  $("moreBtn").setAttribute("aria-expanded", open?"true":"false");
+});
+$("moreMenu").addEventListener("click",(e)=>{ if(e.target.closest("button")) setTimeout(closeMoreMenu,60); });
+document.addEventListener("click",(e)=>{ if(!e.target.closest("#moreMenu") && !e.target.closest("#moreBtn")) closeMoreMenu(); });
+document.addEventListener("keydown",(e)=>{ if(e.key==="Escape") closeMoreMenu(); });
 const HEART_FILL=`<svg viewBox="0 0 24 24" fill="#E5484D"><path d="M12 20.8s-6.6-4.2-9-8.4C1.6 9.3 3 6 6.2 6c1.9 0 3 1.2 5.8 3.8C14.9 7.2 16 6 17.9 6c3.2 0 4.6 3.3 3.1 6.4-2.4 4.2-9 8.4-9 8.4z"/></svg>`;
 const HEART_LINE=`<svg viewBox="0 0 24 24" fill="none" stroke="#C9C2B6" stroke-width="2"><path d="M12 20.3s-6.4-4.1-8.7-8.2C1.8 9.2 3.1 6 6.2 6c1.8 0 2.9 1.1 5.8 3.7C14.9 7.1 16 6 17.8 6c3.1 0 4.4 3.2 2.9 6.1C18.4 16.2 12 20.3 12 20.3z"/></svg>`;
 const BM_FILL=`<svg viewBox="0 0 24 24" fill="var(--accent)"><path d="M6 4h12v16l-6-4-6 4V4z"/></svg>`;
@@ -1865,9 +2176,7 @@ $("searchInput").addEventListener("input",(e)=>{ searchQuery=e.target.value.trim
 $("tabSaved").addEventListener("click",()=>{ listTab="saved"; renderList(); });
 $("tabHistory").addEventListener("click",()=>{ listTab="history"; renderList(); });
 function renderList(){
-  const intro=$("introBlock"); if(intro) intro.classList.toggle("hidden", allCache.length>0);
-  if(!allCache.length){ $("listSection").classList.add("hidden"); return; }
-  $("listSection").classList.remove("hidden");
+  renderHomeRecent();
   $("tabSaved").classList.toggle("active", listTab==="saved");
   $("tabHistory").classList.toggle("active", listTab==="history");
   renderCollFilters();
@@ -1898,19 +2207,23 @@ function renderList(){
   list.forEach(r=>{
     const row=document.createElement("div"); row.className="saved-row";
     let actions;
-    const shareHtml=`<button class="sr-share" aria-label="partager"><svg viewBox="0 0 24 24" fill="none" stroke="#B0A79B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="2.4"/><circle cx="6" cy="12" r="2.4"/><circle cx="18" cy="19" r="2.4"/><path d="M8.1 13.2l7.8 4.6M15.9 6.2l-7.8 4.6"/></svg></button>`;
+    const shareHtml=`<button class="sr-share" aria-label="${t("ariaShare")}"><svg viewBox="0 0 24 24" fill="none" stroke="#B0A79B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="2.4"/><circle cx="6" cy="12" r="2.4"/><circle cx="18" cy="19" r="2.4"/><path d="M8.1 13.2l7.8 4.6M15.9 6.2l-7.8 4.6"/></svg></button>`;
     if(listTab==="saved"){
-      actions=`<button class="sr-fav" aria-label="favori">${r.fav?HEART_FILL:HEART_LINE}</button>${shareHtml}<button class="sr-del" aria-label="retirer">✕</button>`;
+      actions=`<button class="sr-fav" aria-label="${t("ariaFav")}">${r.fav?HEART_FILL:HEART_LINE}</button>${shareHtml}<button class="sr-del" aria-label="${t("ariaRemove")}">✕</button>`;
     } else {
-      actions=`<button class="sr-save" aria-label="enregistrer">${r.saved?BM_FILL:BM_LINE}</button>${shareHtml}<button class="sr-del" aria-label="supprimer">✕</button>`;
+      actions=`<button class="sr-save" aria-label="${t("ariaSave")}">${r.saved?BM_FILL:BM_LINE}</button>${shareHtml}<button class="sr-del" aria-label="${t("ariaDelete")}">✕</button>`;
     }
-    row.innerHTML=`${r.image?`<img class="sr-thumb" src="${esc(r.image)}" loading="lazy" alt=""/>`:""}<span class="sr-name">${esc(r.title)}</span><button class="sr-cook" aria-label="cuisiner"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>${actions}`;
+    row.innerHTML=`${r.image?`<img class="sr-thumb" src="${esc(r.image)}" loading="lazy" alt=""/>`:""}<span class="sr-name">${esc(r.title)}</span><button class="sr-cook" aria-label="${t("ariaCook")}"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>${actions}`;
     row.addEventListener("click",(e)=>{
       if(e.target.closest(".sr-cook")){ loadRecipe({...r}); cookStep=0; show("cook"); renderCook(); return; }
       if(e.target.closest(".sr-share")){ shareRecipeData(r); return; }
       if(e.target.closest(".sr-fav")){ toggleFav(r._id); return; }
       if(e.target.closest(".sr-save")){ toggleSaved(r._id); return; }
-      if(e.target.closest(".sr-del")){ if(listTab==="saved") unsaveRecipe(r._id); else deleteRecipe(r._id); return; }
+      if(e.target.closest(".sr-del")){
+        if(listTab==="saved") unsaveRecipe(r._id);   // réversible : simple retrait des enregistrées
+        else askConfirm(t("delConfirmTitle"), t("delConfirmDesc"), t("delConfirmOk"), ()=>deleteRecipe(r._id));
+        return;
+      }
       loadRecipe({...r});
     });
     box.appendChild(row);
@@ -1924,13 +2237,13 @@ async function toggleFav(id){
 async function toggleSaved(id){
   const r=allCache.find(x=>x._id===id); if(!r) return;
   r.saved=!r.saved; renderList();
-  if(recipe && recipe._id===id){ recipe.saved=r.saved; refreshSaveBtn(); }
+  if(recipe && recipe._id===id){ recipe.saved=r.saved; refreshSaveBtn(); updateCollLabel(); }
   if(sb && r._dbid){ try{ await sb.from("recipes").update({saved:r.saved}).eq("id", r._dbid); }catch(e){} }
 }
 async function unsaveRecipe(id){
   const r=allCache.find(x=>x._id===id); if(!r) return;
   r.saved=false; renderList();
-  if(recipe && recipe._id===id){ recipe.saved=false; refreshSaveBtn(); }
+  if(recipe && recipe._id===id){ recipe.saved=false; refreshSaveBtn(); updateCollLabel(); }
   if(sb && r._dbid){ try{ await sb.from("recipes").update({saved:false}).eq("id", r._dbid); }catch(e){} }
 }
 async function deleteRecipe(id){
@@ -1960,9 +2273,30 @@ function renderCollFilters(){
     wrap.appendChild(b);
   });
 }
+// bouton contextuel : recette non enregistrée -> "Enregistrer la recette" ;
+// recette enregistrée -> "Ajouter à une collection" (ou le nom de sa collection).
 function updateCollLabel(){
   const l=$("collBtnLabel"); if(!l) return;
-  l.textContent = (recipe&&recipe.collection) ? recipe.collection : t("collClassify");
+  const ic=$("collBtnIcon");
+  if(!currentIsSaved()){
+    if(ic) ic.textContent="🔖";
+    l.textContent=t("saveRecipeBtn");
+  } else {
+    if(ic) ic.textContent="🏷️";
+    l.textContent=(recipe&&recipe.collection) ? recipe.collection : t("collClassify");
+  }
+}
+// enregistre la recette ouverte (source de vérité unique : entry.saved) — jamais implicite.
+async function ensureSavedFromRecipe(){
+  if(!recipe || !sb || !currentUserId) return false;
+  let entry = recipe._id ? allCache.find(x=>x._id===recipe._id) : null;
+  if(!entry){ await addToHistory(recipe); entry = recipe._id ? allCache.find(x=>x._id===recipe._id) : null; if(!entry) return false; }
+  if(!entry.saved){
+    entry.saved=true; recipe.saved=true;
+    if(entry._dbid){ try{ await sb.from("recipes").update({ saved:true }).eq("id", entry._dbid); }catch(e){} }
+  }
+  refreshSaveBtn(); renderList(); updateCollLabel();
+  return true;
 }
 function openCollSheet(){
   if(!recipe) return;
@@ -1982,21 +2316,30 @@ function openCollSheet(){
 async function assignCollection(name){
   if(!recipe) return;
   recipe.collection = name||null;
-  if(name){                                        // classer = garder dans Mes recettes
-    const entry=allCache.find(x=>x._id===recipe._id);
-    if(entry && !entry.saved){ entry.saved=true; recipe.saved=true; if(sb&&entry._dbid){ try{ await sb.from("recipes").update({saved:true}).eq("id",entry._dbid); }catch(e){} } refreshSaveBtn(); }
-  }
+  // plus d'enregistrement implicite : le bouton n'ouvre les collections que si la recette est déjà enregistrée
   updateCollLabel();
   $("collSheet").classList.add("hidden");
   await persistRecipeChange();
   renderList();
 }
-$("collBtn").addEventListener("click", openCollSheet);
+$("collBtn").addEventListener("click", async ()=>{
+  if(!recipe) return;
+  if(!currentIsSaved()){
+    const ok=await ensureSavedFromRecipe();
+    if(ok) toast(t("savedToast"));   // le bouton devient "Ajouter à une collection" : la suite est facultative
+    return;
+  }
+  openCollSheet();
+});
 $("collClose").addEventListener("click",()=>$("collSheet").classList.add("hidden"));
 
 // ---- mode cuisson ----
 $("cookBtn").addEventListener("click",()=>{ cookStep=0; show("cook"); renderCook(); });
-$("exitCook").addEventListener("click",()=>{ endCookExtras(); stopTimer(); show("recipe"); saveView("recipe"); });
+$("exitCook").addEventListener("click",()=>{
+  const leave=()=>{ endCookExtras(); stopTimer(); show("recipe"); saveView("recipe"); };
+  if(timerState && timerState.running){ askConfirm(t("cookExitTitle"), t("cookExitDesc"), t("cookExitOk"), leave); return; }
+  leave();
+});
 function goPrev(){ if(cookStep>0){ cookStep--; renderCook(); } }
 function goNext(){
   const total=recipe.steps.length;
@@ -2119,9 +2462,9 @@ function cookChips(s){
 function renderCook(){
   stopTimer();
   const steps=recipe.steps, total=steps.length, s=steps[cookStep];
-  $("stepCount").textContent=`${cookStep+1} / ${total}`;
+  $("stepCount").textContent=t("stepOf")(cookStep+1, total);
   $("progress").innerHTML=steps.map((_,i)=>`<div style="flex:1;height:4px;border-radius:2px;background:${i<=cookStep?ACCENT:"rgba(251,248,243,.15)"};transition:background .3s"></div>`).join("");
-  let html=`<div class="rise" style="margin:auto 0;width:100%"><div class="mono" style="font-size:14px;color:${ACCENT};font-weight:500;margin-bottom:14px;letter-spacing:.04em">${t("stepWord")} ${cookStep+1}</div>`;
+  let html=`<div class="rise" style="margin:10px 0 auto;width:100%"><div class="mono" style="font-size:14px;color:${ACCENT};font-weight:500;margin-bottom:14px;letter-spacing:.04em">${t("stepWord")} ${cookStep+1}</div>`;
   if(s.title) html+=`<h2 class="mono" style="font-size:26px;font-weight:700;letter-spacing:-.02em;margin-bottom:18px;line-height:1.15">${esc(s.title)}</h2>`;
   html+=cookChips(s);
   html+=`<p style="font-size:22px;line-height:1.45">${esc(s.content)}</p>`;
@@ -2145,8 +2488,11 @@ function renderCook(){
 function mountTimer(sec){ const slot=$("timerSlot"); timerState={left:sec,total:sec,running:false,done:false,handle:null,pushId:null}; renderTimer(slot); }
 function renderTimer(slot){
   const t=timerState;
-  slot.innerHTML=`<div style="margin-top:18px;display:inline-flex;align-items:center;gap:12px;padding:9px 14px;background:${t.done?"rgba(79,111,82,.2)":"rgba(251,248,243,.06)"};border-radius:12px;border:1px solid ${t.done?GREEN:"rgba(251,248,243,.12)"}">
-    <div class="mono" style="font-size:23px;font-weight:700;color:${t.done?GREEN:PAPER};min-width:64px">${t.done?window.t("timerReady"):fmtTime(t.left)}</div>
+  slot.innerHTML=`<div style="margin-top:18px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:${t.running?"14px 16px":"9px 14px"};background:${t.done?"rgba(79,111,82,.2)":(t.running?"rgba(199,91,124,.18)":"rgba(251,248,243,.06)")};border-radius:14px;border:1.5px solid ${t.done?GREEN:(t.running?ACCENT:"rgba(251,248,243,.12)")};transition:all .25s">
+    <div style="display:flex;align-items:center;gap:11px">
+      ${t.running?`<span class="timer-dot" aria-hidden="true"></span>`:""}
+      <div class="mono" role="timer" aria-live="off" style="font-size:${t.running?"30px":"23px"};font-weight:700;color:${t.done?GREEN:PAPER};min-width:64px;transition:font-size .25s">${t.done?window.t("timerReady"):fmtTime(t.left)}</div>
+    </div>
     <button id="timerBtn" class="press" style="font-size:13px;font-weight:600;padding:8px 15px;border-radius:9px;border:${t.done?"1.5px solid rgba(251,248,243,.25)":"none"};background:${t.done?"transparent":ACCENT};color:#fff">${t.done?window.t("timerRestart"):(t.running?window.t("timerPause"):(t.left===t.total?window.t("timerStart"):window.t("timerResume")))}</button>
   </div>`;
   $("timerBtn").addEventListener("click", async ()=>{
@@ -2319,14 +2665,29 @@ refreshLocks();
 function applyLang(){
   const set=(id,key,html)=>{ const el=$(id); if(!el) return; if(html) el.innerHTML=t(key); else el.textContent=t(key); };
   // accueil (étape 1)
-  set("heroTitle","heroTitle",true); set("heroSub","heroSub");
+  set("heroTitle","heroTitle",true);
+  if($("homeSearch")){ $("homeSearch").placeholder=t("homeSearchPh"); $("homeSearch").setAttribute("aria-label", t("homeSearchPh")); }
+  set("recentTitle","recentTitle"); set("seeAllBtn","seeAll");
+  set("recipesTitle","recipesTitle"); set("confirmCancel","confirmCancel");
+  set("morePhotoLbl","morePhoto"); set("morePhotoRmLbl","morePhotoRm"); set("moreNoteLbl","moreNote"); set("moreShareLbl","moreShare");
+  if($("moreBtn")) $("moreBtn").setAttribute("aria-label", t("moreBtnAria"));
+  updateCollLabel();
+  set("navHomeLbl","navHome"); set("navRecipesLbl","navRecipes"); set("navAddLbl","navAdd"); set("navAddPlusTxt","navAdd");
+  set("navWeekLbl","navWeek"); set("navShopLbl","navShop");
+  if($("navAdd")) $("navAdd").setAttribute("aria-label", t("navAddAria"));
   set("urlLabel","urlLabel"); if($("url")) $("url").placeholder=t("urlPh");
   set("detectLabel","detected");
   set("decodeBtn","decodeBtn");
   set("ideasTitle","ideasTitle"); set("ideasSub","ideasSub");
   set("weekTitle","weekTitle"); set("weekSub","weekSub");
-  set("manualToggle","manualToggle"); if($("manualText")) $("manualText").placeholder=t("manualPh"); set("manualBtn","manualBtn");
-  set("createToggle","createToggle"); set("createDesc","createDesc"); if($("createText")) $("createText").placeholder=t("createPh"); set("createBtn","createBtn");
+  set("manualToggleLbl","manualToggle"); if($("manualText")) $("manualText").placeholder=t("manualPh"); set("manualBtn","manualBtn");
+  set("createToggleLbl","createToggle"); set("createDesc","createDesc"); if($("createText")) $("createText").placeholder=t("createPh"); set("createBtn","createBtn");
+  set("addRecipeLbl","addRecipeBtn"); set("addSheetTitle","addSheetTitle");
+  set("methodLinkTitle","methodLink"); set("methodLinkSub","methodLinkSub");
+  set("methodTextSub","methodTextSub"); set("methodAISub","methodAISub");
+  if($("addSheetClose")) $("addSheetClose").setAttribute("aria-label", t("sheetClose"));
+  if($("addSheetBack")) $("addSheetBack").setAttribute("aria-label", t("sheetBack"));
+  if($("addRecipeBtn")) $("addRecipeBtn").setAttribute("aria-label", t("navAddAria"));
   set("micManual","dictate"); set("micCreate","dictate");
   set("imgPickLabel","imgPickLabel"); set("imgPickDesc","imgPickDesc");
   set("tabSaved","tabSaved"); set("tabHistory","tabHistory");
