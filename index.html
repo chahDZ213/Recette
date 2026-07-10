@@ -299,15 +299,19 @@
     </div>
   </div>
 
-  <!-- Mes recettes / Historique -->
-  <div id="listSection" class="hidden" style="margin-top:40px">
+</section>
+
+<!-- PAGE RECETTES -->
+<section id="recipes" class="wrap hidden">
+  <h1 id="recipesTitle" class="mono" style="font-size:26px;font-weight:700;letter-spacing:-.02em;margin-bottom:20px">Mes recettes</h1>
+  <div id="listSection">
     <div style="display:flex;gap:8px;margin-bottom:16px">
       <button id="tabSaved" class="list-tab active">Mes recettes</button>
       <button id="tabHistory" class="list-tab">Historique</button>
     </div>
     <div id="collFilters" class="hidden" style="display:flex;gap:7px;overflow-x:auto;margin-bottom:14px;padding-bottom:2px"></div>
     <div style="position:relative;margin-bottom:14px">
-      <svg viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);width:17px;height:17px;pointer-events:none"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);width:17px;height:17px;pointer-events:none"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
       <input type="search" id="searchInput" placeholder="Rechercher un plat, un ingrédient…" autocomplete="off" style="width:100%;font-family:inherit;font-size:15px;padding:12px 14px 12px 42px;border-radius:13px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);outline:none" />
     </div>
     <div id="recipeList" class="saved-list"></div>
@@ -701,6 +705,18 @@
   </div>
 </div>
 
+<!-- CONFIRMATION (suppression, etc.) -->
+<div id="confirmSheet" class="hidden" style="position:fixed;inset:0;z-index:85;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:24px">
+  <div id="confirmPanel" role="dialog" aria-modal="true" aria-labelledby="confirmTitle" style="background:var(--surface);color:var(--ink);width:100%;max-width:340px;border-radius:18px;padding:22px">
+    <div id="confirmTitle" class="mono" style="font-size:17px;font-weight:700;margin-bottom:8px">Supprimer la recette ?</div>
+    <p id="confirmDesc" style="font-size:14px;color:var(--muted);line-height:1.5;margin-bottom:18px">Cette recette sera supprimée définitivement.</p>
+    <div style="display:flex;gap:10px">
+      <button id="confirmCancel" style="flex:1;font-family:inherit;font-size:15px;font-weight:600;padding:13px;border-radius:12px;border:1.5px solid var(--line);background:var(--cream);color:var(--ink)">Annuler</button>
+      <button id="confirmOk" style="flex:1;font-family:inherit;font-size:15px;font-weight:600;padding:13px;border-radius:12px;border:none;background:#C0492F;color:#fff">Supprimer</button>
+    </div>
+  </div>
+</div>
+
 <!-- MOT DE PASSE OUBLIÉ -->
 <div id="forgotSheet" class="hidden" style="position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center">
   <div style="background:var(--surface);color:var(--ink);width:100%;max-width:620px;border-radius:20px 20px 0 0;padding:24px 22px calc(28px + env(safe-area-inset-bottom))">
@@ -826,13 +842,13 @@ function fmtTime(s){
   return m+":"+String(sec).padStart(2,"0");
 }
 function show(id){
-  ["auth","home","recipe","cook","settings","ideas","shopping","convert","week"].forEach(s=>$(s).classList.toggle("hidden", s!==id));
+  ["auth","home","recipes","recipe","cook","settings","ideas","shopping","convert","week"].forEach(s=>$(s).classList.toggle("hidden", s!==id));
   updateNav(id);
 }
 // ---- navigation persistante ----
 // le bouton "+" est une ACTION (ouvre la sheet), jamais une destination : pas d'état actif, pas de saveView.
-const NAV_TAB={ home:"navHome", week:"navWeek", shopping:"navShop" };          // "recipes" ajouté à l'étape 5
-const NAV_VISIBLE=["home","settings","ideas","shopping","convert","week"];     // écrans où la nav est affichée
+const NAV_TAB={ home:"navHome", recipes:"navRecipes", week:"navWeek", shopping:"navShop" };
+const NAV_VISIBLE=["home","recipes","settings","ideas","shopping","convert","week"];   // écrans où la nav est affichée
 function updateNav(id){
   const nav=$("mainNav"); if(!nav) return;
   const visible=NAV_VISIBLE.includes(id);
@@ -845,7 +861,7 @@ function updateNav(id){
   });
 }
 $("navHome").addEventListener("click", ()=>{ renderList(); show("home"); saveView("home"); window.scrollTo(0,0); });
-$("navRecipes").addEventListener("click", ()=>{ renderList(); show("home"); saveView("home"); const ls=$("listSection"); if(ls && !ls.classList.contains("hidden")) ls.scrollIntoView({behavior:"smooth"}); });
+$("navRecipes").addEventListener("click", ()=>{ renderList(); show("recipes"); window.scrollTo(0,0); });
 $("navWeek").addEventListener("click", ()=>{ renderWeek(); show("week"); window.scrollTo(0,0); });
 $("navShop").addEventListener("click", ()=>{ renderShopping(); show("shopping"); window.scrollTo(0,0); });
 $("navAdd").addEventListener("click", ()=>openAddSheet($("navAdd"))); // ACTION pure : ouvre la sheet par-dessus l'écran courant, ne change pas la vue
@@ -892,6 +908,9 @@ const STR={
   heroTitle:"Qu'est-ce que tu veux cuisiner ?",
   homeSearchPh:"Rechercher dans mes recettes…",
   recentTitle:"RECETTES RÉCENTES", seeAll:"Tout voir →",
+  recipesTitle:"Mes recettes",
+  delConfirmTitle:"Supprimer la recette ?", delConfirmDesc:"Cette recette sera supprimée définitivement.",
+  delConfirmOk:"Supprimer", confirmCancel:"Annuler",
   urlLabel:"LIEN VIDÉO OU SITE", urlPh:"YouTube, TikTok, Marmiton, Google, blog…",
   detected:"Vidéo détectée ✓",
   detectedPlat:(p)=>p==="Web"?"Site de recettes détecté ✓":`Vidéo ${p} détectée ✓`,
@@ -996,6 +1015,9 @@ const STR={
   heroTitle:"What do you want to cook?",
   homeSearchPh:"Search my recipes…",
   recentTitle:"RECENT RECIPES", seeAll:"See all →",
+  recipesTitle:"My recipes",
+  delConfirmTitle:"Delete this recipe?", delConfirmDesc:"This recipe will be permanently deleted.",
+  delConfirmOk:"Delete", confirmCancel:"Cancel",
   urlLabel:"VIDEO OR SITE LINK", urlPh:"YouTube, TikTok, recipe sites, Google, blogs…",
   detected:"Video detected ✓",
   detectedPlat:(p)=>p==="Web"?"Recipe site detected ✓":`${p} video detected ✓`,
@@ -1233,6 +1255,35 @@ $("manualToggle").addEventListener("click", ()=>showAddPanel("text"));
 $("createToggle").addEventListener("click", ()=>showAddPanel("ai"));   // le verrou premium (écouteur capture) intercepte avant si non premium
 $("addRecipeBtn").addEventListener("click", ()=>openAddSheet($("addRecipeBtn")));
 
+// ---- dialogue de confirmation (focus initial sur Annuler pour éviter les suppressions accidentelles) ----
+let confirmCb=null, confirmReturnFocus=null;
+function confirmKeydown(e){
+  if(e.key==="Escape"){ e.preventDefault(); closeConfirm(false); return; }
+  if(e.key!=="Tab") return;
+  e.preventDefault();
+  (document.activeElement===$("confirmCancel") ? $("confirmOk") : $("confirmCancel")).focus();
+}
+function askConfirm(title, desc, okLabel, cb){
+  $("confirmTitle").textContent=title;
+  $("confirmDesc").textContent=desc;
+  $("confirmOk").textContent=okLabel;
+  confirmCb=cb; confirmReturnFocus=document.activeElement;
+  $("confirmSheet").classList.remove("hidden");
+  setTimeout(()=>{ try{ $("confirmCancel").focus(); }catch(e){} },40);
+  document.addEventListener("keydown", confirmKeydown);
+}
+function closeConfirm(ok){
+  $("confirmSheet").classList.add("hidden");
+  document.removeEventListener("keydown", confirmKeydown);
+  if(confirmReturnFocus && confirmReturnFocus.focus){ try{ confirmReturnFocus.focus(); }catch(e){} }
+  confirmReturnFocus=null;
+  const cb=confirmCb; confirmCb=null;
+  if(ok && cb) cb();
+}
+$("confirmCancel").addEventListener("click", ()=>closeConfirm(false));
+$("confirmOk").addEventListener("click", ()=>closeConfirm(true));
+$("confirmSheet").addEventListener("click",(e)=>{ if(e.target===$("confirmSheet")) closeConfirm(false); });
+
 // ---- accueil : recettes récentes + recherche ----
 function renderHomeRecent(){
   const box=$("homeRecentList"); if(!box) return;
@@ -1253,7 +1304,8 @@ function renderHomeRecent(){
 function goHomeSearch(){
   const q=$("homeSearch").value.trim();
   $("searchInput").value=q; searchQuery=q; renderList();
-  const ls=$("listSection"); if(ls && !ls.classList.contains("hidden")) ls.scrollIntoView({behavior:"smooth"}); // étape 5 : bascule vers la page Recettes
+  show("recipes"); window.scrollTo(0,0);
+  $("homeSearch").value="";
 }
 $("homeSearch").addEventListener("keydown",(e)=>{ if(e.key==="Enter"){ e.preventDefault(); goHomeSearch(); } });
 $("seeAllBtn").addEventListener("click", ()=>{ $("navRecipes").click(); });
@@ -2074,8 +2126,6 @@ $("tabSaved").addEventListener("click",()=>{ listTab="saved"; renderList(); });
 $("tabHistory").addEventListener("click",()=>{ listTab="history"; renderList(); });
 function renderList(){
   renderHomeRecent();
-  if(!allCache.length){ $("listSection").classList.add("hidden"); return; }
-  $("listSection").classList.remove("hidden");
   $("tabSaved").classList.toggle("active", listTab==="saved");
   $("tabHistory").classList.toggle("active", listTab==="history");
   renderCollFilters();
@@ -2118,7 +2168,11 @@ function renderList(){
       if(e.target.closest(".sr-share")){ shareRecipeData(r); return; }
       if(e.target.closest(".sr-fav")){ toggleFav(r._id); return; }
       if(e.target.closest(".sr-save")){ toggleSaved(r._id); return; }
-      if(e.target.closest(".sr-del")){ if(listTab==="saved") unsaveRecipe(r._id); else deleteRecipe(r._id); return; }
+      if(e.target.closest(".sr-del")){
+        if(listTab==="saved") unsaveRecipe(r._id);   // réversible : simple retrait des enregistrées
+        else askConfirm(t("delConfirmTitle"), t("delConfirmDesc"), t("delConfirmOk"), ()=>deleteRecipe(r._id));
+        return;
+      }
       loadRecipe({...r});
     });
     box.appendChild(row);
@@ -2530,6 +2584,7 @@ function applyLang(){
   set("heroTitle","heroTitle",true);
   if($("homeSearch")){ $("homeSearch").placeholder=t("homeSearchPh"); $("homeSearch").setAttribute("aria-label", t("homeSearchPh")); }
   set("recentTitle","recentTitle"); set("seeAllBtn","seeAll");
+  set("recipesTitle","recipesTitle"); set("confirmCancel","confirmCancel");
   set("navHomeLbl","navHome"); set("navRecipesLbl","navRecipes"); set("navAddLbl","navAdd"); set("navAddPlusTxt","navAdd");
   set("navWeekLbl","navWeek"); set("navShopLbl","navShop");
   if($("navAdd")) $("navAdd").setAttribute("aria-label", t("navAddAria"));
