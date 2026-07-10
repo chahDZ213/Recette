@@ -157,7 +157,10 @@
   .list-tab.active{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
   #shareBanner{ display:flex; align-items:center; gap:12px; justify-content:space-between; background:var(--cream); border:1px solid var(--line); border-radius:14px; padding:14px 16px; margin-bottom:22px; font-size:15px; font-weight:600; }
   #shareBanner button{ flex:none; font-family:inherit; font-size:13px; font-weight:600; padding:10px 14px; border-radius:10px; border:none; background:var(--accent); color:#fff; }
-  .public-mode #photoBtn, .public-mode #photoRemove, .public-mode #noteBtn, .public-mode #saveBtn, .public-mode #shareBtn, .public-mode #editIngBtn, .public-mode #collBtn{ display:none !important; }
+  .public-mode #photoBtn, .public-mode #photoRemove, .public-mode #noteBtn, .public-mode #saveBtn, .public-mode #shareBtn, .public-mode #editIngBtn, .public-mode #collBtn, .public-mode #moreBtn, .public-mode #moreMenu{ display:none !important; }
+  .more-item{ width:100%; display:flex; gap:11px; align-items:center; padding:11px 12px; border:none; background:none; color:var(--ink); font-family:inherit; font-size:14px; font-weight:600; border-radius:10px; text-align:left; }
+  .more-item:active, .more-item:hover{ background:var(--cream); }
+  .more-item:focus-visible{ outline:2px solid var(--accent); outline-offset:-2px; }
   .coll-chip{ font-family:inherit; font-size:13px; font-weight:600; padding:7px 13px; border-radius:20px; border:1.5px solid var(--line); background:transparent; color:var(--muted); white-space:nowrap; flex:none; }
   .coll-chip.active{ background:var(--accent); color:#fff; border-color:var(--accent); }
   .idea-chip{ font-family:inherit; font-size:14px; font-weight:600; padding:9px 15px; border-radius:20px; border:1.5px solid var(--line); background:transparent; color:var(--muted); }
@@ -508,22 +511,29 @@
     <div class="hero-shade"></div>
     <div class="hero-top">
       <button id="backBtn" class="hero-btn press" aria-label="retour">←</button>
-      <div style="display:flex;gap:9px">
-        <button id="photoBtn" class="hero-btn press" aria-label="photo">
-          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-        </button>
-        <button id="photoRemove" class="hero-btn press hidden" aria-label="retirer la photo">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
-        </button>
-        <button id="noteBtn" class="hero-btn press" aria-label="note">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
-        </button>
-        <button id="shareBtn" class="hero-btn press" aria-label="partager">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
-        </button>
+      <div style="display:flex;gap:9px;position:relative">
         <button id="saveBtn" class="hero-btn press" aria-label="sauvegarder">
           <svg id="saveIcon" width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M6 4h12v16l-6-4-6 4V4z" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg>
         </button>
+        <button id="moreBtn" class="hero-btn press" aria-label="plus d'actions" aria-haspopup="true" aria-expanded="false" style="font-size:22px;line-height:0">⋯</button>
+        <div id="moreMenu" class="hidden" style="position:absolute;top:46px;right:0;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:14px;box-shadow:0 10px 28px rgba(0,0,0,.3);padding:6px;min-width:220px;z-index:30">
+          <button id="photoBtn" class="more-item">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            <span id="morePhotoLbl">Photo du plat</span>
+          </button>
+          <button id="photoRemove" class="more-item hidden">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+            <span id="morePhotoRmLbl">Retirer la photo</span>
+          </button>
+          <button id="noteBtn" class="more-item">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+            <span id="moreNoteLbl">Ma note</span>
+          </button>
+          <button id="shareBtn" class="more-item">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+            <span id="moreShareLbl">Partager</span>
+          </button>
+        </div>
       </div>
     </div>
     <div class="hero-title">
@@ -550,7 +560,7 @@
       </div>
     </div>
 
-    <button id="collBtn" class="press" style="display:inline-flex;align-items:center;gap:6px;font-family:inherit;font-size:14px;font-weight:600;padding:10px 18px;border-radius:20px;border:1.5px solid var(--line);background:transparent;color:var(--ink);margin-bottom:22px">🏷️ <span id="collBtnLabel">Ajouter à une collection</span></button>
+    <button id="collBtn" class="press" style="display:inline-flex;align-items:center;gap:6px;font-family:inherit;font-size:14px;font-weight:600;padding:10px 18px;border-radius:20px;border:1.5px solid var(--line);background:transparent;color:var(--ink);margin-bottom:22px"><span id="collBtnIcon" aria-hidden="true">🏷️</span> <span id="collBtnLabel">Ajouter à une collection</span></button>
     <a id="sourceLink" target="_blank" rel="noopener" class="hidden" style="display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:600;padding:10px 16px;border-radius:20px;border:1.5px solid var(--line);background:transparent;color:var(--ink);text-decoration:none;margin-bottom:22px;margin-left:8px">🔗 Voir la vidéo</a>
 
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
@@ -911,6 +921,9 @@ const STR={
   recipesTitle:"Mes recettes",
   delConfirmTitle:"Supprimer la recette ?", delConfirmDesc:"Cette recette sera supprimée définitivement.",
   delConfirmOk:"Supprimer", confirmCancel:"Annuler",
+  saveRecipeBtn:"Enregistrer la recette", savedToast:"Recette enregistrée ✓",
+  morePhoto:"Photo du plat", morePhotoRm:"Retirer la photo", moreNote:"Ma note", moreShare:"Partager",
+  moreBtnAria:"Plus d'actions",
   urlLabel:"Lien de la vidéo ou du site", urlPh:"YouTube, TikTok, Marmiton, Google, blog…",
   detected:"Vidéo détectée ✓",
   detectedPlat:(p)=>p==="Web"?"Site de recettes détecté ✓":`Vidéo ${p} détectée ✓`,
@@ -1018,6 +1031,9 @@ const STR={
   recipesTitle:"My recipes",
   delConfirmTitle:"Delete this recipe?", delConfirmDesc:"This recipe will be permanently deleted.",
   delConfirmOk:"Delete", confirmCancel:"Cancel",
+  saveRecipeBtn:"Save the recipe", savedToast:"Recipe saved ✓",
+  morePhoto:"Dish photo", morePhotoRm:"Remove photo", moreNote:"My note", moreShare:"Share",
+  moreBtnAria:"More actions",
   urlLabel:"Video or website link", urlPh:"YouTube, TikTok, recipe sites, Google, blogs…",
   detected:"Video detected ✓",
   detectedPlat:(p)=>p==="Web"?"Recipe site detected ✓":`${p} video detected ✓`,
@@ -1459,6 +1475,7 @@ $("manualBtn").addEventListener("click", async ()=>{
 function loadRecipe(r){
   recipe=r; base=r.baseServings||4; servings=base; checked={};
   noBalanceMode=false; { const nbb=$("noBalBtn"); if(nbb) nbb.classList.remove("on"); }
+  closeMoreMenu();
   if(!recipe.original){ recipe.original = JSON.parse(JSON.stringify(recipe.ingredients||[])); }
   $("rTitle").textContent=r.title;
   if(r.platform){ const b=platBadge(r.platform); $("rPlatform").innerHTML=`<span class="hero-plat-badge" style="background:${b.bg}">${b.svg}</span>${r.platform}`; }
@@ -2111,9 +2128,20 @@ $("saveBtn").addEventListener("click", async ()=>{
   let entry = recipe._id ? allCache.find(x=>x._id===recipe._id) : null;
   if(!entry){ await addToHistory(recipe); entry = allCache.find(x=>x._id===recipe._id); if(!entry) return; }
   entry.saved = !entry.saved; recipe.saved = entry.saved;
-  refreshSaveBtn(); renderList();
+  refreshSaveBtn(); renderList(); updateCollLabel();
   if(entry._dbid){ try{ await sb.from("recipes").update({ saved: entry.saved }).eq("id", entry._dbid); }catch(e){} }
 });
+// ---- menu "plus d'actions" (recette) ----
+function closeMoreMenu(){ const m=$("moreMenu"); if(m && !m.classList.contains("hidden")){ m.classList.add("hidden"); $("moreBtn").setAttribute("aria-expanded","false"); } }
+$("moreBtn").addEventListener("click",(e)=>{
+  e.stopPropagation();
+  const m=$("moreMenu");
+  const open=!m.classList.toggle("hidden");
+  $("moreBtn").setAttribute("aria-expanded", open?"true":"false");
+});
+$("moreMenu").addEventListener("click",(e)=>{ if(e.target.closest("button")) setTimeout(closeMoreMenu,60); });
+document.addEventListener("click",(e)=>{ if(!e.target.closest("#moreMenu") && !e.target.closest("#moreBtn")) closeMoreMenu(); });
+document.addEventListener("keydown",(e)=>{ if(e.key==="Escape") closeMoreMenu(); });
 const HEART_FILL=`<svg viewBox="0 0 24 24" fill="#E5484D"><path d="M12 20.8s-6.6-4.2-9-8.4C1.6 9.3 3 6 6.2 6c1.9 0 3 1.2 5.8 3.8C14.9 7.2 16 6 17.9 6c3.2 0 4.6 3.3 3.1 6.4-2.4 4.2-9 8.4-9 8.4z"/></svg>`;
 const HEART_LINE=`<svg viewBox="0 0 24 24" fill="none" stroke="#C9C2B6" stroke-width="2"><path d="M12 20.3s-6.4-4.1-8.7-8.2C1.8 9.2 3.1 6 6.2 6c1.8 0 2.9 1.1 5.8 3.7C14.9 7.1 16 6 17.8 6c3.1 0 4.4 3.2 2.9 6.1C18.4 16.2 12 20.3 12 20.3z"/></svg>`;
 const BM_FILL=`<svg viewBox="0 0 24 24" fill="var(--accent)"><path d="M6 4h12v16l-6-4-6 4V4z"/></svg>`;
@@ -2186,13 +2214,13 @@ async function toggleFav(id){
 async function toggleSaved(id){
   const r=allCache.find(x=>x._id===id); if(!r) return;
   r.saved=!r.saved; renderList();
-  if(recipe && recipe._id===id){ recipe.saved=r.saved; refreshSaveBtn(); }
+  if(recipe && recipe._id===id){ recipe.saved=r.saved; refreshSaveBtn(); updateCollLabel(); }
   if(sb && r._dbid){ try{ await sb.from("recipes").update({saved:r.saved}).eq("id", r._dbid); }catch(e){} }
 }
 async function unsaveRecipe(id){
   const r=allCache.find(x=>x._id===id); if(!r) return;
   r.saved=false; renderList();
-  if(recipe && recipe._id===id){ recipe.saved=false; refreshSaveBtn(); }
+  if(recipe && recipe._id===id){ recipe.saved=false; refreshSaveBtn(); updateCollLabel(); }
   if(sb && r._dbid){ try{ await sb.from("recipes").update({saved:false}).eq("id", r._dbid); }catch(e){} }
 }
 async function deleteRecipe(id){
@@ -2222,9 +2250,30 @@ function renderCollFilters(){
     wrap.appendChild(b);
   });
 }
+// bouton contextuel : recette non enregistrée -> "Enregistrer la recette" ;
+// recette enregistrée -> "Ajouter à une collection" (ou le nom de sa collection).
 function updateCollLabel(){
   const l=$("collBtnLabel"); if(!l) return;
-  l.textContent = (recipe&&recipe.collection) ? recipe.collection : t("collClassify");
+  const ic=$("collBtnIcon");
+  if(!currentIsSaved()){
+    if(ic) ic.textContent="🔖";
+    l.textContent=t("saveRecipeBtn");
+  } else {
+    if(ic) ic.textContent="🏷️";
+    l.textContent=(recipe&&recipe.collection) ? recipe.collection : t("collClassify");
+  }
+}
+// enregistre la recette ouverte (source de vérité unique : entry.saved) — jamais implicite.
+async function ensureSavedFromRecipe(){
+  if(!recipe || !sb || !currentUserId) return false;
+  let entry = recipe._id ? allCache.find(x=>x._id===recipe._id) : null;
+  if(!entry){ await addToHistory(recipe); entry = recipe._id ? allCache.find(x=>x._id===recipe._id) : null; if(!entry) return false; }
+  if(!entry.saved){
+    entry.saved=true; recipe.saved=true;
+    if(entry._dbid){ try{ await sb.from("recipes").update({ saved:true }).eq("id", entry._dbid); }catch(e){} }
+  }
+  refreshSaveBtn(); renderList(); updateCollLabel();
+  return true;
 }
 function openCollSheet(){
   if(!recipe) return;
@@ -2244,16 +2293,21 @@ function openCollSheet(){
 async function assignCollection(name){
   if(!recipe) return;
   recipe.collection = name||null;
-  if(name){                                        // classer = garder dans Mes recettes
-    const entry=allCache.find(x=>x._id===recipe._id);
-    if(entry && !entry.saved){ entry.saved=true; recipe.saved=true; if(sb&&entry._dbid){ try{ await sb.from("recipes").update({saved:true}).eq("id",entry._dbid); }catch(e){} } refreshSaveBtn(); }
-  }
+  // plus d'enregistrement implicite : le bouton n'ouvre les collections que si la recette est déjà enregistrée
   updateCollLabel();
   $("collSheet").classList.add("hidden");
   await persistRecipeChange();
   renderList();
 }
-$("collBtn").addEventListener("click", openCollSheet);
+$("collBtn").addEventListener("click", async ()=>{
+  if(!recipe) return;
+  if(!currentIsSaved()){
+    const ok=await ensureSavedFromRecipe();
+    if(ok) toast(t("savedToast"));   // le bouton devient "Ajouter à une collection" : la suite est facultative
+    return;
+  }
+  openCollSheet();
+});
 $("collClose").addEventListener("click",()=>$("collSheet").classList.add("hidden"));
 
 // ---- mode cuisson ----
@@ -2585,6 +2639,9 @@ function applyLang(){
   if($("homeSearch")){ $("homeSearch").placeholder=t("homeSearchPh"); $("homeSearch").setAttribute("aria-label", t("homeSearchPh")); }
   set("recentTitle","recentTitle"); set("seeAllBtn","seeAll");
   set("recipesTitle","recipesTitle"); set("confirmCancel","confirmCancel");
+  set("morePhotoLbl","morePhoto"); set("morePhotoRmLbl","morePhotoRm"); set("moreNoteLbl","moreNote"); set("moreShareLbl","moreShare");
+  if($("moreBtn")) $("moreBtn").setAttribute("aria-label", t("moreBtnAria"));
+  updateCollLabel();
   set("navHomeLbl","navHome"); set("navRecipesLbl","navRecipes"); set("navAddLbl","navAdd"); set("navAddPlusTxt","navAdd");
   set("navWeekLbl","navWeek"); set("navShopLbl","navShop");
   if($("navAdd")) $("navAdd").setAttribute("aria-label", t("navAddAria"));
