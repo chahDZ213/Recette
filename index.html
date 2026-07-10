@@ -89,6 +89,15 @@
   }
   .public-mode #mainNav{ display:none !important; }
 
+  /* ---- sheet "Ajouter une recette" ---- */
+  .add-method{ width:100%; text-align:left; display:flex; align-items:center; gap:14px; padding:15px 14px; border:1px solid var(--line);
+    background:var(--cream); border-radius:14px; margin-bottom:10px; color:var(--ink); font-family:inherit; font-size:15px; }
+  .add-method .am-ico{ font-size:22px; width:30px; text-align:center; flex-shrink:0; }
+  .add-method b{ font-size:15px; }
+  .add-method .am-sub{ display:block; font-size:12.5px; color:var(--muted); margin-top:2px; line-height:1.35; font-weight:400; }
+  .add-method:focus-visible, .sheet-x:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+  .sheet-x{ width:36px; height:36px; border-radius:11px; border:none; background:var(--cream); color:var(--muted); font-size:15px; flex-shrink:0; }
+
   /* ---- recette ---- */
   #recipe{ max-width:620px; margin:0 auto; padding-bottom:120px; }
   #hero{ position:relative; height:calc(210px + env(safe-area-inset-top)); overflow:hidden; border-radius:0 0 26px 26px;
@@ -267,17 +276,9 @@
     </p>
   </div>
 
-  <label id="urlLabel" style="display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:8px">LIEN VIDÉO OU SITE</label>
-  <input id="url" placeholder="YouTube, TikTok, Marmiton, Google, blog…" style="margin-bottom:14px" />
-  <div id="preview" class="hidden rise" style="display:flex;gap:13px;align-items:center;margin-bottom:16px;padding:11px 14px;background:var(--surface);border-radius:14px;border:1px solid var(--line)">
-    <span id="platIcon" class="plat-badge"></span>
-    <span id="detectLabel" style="font-size:14px;color:var(--green);font-weight:600">Vidéo détectée ✓</span>
-  </div>
-
-  <button id="decodeBtn" class="press" style="width:100%;font-size:17px;font-weight:600;padding:16px;border-radius:12px;border:none;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;gap:10px">
-    Décoder la recette
+  <button id="addRecipeBtn" class="press" style="width:100%;font-size:17px;font-weight:600;padding:16px;border-radius:12px;border:none;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;gap:10px" aria-haspopup="dialog">
+    ＋ <span id="addRecipeLbl">Ajouter une recette</span>
   </button>
-  <p id="error" class="hidden rise" style="font-size:14px;color:var(--accent);margin-top:14px;line-height:1.5"></p>
 
   <button id="ideasOpen" class="press" style="width:100%;text-align:left;margin-top:16px;background:var(--cream);border:1px solid var(--line);border-radius:14px;padding:15px 16px;display:flex;align-items:center;gap:12px;color:var(--ink)">
     <span style="font-size:22px">💡</span>
@@ -288,34 +289,6 @@
     <span style="font-size:22px">📅</span>
     <span style="line-height:1.35"><b id="weekTitle">Menu de la semaine</b><br><span id="weekSub" style="font-size:13px;color:var(--muted)">Planifie tes repas → liste de courses en un coup</span></span>
   </button>
-
-  <div style="margin-top:28px;border-top:1px solid var(--line);padding-top:20px">
-    <button id="manualToggle" style="background:none;border:none;color:var(--muted);font-size:13px;font-weight:600;padding:0">📋 Coller un texte de recette</button>
-    <div id="manualBox" class="hidden rise" style="margin-top:12px">
-      <textarea id="manualText" rows="6" placeholder="Ingrédients : 250g de farine…&#10;Étapes : 1. Mélanger…" style="resize:vertical"></textarea>
-      <button id="micManual" class="mic-btn">🎤 Dicter</button>
-      <button id="manualBtn" class="press" style="margin-top:10px;font-size:15px;font-weight:600;padding:12px 20px;border-radius:10px;border:1.5px solid var(--ink);background:transparent;color:var(--ink)">Structurer ce texte</button>
-    </div>
-  </div>
-
-  <div style="margin-top:20px;border-top:1px solid var(--line);padding-top:20px">
-    <button id="createToggle" style="background:none;border:none;color:var(--accent);font-size:13px;font-weight:700;padding:0">✨ Créer une recette avec l'IA</button>
-    <div id="createBox" class="hidden rise" style="margin-top:12px">
-      <p id="createDesc" style="font-size:13px;color:var(--muted);margin-bottom:8px;line-height:1.5">Décris ce que tu veux cuisiner, mise. te génère la recette complète avec un titre.</p>
-      <textarea id="createText" rows="4" placeholder="Ex : un gâteau au yaourt moelleux pour 6, sans beurre…" style="resize:vertical"></textarea>
-      <button id="micCreate" class="mic-btn">🎤 Dicter</button>
-      <button id="createBtn" class="press" style="margin-top:10px;font-size:15px;font-weight:600;padding:12px 20px;border-radius:10px;border:none;background:var(--accent);color:#fff">✨ Créer la recette</button>
-    </div>
-  </div>
-
-  <div style="margin-top:20px;border-top:1px solid var(--line);padding-top:20px">
-    <button id="imgPickBtn" class="press" style="width:100%;font-size:15px;font-weight:600;padding:12px 20px;border-radius:10px;border:1.5px solid var(--line);background:transparent;color:var(--ink);display:flex;align-items:center;justify-content:center;gap:8px">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-      <span id="imgPickLabel">Depuis une photo / capture</span>
-    </button>
-    <p id="imgPickDesc" style="font-size:13px;color:var(--muted);margin-top:10px;line-height:1.5">Une capture d'écran ou une photo d'une recette (texte, ingrédients) → mise. la lit pour toi.</p>
-    <input type="file" id="recipeImgInput" accept="image/*" style="display:none" />
-  </div>
 
   <!-- Mes recettes / Historique -->
   <div id="listSection" class="hidden" style="margin-top:40px">
@@ -655,6 +628,70 @@
   </div>
 </div>
 
+<!-- SHEET AJOUTER UNE RECETTE -->
+<div id="addSheet" class="hidden" style="position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center">
+  <div id="addSheetPanel" role="dialog" aria-modal="true" aria-labelledby="addSheetTitle"
+       style="background:var(--surface);color:var(--ink);width:100%;max-width:560px;border-radius:20px 20px 0 0;padding:22px 22px calc(26px + env(safe-area-inset-bottom));max-height:88vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:10px;min-width:0">
+        <button id="addSheetBack" class="sheet-x hidden" aria-label="revenir aux méthodes">←</button>
+        <div id="addSheetTitle" class="mono" style="font-size:20px;font-weight:700">Ajouter une recette</div>
+      </div>
+      <button id="addSheetClose" class="sheet-x" aria-label="fermer">✕</button>
+    </div>
+    <p id="error" class="hidden rise" role="alert" style="font-size:14px;color:var(--accent);margin:0 0 14px;line-height:1.5"></p>
+
+    <div id="addMethods">
+      <button class="add-method press" id="methodLink">
+        <span class="am-ico" aria-hidden="true">🔗</span>
+        <span><b id="methodLinkTitle">Depuis un lien</b><span class="am-sub" id="methodLinkSub">YouTube, TikTok, Instagram ou un site de cuisine</span></span>
+      </button>
+      <button class="add-method press" id="imgPickBtn">
+        <span class="am-ico" aria-hidden="true">📷</span>
+        <span><b id="imgPickLabel">Depuis une photo / capture</b><span class="am-sub" id="imgPickDesc">Une capture d'écran ou une photo d'une recette → mise. la lit pour toi.</span></span>
+      </button>
+      <button class="add-method press" id="manualToggle">
+        <span class="am-ico" aria-hidden="true">📋</span>
+        <span><b id="manualToggleLbl">Coller un texte de recette</b><span class="am-sub" id="methodTextSub">Colle les ingrédients et les étapes</span></span>
+      </button>
+      <button class="add-method press" id="createToggle">
+        <span class="am-ico" aria-hidden="true">✨</span>
+        <span><b id="createToggleLbl">Créer une recette avec l'IA</b><span class="am-sub" id="methodAISub">Décris le plat que tu aimerais préparer</span></span>
+      </button>
+    </div>
+
+    <div id="addPanelLink" class="hidden">
+      <label id="urlLabel" for="url" style="display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:8px">LIEN VIDÉO OU SITE</label>
+      <input id="url" placeholder="YouTube, TikTok, Marmiton, Google, blog…" style="margin-bottom:14px" />
+      <div id="preview" class="hidden rise" style="display:flex;gap:13px;align-items:center;margin-bottom:16px;padding:11px 14px;background:var(--cream);border-radius:14px;border:1px solid var(--line)">
+        <span id="platIcon" class="plat-badge"></span>
+        <span id="detectLabel" role="status" style="font-size:14px;color:var(--green);font-weight:600">Vidéo détectée ✓</span>
+      </div>
+      <button id="decodeBtn" class="press" style="width:100%;font-size:17px;font-weight:600;padding:16px;border-radius:12px;border:none;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;gap:10px">
+        Décoder la recette
+      </button>
+    </div>
+
+    <div id="addPanelText" class="hidden">
+      <div id="manualBox">
+        <textarea id="manualText" rows="6" placeholder="Ingrédients : 250g de farine…&#10;Étapes : 1. Mélanger…" style="resize:vertical"></textarea>
+        <button id="micManual" class="mic-btn">🎤 Dicter</button>
+        <button id="manualBtn" class="press" style="margin-top:10px;width:100%;font-size:16px;font-weight:600;padding:14px 20px;border-radius:12px;border:none;background:var(--accent);color:#fff">Structurer ce texte</button>
+      </div>
+    </div>
+
+    <div id="addPanelAI" class="hidden">
+      <div id="createBox">
+        <p id="createDesc" style="font-size:13px;color:var(--muted);margin-bottom:8px;line-height:1.5">Décris ce que tu veux cuisiner, mise. te génère la recette complète avec un titre.</p>
+        <textarea id="createText" rows="4" placeholder="Ex : un gâteau au yaourt moelleux pour 6, sans beurre…" style="resize:vertical"></textarea>
+        <button id="micCreate" class="mic-btn">🎤 Dicter</button>
+        <button id="createBtn" class="press" style="margin-top:10px;width:100%;font-size:16px;font-weight:600;padding:14px 20px;border-radius:12px;border:none;background:var(--accent);color:#fff">✨ Créer la recette</button>
+      </div>
+    </div>
+    <input type="file" id="recipeImgInput" accept="image/*" style="display:none" />
+  </div>
+</div>
+
 <!-- MOT DE PASSE OUBLIÉ -->
 <div id="forgotSheet" class="hidden" style="position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center">
   <div style="background:var(--surface);color:var(--ink);width:100%;max-width:620px;border-radius:20px 20px 0 0;padding:24px 22px calc(28px + env(safe-area-inset-bottom))">
@@ -802,7 +839,7 @@ $("navHome").addEventListener("click", ()=>{ renderList(); show("home"); saveVie
 $("navRecipes").addEventListener("click", ()=>{ renderList(); show("home"); saveView("home"); const ls=$("listSection"); if(ls && !ls.classList.contains("hidden")) ls.scrollIntoView({behavior:"smooth"}); });
 $("navWeek").addEventListener("click", ()=>{ renderWeek(); show("week"); window.scrollTo(0,0); });
 $("navShop").addEventListener("click", ()=>{ renderShopping(); show("shopping"); window.scrollTo(0,0); });
-$("navAdd").addEventListener("click", ()=>{ show("home"); window.scrollTo(0,0); const u=$("url"); if(u) u.focus(); }); // provisoire (étape 2) — la sheet Ajouter arrive à l'étape 3
+$("navAdd").addEventListener("click", ()=>openAddSheet($("navAdd"))); // ACTION pure : ouvre la sheet par-dessus l'écran courant, ne change pas la vue
 function setError(msg){ const e=$("error"); if(!msg){e.classList.add("hidden");return;} e.textContent=msg; e.classList.remove("hidden"); }
 // petit toast visible sur n'importe quel écran (erreurs hors accueil)
 let toastTimer=null;
@@ -853,13 +890,18 @@ const STR={
   errServer:"Le serveur n'a pas répondu. Réessaie dans un instant.",
   navHome:"Accueil", navRecipes:"Recettes", navAdd:"Ajouter", navWeek:"Planning", navShop:"Courses",
   navAddAria:"Ajouter une recette",
+  addRecipeBtn:"Ajouter une recette", addSheetTitle:"Ajouter une recette",
+  methodLink:"Depuis un lien", methodLinkSub:"YouTube, TikTok, Instagram ou un site de cuisine",
+  methodTextSub:"Colle les ingrédients et les étapes",
+  methodAISub:"Décris le plat que tu aimerais préparer",
+  sheetClose:"Fermer", sheetBack:"Revenir aux méthodes",
   transAllProg:(d,n)=>`🌐 Traduction de tes recettes… ${d}/${n}`,
   transAllDone:(n)=>`✅ ${n} recette${n>1?"s":""} traduite${n>1?"s":""}`,
   transAllFail:(n)=>`⚠️ ${n} recette${n>1?"s":""} n'${n>1?"ont":"a"} pas pu être traduite${n>1?"s":""} — réessaie en rechangeant la langue.`,
   ideasTitle:"Pas d'inspiration ?", ideasSub:"Dis ce que t'as dans le frigo → mise. te trouve des idées",
   weekTitle:"Menu de la semaine", weekSub:"Planifie tes repas → liste de courses en un coup",
-  manualToggle:"📋 Coller un texte de recette", manualPh:"Ingrédients : 250g de farine…\nÉtapes : 1. Mélanger…", manualBtn:"Structurer ce texte",
-  createToggle:"✨ Créer une recette avec l'IA", createDesc:"Décris ce que tu veux cuisiner, mise. te génère la recette complète avec un titre.", createPh:"Ex : un gâteau au yaourt moelleux pour 6, sans beurre…", createBtn:"✨ Créer la recette",
+  manualToggle:"Coller un texte de recette", manualPh:"Ingrédients : 250g de farine…\nÉtapes : 1. Mélanger…", manualBtn:"Structurer ce texte",
+  createToggle:"Créer une recette avec l'IA", createDesc:"Décris ce que tu veux cuisiner, mise. te génère la recette complète avec un titre.", createPh:"Ex : un gâteau au yaourt moelleux pour 6, sans beurre…", createBtn:"✨ Créer la recette",
   dictate:"🎤 Dicter", listening:"● En écoute…",
   imgPickLabel:"Depuis une photo / capture", imgPickDesc:"Une capture d'écran ou une photo d'une recette (texte, ingrédients) → mise. la lit pour toi.",
   tabSaved:"Mes recettes", tabHistory:"Historique", searchPh:"Rechercher un plat, un ingrédient…",
@@ -951,13 +993,18 @@ const STR={
   errServer:"The server didn't respond. Try again in a moment.",
   navHome:"Home", navRecipes:"Recipes", navAdd:"Add", navWeek:"Planner", navShop:"Groceries",
   navAddAria:"Add a recipe",
+  addRecipeBtn:"Add a recipe", addSheetTitle:"Add a recipe",
+  methodLink:"From a link", methodLinkSub:"YouTube, TikTok, Instagram or a cooking site",
+  methodTextSub:"Paste the ingredients and steps",
+  methodAISub:"Describe the dish you'd like to make",
+  sheetClose:"Close", sheetBack:"Back to methods",
   transAllProg:(d,n)=>`🌐 Translating your recipes… ${d}/${n}`,
   transAllDone:(n)=>`✅ ${n} recipe${n>1?"s":""} translated`,
   transAllFail:(n)=>`⚠️ ${n} recipe${n>1?"s":""} couldn't be translated — switch the language again to retry.`,
   ideasTitle:"No inspiration?", ideasSub:"Tell mise. what's in your fridge → it finds ideas for you",
   weekTitle:"Weekly menu", weekSub:"Plan your meals → shopping list in one tap",
-  manualToggle:"📋 Paste a recipe text", manualPh:"Ingredients: 250g flour…\nSteps: 1. Mix…", manualBtn:"Structure this text",
-  createToggle:"✨ Create a recipe with AI", createDesc:"Describe what you want to cook — mise. generates the full recipe with a title.", createPh:"E.g.: a soft yogurt cake for 6, butter-free…", createBtn:"✨ Create the recipe",
+  manualToggle:"Paste a recipe text", manualPh:"Ingredients: 250g flour…\nSteps: 1. Mix…", manualBtn:"Structure this text",
+  createToggle:"Create a recipe with AI", createDesc:"Describe what you want to cook — mise. generates the full recipe with a title.", createPh:"E.g.: a soft yogurt cake for 6, butter-free…", createBtn:"✨ Create the recipe",
   dictate:"🎤 Dictate", listening:"● Listening…",
   imgPickLabel:"From a photo / screenshot", imgPickDesc:"A screenshot or photo of a recipe (text, ingredients) → mise. reads it for you.",
   tabSaved:"My recipes", tabHistory:"History", searchPh:"Search a dish, an ingredient…",
@@ -1124,13 +1171,56 @@ $("decodeBtn").addEventListener("click", async ()=>{
   loading(true);
   try{
     const r=await callBackend({url:d.url});
-    if(!r.found){ setError(r.error||t("errNotFound")); $("manualBox").classList.remove("hidden"); }
+    if(!r.found){ setError(r.error||t("errNotFound")); showAddPanel("text"); }
     else { r.platform=d.platform; r.sourceUrl=d.url; await addToHistory(r); loadRecipe(r); }
   }catch(e){ setError(t("errServer")); }
   loading(false);
 });
-$("manualToggle").addEventListener("click", ()=> $("manualBox").classList.toggle("hidden"));
-$("createToggle").addEventListener("click", ()=> $("createBox").classList.toggle("hidden"));
+// ---- sheet "Ajouter une recette" ----
+// dialog accessible : focus initial dedans, focus piégé, Échap ferme, focus restauré à la fermeture.
+let addSheetReturnFocus=null;
+const ADD_PANELS={ link:"addPanelLink", text:"addPanelText", ai:"addPanelAI" };
+function showAddPanel(key){
+  $("addMethods").classList.toggle("hidden", !!key);
+  Object.entries(ADD_PANELS).forEach(([k,id])=> $(id).classList.toggle("hidden", k!==key));
+  $("addSheetBack").classList.toggle("hidden", !key);
+  if(key==="link") setTimeout(()=>{ try{ $("url").focus(); }catch(e){} },40);
+  if(key==="text") setTimeout(()=>{ try{ $("manualText").focus(); }catch(e){} },40);
+  if(key==="ai")   setTimeout(()=>{ try{ $("createText").focus(); }catch(e){} },40);
+}
+function addSheetKeydown(e){
+  if(e.key==="Escape"){ e.preventDefault(); closeAddSheet(); return; }
+  if(e.key!=="Tab") return;
+  const panel=$("addSheetPanel");
+  const f=[...panel.querySelectorAll("button,input,textarea,select,a[href]")].filter(el=>!el.disabled && el.offsetParent!==null);
+  if(!f.length) return;
+  const first=f[0], last=f[f.length-1];
+  if(e.shiftKey && document.activeElement===first){ e.preventDefault(); last.focus(); }
+  else if(!e.shiftKey && document.activeElement===last){ e.preventDefault(); first.focus(); }
+}
+function openAddSheet(fromEl){
+  addSheetReturnFocus = fromEl || document.activeElement;
+  setError("");
+  $("addSheet").classList.remove("hidden");
+  showAddPanel(null);
+  setTimeout(()=>{ try{ $("methodLink").focus(); }catch(e){} },40);
+  document.addEventListener("keydown", addSheetKeydown);
+}
+function closeAddSheet(){
+  if($("addSheet").classList.contains("hidden")) return;
+  $("addSheet").classList.add("hidden");
+  document.removeEventListener("keydown", addSheetKeydown);
+  if(addSheetReturnFocus && addSheetReturnFocus.focus){ try{ addSheetReturnFocus.focus(); }catch(e){} }
+  addSheetReturnFocus=null;
+}
+// clic sur l'overlay = fermer ; clic à l'intérieur du panneau = jamais
+$("addSheet").addEventListener("click",(e)=>{ if(e.target===$("addSheet")) closeAddSheet(); });
+$("addSheetClose").addEventListener("click", closeAddSheet);
+$("addSheetBack").addEventListener("click", ()=>{ setError(""); showAddPanel(null); setTimeout(()=>{ try{ $("methodLink").focus(); }catch(e){} },40); });
+$("methodLink").addEventListener("click", ()=>showAddPanel("link"));
+$("manualToggle").addEventListener("click", ()=>showAddPanel("text"));
+$("createToggle").addEventListener("click", ()=>showAddPanel("ai"));   // le verrou premium (écouteur capture) intercepte avant si non premium
+$("addRecipeBtn").addEventListener("click", ()=>openAddSheet($("addRecipeBtn")));
 
 // ---- dictée vocale ----
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -1293,6 +1383,7 @@ function loadRecipe(r){
   updateCollLabel();
   { const sl=$("sourceLink"); const su=safeHttpUrl(recipe.sourceUrl); if(sl){ if(su){ sl.href=su; sl.classList.remove("hidden"); } else sl.classList.add("hidden"); } }
   refreshSaveBtn();
+  closeAddSheet();               // import réussi depuis la sheet -> on la referme
   show("recipe"); window.scrollTo(0,0);
   saveView("recipe");
 }
@@ -2410,8 +2501,14 @@ function applyLang(){
   set("decodeBtn","decodeBtn");
   set("ideasTitle","ideasTitle"); set("ideasSub","ideasSub");
   set("weekTitle","weekTitle"); set("weekSub","weekSub");
-  set("manualToggle","manualToggle"); if($("manualText")) $("manualText").placeholder=t("manualPh"); set("manualBtn","manualBtn");
-  set("createToggle","createToggle"); set("createDesc","createDesc"); if($("createText")) $("createText").placeholder=t("createPh"); set("createBtn","createBtn");
+  set("manualToggleLbl","manualToggle"); if($("manualText")) $("manualText").placeholder=t("manualPh"); set("manualBtn","manualBtn");
+  set("createToggleLbl","createToggle"); set("createDesc","createDesc"); if($("createText")) $("createText").placeholder=t("createPh"); set("createBtn","createBtn");
+  set("addRecipeLbl","addRecipeBtn"); set("addSheetTitle","addSheetTitle");
+  set("methodLinkTitle","methodLink"); set("methodLinkSub","methodLinkSub");
+  set("methodTextSub","methodTextSub"); set("methodAISub","methodAISub");
+  if($("addSheetClose")) $("addSheetClose").setAttribute("aria-label", t("sheetClose"));
+  if($("addSheetBack")) $("addSheetBack").setAttribute("aria-label", t("sheetBack"));
+  if($("addRecipeBtn")) $("addRecipeBtn").setAttribute("aria-label", t("navAddAria"));
   set("micManual","dictate"); set("micCreate","dictate");
   set("imgPickLabel","imgPickLabel"); set("imgPickDesc","imgPickDesc");
   set("tabSaved","tabSaved"); set("tabHistory","tabHistory");
