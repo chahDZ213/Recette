@@ -251,29 +251,21 @@
       <span class="mono" style="font-size:26px;font-weight:700;letter-spacing:-.02em">mise</span><span class="mono" style="font-size:26px;font-weight:700;color:var(--accent)">.</span>
     </div>
     <div style="display:flex;gap:10px">
-      <button id="cartBtn" class="theme-toggle press" aria-label="liste de courses">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>
-      </button>
+      <button id="themeToggle" class="theme-toggle press" aria-label="changer de thème"></button>
       <button id="acctBtn" class="theme-toggle press" aria-label="compte">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
       </button>
-      <button id="themeToggle" class="theme-toggle press" aria-label="changer de thème"></button>
-    </div>
-  </div>
-  <div id="installBanner" class="hidden" style="display:flex;align-items:center;gap:12px;justify-content:space-between;background:var(--cream);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:26px">
-    <div style="font-size:13px;line-height:1.4;font-weight:600"><span id="installTitle">📲 Installe mise. sur ton écran d'accueil</span><br><span id="installSub" style="color:var(--muted);font-weight:400">Vraie app + notifications</span></div>
-    <div style="display:flex;gap:6px;flex:none;align-items:center">
-      <button id="installBtn" style="font-family:inherit;font-size:13px;font-weight:600;padding:9px 13px;border-radius:10px;border:none;background:var(--accent);color:#fff">Installer</button>
-      <button id="installClose" aria-label="fermer" style="font-size:15px;padding:0 4px;border:none;background:transparent;color:var(--muted)">✕</button>
     </div>
   </div>
   <div id="introBlock">
-    <h1 id="heroTitle" class="mono" style="font-size:34px;line-height:1.05;font-weight:700;letter-spacing:-.03em;margin-bottom:14px">
-      La recette,<br>sans le bouton pause.
+    <h1 id="heroTitle" class="mono" style="font-size:29px;line-height:1.1;font-weight:700;letter-spacing:-.03em;margin-bottom:18px">
+      Qu'est-ce que tu veux cuisiner ?
     </h1>
-    <p id="heroSub" style="font-size:16px;color:var(--muted);line-height:1.5;margin-bottom:30px;max-width:460px">
-      Colle le lien d’une vidéo (YouTube, Shorts, Instagram, TikTok, Facebook) ou d’un site de recettes (Marmiton, 750g…). Tu récupères les ingrédients, les portions ajustables et un mode cuisson étape par étape.
-    </p>
+  </div>
+
+  <div style="position:relative;margin-bottom:14px">
+    <svg viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);width:17px;height:17px;pointer-events:none"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+    <input type="search" id="homeSearch" autocomplete="off" placeholder="Rechercher dans mes recettes…" aria-label="Rechercher dans mes recettes" style="width:100%;font-family:inherit;font-size:15px;padding:13px 14px 13px 42px;border-radius:13px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);outline:none" />
   </div>
 
   <button id="addRecipeBtn" class="press" style="width:100%;font-size:17px;font-weight:600;padding:16px;border-radius:12px;border:none;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;gap:10px" aria-haspopup="dialog">
@@ -289,6 +281,23 @@
     <span style="font-size:22px">📅</span>
     <span style="line-height:1.35"><b id="weekTitle">Menu de la semaine</b><br><span id="weekSub" style="font-size:13px;color:var(--muted)">Planifie tes repas → liste de courses en un coup</span></span>
   </button>
+
+  <!-- Recettes récentes (aperçu) -->
+  <div id="homeRecent" class="hidden" style="margin-top:30px">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px">
+      <div id="recentTitle" class="eyebrow" style="margin-bottom:0">RECETTES RÉCENTES</div>
+      <button id="seeAllBtn" style="background:none;border:none;color:var(--accent);font-size:13px;font-weight:700;padding:4px 0">Tout voir →</button>
+    </div>
+    <div id="homeRecentList" class="saved-list"></div>
+  </div>
+
+  <div id="installBanner" class="hidden" style="display:flex;align-items:center;gap:12px;justify-content:space-between;background:var(--cream);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-top:26px">
+    <div style="font-size:13px;line-height:1.4;font-weight:600"><span id="installTitle">📲 Installe mise. sur ton écran d'accueil</span><br><span id="installSub" style="color:var(--muted);font-weight:400">Vraie app + notifications</span></div>
+    <div style="display:flex;gap:6px;flex:none;align-items:center">
+      <button id="installBtn" style="font-family:inherit;font-size:13px;font-weight:600;padding:9px 13px;border-radius:10px;border:none;background:var(--accent);color:#fff">Installer</button>
+      <button id="installClose" aria-label="fermer" style="font-size:15px;padding:0 4px;border:none;background:transparent;color:var(--muted)">✕</button>
+    </div>
+  </div>
 
   <!-- Mes recettes / Historique -->
   <div id="listSection" class="hidden" style="margin-top:40px">
@@ -880,8 +889,9 @@ try{ curLang=(localStorage.getItem("mise_lang")==="en")?"en":"fr"; }catch(e){}
 const STR={
  fr:{
   // accueil (étape 1)
-  heroTitle:"La recette,<br>sans le bouton pause.",
-  heroSub:"Colle le lien d'une vidéo (YouTube, Shorts, Instagram, TikTok, Facebook) ou d'un site de recettes (Marmiton, 750g…). Tu récupères les ingrédients, les portions ajustables et un mode cuisson étape par étape.",
+  heroTitle:"Qu'est-ce que tu veux cuisiner ?",
+  homeSearchPh:"Rechercher dans mes recettes…",
+  recentTitle:"RECETTES RÉCENTES", seeAll:"Tout voir →",
   urlLabel:"LIEN VIDÉO OU SITE", urlPh:"YouTube, TikTok, Marmiton, Google, blog…",
   detected:"Vidéo détectée ✓",
   detectedPlat:(p)=>p==="Web"?"Site de recettes détecté ✓":`Vidéo ${p} détectée ✓`,
@@ -983,8 +993,9 @@ const STR={
  },
  en:{
   // home (step 1)
-  heroTitle:"The recipe,<br>without the pause button.",
-  heroSub:"Paste a video link (YouTube, Shorts, Instagram, TikTok, Facebook) or a recipe website (Allrecipes, BBC Good Food…). You get the ingredients, adjustable servings, and a step-by-step cooking mode.",
+  heroTitle:"What do you want to cook?",
+  homeSearchPh:"Search my recipes…",
+  recentTitle:"RECENT RECIPES", seeAll:"See all →",
   urlLabel:"VIDEO OR SITE LINK", urlPh:"YouTube, TikTok, recipe sites, Google, blogs…",
   detected:"Video detected ✓",
   detectedPlat:(p)=>p==="Web"?"Recipe site detected ✓":`${p} video detected ✓`,
@@ -1221,6 +1232,31 @@ $("methodLink").addEventListener("click", ()=>showAddPanel("link"));
 $("manualToggle").addEventListener("click", ()=>showAddPanel("text"));
 $("createToggle").addEventListener("click", ()=>showAddPanel("ai"));   // le verrou premium (écouteur capture) intercepte avant si non premium
 $("addRecipeBtn").addEventListener("click", ()=>openAddSheet($("addRecipeBtn")));
+
+// ---- accueil : recettes récentes + recherche ----
+function renderHomeRecent(){
+  const box=$("homeRecentList"); if(!box) return;
+  const items=(allCache||[]).slice(0,4);
+  $("homeRecent").classList.toggle("hidden", items.length===0);
+  box.innerHTML="";
+  items.forEach(r=>{
+    const row=document.createElement("div"); row.className="saved-row press";
+    row.innerHTML=`${r.image?`<img class="sr-thumb" src="${esc(r.image)}" loading="lazy" alt=""/>`:""}<span class="sr-name">${esc(r.title)}</span><button class="sr-cook" aria-label="cuisiner"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>`;
+    row.addEventListener("click",(e)=>{
+      if(e.target.closest(".sr-cook")){ loadRecipe({...r}); cookStep=0; show("cook"); renderCook(); return; }
+      loadRecipe({...r});
+    });
+    box.appendChild(row);
+  });
+}
+// un seul moteur de recherche : le champ accueil délègue au filtre existant de la liste
+function goHomeSearch(){
+  const q=$("homeSearch").value.trim();
+  $("searchInput").value=q; searchQuery=q; renderList();
+  const ls=$("listSection"); if(ls && !ls.classList.contains("hidden")) ls.scrollIntoView({behavior:"smooth"}); // étape 5 : bascule vers la page Recettes
+}
+$("homeSearch").addEventListener("keydown",(e)=>{ if(e.key==="Enter"){ e.preventDefault(); goHomeSearch(); } });
+$("seeAllBtn").addEventListener("click", ()=>{ $("navRecipes").click(); });
 
 // ---- dictée vocale ----
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -1601,7 +1637,6 @@ function renderShopping(){
     box.appendChild(block);
   });
 }
-$("cartBtn").addEventListener("click", ()=>{ renderShopping(); show("shopping"); window.scrollTo(0,0); });
 $("shopBack").addEventListener("click", ()=>show("home"));
 // ---- cuisiner sans balance ----
 const CONV=[
@@ -2038,7 +2073,7 @@ $("searchInput").addEventListener("input",(e)=>{ searchQuery=e.target.value.trim
 $("tabSaved").addEventListener("click",()=>{ listTab="saved"; renderList(); });
 $("tabHistory").addEventListener("click",()=>{ listTab="history"; renderList(); });
 function renderList(){
-  const intro=$("introBlock"); if(intro) intro.classList.toggle("hidden", allCache.length>0);
+  renderHomeRecent();
   if(!allCache.length){ $("listSection").classList.add("hidden"); return; }
   $("listSection").classList.remove("hidden");
   $("tabSaved").classList.toggle("active", listTab==="saved");
@@ -2492,7 +2527,9 @@ refreshLocks();
 function applyLang(){
   const set=(id,key,html)=>{ const el=$(id); if(!el) return; if(html) el.innerHTML=t(key); else el.textContent=t(key); };
   // accueil (étape 1)
-  set("heroTitle","heroTitle",true); set("heroSub","heroSub");
+  set("heroTitle","heroTitle",true);
+  if($("homeSearch")){ $("homeSearch").placeholder=t("homeSearchPh"); $("homeSearch").setAttribute("aria-label", t("homeSearchPh")); }
+  set("recentTitle","recentTitle"); set("seeAllBtn","seeAll");
   set("navHomeLbl","navHome"); set("navRecipesLbl","navRecipes"); set("navAddLbl","navAdd"); set("navAddPlusTxt","navAdd");
   set("navWeekLbl","navWeek"); set("navShopLbl","navShop");
   if($("navAdd")) $("navAdd").setAttribute("aria-label", t("navAddAria"));
