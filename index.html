@@ -306,8 +306,8 @@
   <h1 id="recipesTitle" class="mono" style="font-size:26px;font-weight:700;letter-spacing:-.02em;margin-bottom:20px">Mes recettes</h1>
   <div id="listSection">
     <div style="display:flex;gap:8px;margin-bottom:16px">
-      <button id="tabSaved" class="list-tab active">Mes recettes</button>
-      <button id="tabHistory" class="list-tab">Historique</button>
+      <button id="tabSaved" class="list-tab active">Enregistrées</button>
+      <button id="tabHistory" class="list-tab">Récentes</button>
     </div>
     <div id="collFilters" class="hidden" style="display:flex;gap:7px;overflow-x:auto;margin-bottom:14px;padding-bottom:2px"></div>
     <div style="position:relative;margin-bottom:14px">
@@ -550,7 +550,7 @@
       </div>
     </div>
 
-    <button id="collBtn" class="press" style="display:inline-flex;align-items:center;gap:6px;font-family:inherit;font-size:14px;font-weight:600;padding:10px 18px;border-radius:20px;border:none;background:var(--accent);color:#fff;margin-bottom:22px">🏷️ <span id="collBtnLabel">Classer</span></button>
+    <button id="collBtn" class="press" style="display:inline-flex;align-items:center;gap:6px;font-family:inherit;font-size:14px;font-weight:600;padding:10px 18px;border-radius:20px;border:1.5px solid var(--line);background:transparent;color:var(--ink);margin-bottom:22px">🏷️ <span id="collBtnLabel">Ajouter à une collection</span></button>
     <a id="sourceLink" target="_blank" rel="noopener" class="hidden" style="display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:600;padding:10px 16px;border-radius:20px;border:1.5px solid var(--line);background:transparent;color:var(--ink);text-decoration:none;margin-bottom:22px;margin-left:8px">🔗 Voir la vidéo</a>
 
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
@@ -621,7 +621,7 @@
 <!-- CLASSER (collections) -->
 <div id="collSheet" class="hidden" style="position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center">
   <div style="background:var(--surface);color:var(--ink);width:100%;max-width:620px;border-radius:20px 20px 0 0;padding:22px 20px calc(24px + env(safe-area-inset-bottom))">
-    <div id="collSheetTitle" class="mono" style="font-size:19px;font-weight:700;margin-bottom:4px">Classer la recette</div>
+    <div id="collSheetTitle" class="mono" style="font-size:19px;font-weight:700;margin-bottom:4px">Ajouter à une collection</div>
     <div id="collSheetDesc" style="font-size:13px;color:var(--muted);margin-bottom:16px">Choisis une collection ou crées-en une.</div>
     <div id="collSheetList" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px"></div>
     <button id="collClose" style="width:100%;font-family:inherit;font-size:15px;font-weight:600;padding:12px;border-radius:12px;border:1.5px solid var(--line);background:transparent;color:var(--ink)">Fermer</button>
@@ -681,7 +681,7 @@
         <span id="detectLabel" role="status" style="font-size:14px;color:var(--green);font-weight:600">Vidéo détectée ✓</span>
       </div>
       <button id="decodeBtn" class="press" style="width:100%;font-size:17px;font-weight:600;padding:16px;border-radius:12px;border:none;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;gap:10px">
-        Décoder la recette
+        Importer la recette
       </button>
     </div>
 
@@ -911,10 +911,10 @@ const STR={
   recipesTitle:"Mes recettes",
   delConfirmTitle:"Supprimer la recette ?", delConfirmDesc:"Cette recette sera supprimée définitivement.",
   delConfirmOk:"Supprimer", confirmCancel:"Annuler",
-  urlLabel:"LIEN VIDÉO OU SITE", urlPh:"YouTube, TikTok, Marmiton, Google, blog…",
+  urlLabel:"Lien de la vidéo ou du site", urlPh:"YouTube, TikTok, Marmiton, Google, blog…",
   detected:"Vidéo détectée ✓",
   detectedPlat:(p)=>p==="Web"?"Site de recettes détecté ✓":`Vidéo ${p} détectée ✓`,
-  decodeBtn:"Décoder la recette", decoding:"Décodage…",
+  decodeBtn:"Importer la recette", decoding:"Import en cours…",
   errNotFound:"Recette introuvable. Colle la description ci-dessous.",
   errServer:"Le serveur n'a pas répondu. Réessaie dans un instant.",
   navHome:"Accueil", navRecipes:"Recettes", navAdd:"Ajouter", navWeek:"Planning", navShop:"Courses",
@@ -927,14 +927,14 @@ const STR={
   transAllProg:(d,n)=>`🌐 Traduction de tes recettes… ${d}/${n}`,
   transAllDone:(n)=>`✅ ${n} recette${n>1?"s":""} traduite${n>1?"s":""}`,
   transAllFail:(n)=>`⚠️ ${n} recette${n>1?"s":""} n'${n>1?"ont":"a"} pas pu être traduite${n>1?"s":""} — réessaie en rechangeant la langue.`,
-  ideasTitle:"Pas d'inspiration ?", ideasSub:"Dis ce que t'as dans le frigo → mise. te trouve des idées",
-  weekTitle:"Menu de la semaine", weekSub:"Planifie tes repas → liste de courses en un coup",
-  manualToggle:"Coller un texte de recette", manualPh:"Ingrédients : 250g de farine…\nÉtapes : 1. Mélanger…", manualBtn:"Structurer ce texte",
+  ideasTitle:"Trouver une idée avec mes ingrédients", ideasSub:"Dis ce que t'as dans le frigo → mise. te trouve des idées",
+  weekTitle:"Planifier ma semaine", weekSub:"Planifie tes repas → liste de courses en un coup",
+  manualToggle:"Coller un texte de recette", manualPh:"Ingrédients : 250g de farine…\nÉtapes : 1. Mélanger…", manualBtn:"Créer la recette",
   createToggle:"Créer une recette avec l'IA", createDesc:"Décris ce que tu veux cuisiner, mise. te génère la recette complète avec un titre.", createPh:"Ex : un gâteau au yaourt moelleux pour 6, sans beurre…", createBtn:"✨ Créer la recette",
   dictate:"🎤 Dicter", listening:"● En écoute…",
-  imgPickLabel:"Depuis une photo / capture", imgPickDesc:"Une capture d'écran ou une photo d'une recette (texte, ingrédients) → mise. la lit pour toi.",
-  tabSaved:"Mes recettes", tabHistory:"Historique", searchPh:"Rechercher un plat, un ingrédient…",
-  emptySaved:"Aucune recette enregistrée. Ouvre une recette et appuie sur le marque-page 🔖.", emptyHistory:"Ton historique est vide.",
+  imgPickLabel:"Scanner une recette", imgPickDesc:"Prends une photo ou importe une capture d'écran",
+  tabSaved:"Enregistrées", tabHistory:"Récentes", searchPh:"Rechercher un plat, un ingrédient…",
+  emptySaved:"Aucune recette enregistrée. Ouvre une recette et appuie sur le marque-page 🔖.", emptyHistory:"Aucune recette récente. Ajoute ta première recette avec le bouton ＋ !",
   emptySearch:(q)=>`Aucune recette ne correspond à « ${q} ».`,
   installTitle:"📲 Installe mise. sur ton écran d'accueil", installSub:"Vraie app + notifications", installBtn:"Installer",
   errLink:"Lien non reconnu. Colle un lien complet (vidéo ou site de recettes) commençant par https://.",
@@ -990,11 +990,11 @@ const STR={
   shareBannerText:'<b>mise.</b> · recette partagée<br><span style="font-size:13px;color:var(--muted)">Décode tes propres recettes de vidéos, gratuitement.</span>',
   shareCtaSignup:"Créer mon compte", shareCtaAdd:"Ajouter à mes recettes",
   servFor:"Pour", servOne:"personne", servMany:"personnes",
-  collClassify:"Classer", seeVideo:"🔗 Voir la vidéo",
+  collClassify:"Ajouter à une collection", seeVideo:"🔗 Voir la source",
   ingLabel:"INGRÉDIENTS", noBalBtn:"🥄 Sans balance", noteLabel:"MA NOTE",
   shopAdd:"🛒 Ajouter aux courses", shopAddedOk:"✓ Ajouté aux courses",
   editIngOpen:"Modifier les ingrédients", cookStart:"Lancer le mode cuisson →",
-  collSheetTitle:"Classer la recette", collSheetDesc:"Choisis une collection ou crées-en une.",
+  collSheetTitle:"Ajouter à une collection", collSheetDesc:"Choisis une collection ou crées-en une.",
   collNone:"Aucune", collNew:"+ Nouvelle", collPrompt:"Nom de la collection (Dessert, Salé, Rapide…) :", collCloseBtn:"Fermer",
   editIngTitle:"Modifier", editIngHint:"Quantité · unité · ingrédient",
   editAddBtn:"+ Ajouter un ingrédient", editResetBtn:"Valeurs d'origine", editSaveBtn:"Enregistrer",
@@ -1018,10 +1018,10 @@ const STR={
   recipesTitle:"My recipes",
   delConfirmTitle:"Delete this recipe?", delConfirmDesc:"This recipe will be permanently deleted.",
   delConfirmOk:"Delete", confirmCancel:"Cancel",
-  urlLabel:"VIDEO OR SITE LINK", urlPh:"YouTube, TikTok, recipe sites, Google, blogs…",
+  urlLabel:"Video or website link", urlPh:"YouTube, TikTok, recipe sites, Google, blogs…",
   detected:"Video detected ✓",
   detectedPlat:(p)=>p==="Web"?"Recipe site detected ✓":`${p} video detected ✓`,
-  decodeBtn:"Decode the recipe", decoding:"Decoding…",
+  decodeBtn:"Import the recipe", decoding:"Importing…",
   errNotFound:"Recipe not found. Paste the description below.",
   errServer:"The server didn't respond. Try again in a moment.",
   navHome:"Home", navRecipes:"Recipes", navAdd:"Add", navWeek:"Planner", navShop:"Groceries",
@@ -1034,14 +1034,14 @@ const STR={
   transAllProg:(d,n)=>`🌐 Translating your recipes… ${d}/${n}`,
   transAllDone:(n)=>`✅ ${n} recipe${n>1?"s":""} translated`,
   transAllFail:(n)=>`⚠️ ${n} recipe${n>1?"s":""} couldn't be translated — switch the language again to retry.`,
-  ideasTitle:"No inspiration?", ideasSub:"Tell mise. what's in your fridge → it finds ideas for you",
-  weekTitle:"Weekly menu", weekSub:"Plan your meals → shopping list in one tap",
-  manualToggle:"Paste a recipe text", manualPh:"Ingredients: 250g flour…\nSteps: 1. Mix…", manualBtn:"Structure this text",
+  ideasTitle:"Find an idea with my ingredients", ideasSub:"Tell mise. what's in your fridge → it finds ideas for you",
+  weekTitle:"Plan my week", weekSub:"Plan your meals → shopping list in one tap",
+  manualToggle:"Paste a recipe text", manualPh:"Ingredients: 250g flour…\nSteps: 1. Mix…", manualBtn:"Create the recipe",
   createToggle:"Create a recipe with AI", createDesc:"Describe what you want to cook — mise. generates the full recipe with a title.", createPh:"E.g.: a soft yogurt cake for 6, butter-free…", createBtn:"✨ Create the recipe",
   dictate:"🎤 Dictate", listening:"● Listening…",
-  imgPickLabel:"From a photo / screenshot", imgPickDesc:"A screenshot or photo of a recipe (text, ingredients) → mise. reads it for you.",
-  tabSaved:"My recipes", tabHistory:"History", searchPh:"Search a dish, an ingredient…",
-  emptySaved:"No saved recipes yet. Open a recipe and tap the bookmark 🔖.", emptyHistory:"Your history is empty.",
+  imgPickLabel:"Scan a recipe", imgPickDesc:"Take a photo or import a screenshot",
+  tabSaved:"Saved", tabHistory:"Recent", searchPh:"Search a dish, an ingredient…",
+  emptySaved:"No saved recipes yet. Open a recipe and tap the bookmark 🔖.", emptyHistory:"No recent recipes. Add your first one with the ＋ button!",
   emptySearch:(q)=>`No recipe matches “${q}”.`,
   installTitle:"📲 Install mise. on your home screen", installSub:"Real app + notifications", installBtn:"Install",
   errLink:"Link not recognized. Paste a full link (video or recipe site) starting with https://.",
@@ -1097,11 +1097,11 @@ const STR={
   shareBannerText:'<b>mise.</b> · shared recipe<br><span style="font-size:13px;color:var(--muted)">Decode your own recipes from videos, for free.</span>',
   shareCtaSignup:"Create my account", shareCtaAdd:"Add to my recipes",
   servFor:"For", servOne:"person", servMany:"people",
-  collClassify:"Organize", seeVideo:"🔗 Watch the video",
+  collClassify:"Add to a collection", seeVideo:"🔗 View source",
   ingLabel:"INGREDIENTS", noBalBtn:"🥄 No scale", noteLabel:"MY NOTE",
   shopAdd:"🛒 Add to groceries", shopAddedOk:"✓ Added to groceries",
   editIngOpen:"Edit the ingredients", cookStart:"Start cooking mode →",
-  collSheetTitle:"Organize the recipe", collSheetDesc:"Pick a collection or create one.",
+  collSheetTitle:"Add to a collection", collSheetDesc:"Pick a collection or create one.",
   collNone:"None", collNew:"+ New", collPrompt:"Collection name (Dessert, Savory, Quick…):", collCloseBtn:"Close",
   editIngTitle:"Edit", editIngHint:"Amount · unit · ingredient",
   editAddBtn:"+ Add an ingredient", editResetBtn:"Original values", editSaveBtn:"Save",
