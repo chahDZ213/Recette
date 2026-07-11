@@ -99,8 +99,6 @@
     #recipes.wrap{ max-width:840px; }     /* grille de recettes */
     #recipe{ max-width:720px; }           /* détail recette */
     #homeShortcuts{ grid-template-columns:1fr 1fr; }
-    #recipeList.saved-list{ display:grid; grid-template-columns:1fr 1fr; gap:12px; align-items:start; background:transparent; box-shadow:none; overflow:visible; }
-    #recipeList .saved-row{ background:var(--surface); border:1px solid var(--line); border-radius:14px; }
   }
   /* courses, planning, réglages, formulaires, cuisson : 620px inchangé (une colonne) */
 
@@ -168,6 +166,30 @@
 
   /* ---- mes recettes (accueil) ---- */
   .saved-list{ margin-top:14px; background:var(--surface); border-radius:16px; overflow:hidden; box-shadow:0 1px 3px rgba(26,24,23,.06); }
+  /* ---- galerie de recettes (grandes cartes photo) ----
+     1 colonne sur petits mobiles, 2 colonnes seulement quand la largeur garde une belle image (>=560px),
+     3 colonnes sur desktop (page Recettes, conteneur 840px). */
+  .rc-grid{ margin-top:14px; display:grid; grid-template-columns:1fr; gap:14px; align-items:start; }
+  @media(min-width:560px){ .rc-grid{ grid-template-columns:1fr 1fr; } }
+  @media(min-width:1024px){ #recipeList.rc-grid{ grid-template-columns:repeat(3,1fr); gap:16px; } }
+  .rcard{ position:relative; background:var(--surface); border:1px solid var(--line); border-radius:16px; overflow:hidden; cursor:pointer; box-shadow:0 1px 3px rgba(26,24,23,.06); transition:transform .12s; }
+  .rcard:active{ transform:scale(.985); }
+  .rcard:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+  .rc-photo{ position:relative; aspect-ratio:4/3; background:linear-gradient(140deg,var(--cream) 20%,var(--rowhover) 100%); }
+  .rc-photo img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .rc-ph{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:42px; opacity:.4; }
+  .rc-genbadge{ position:absolute; left:10px; bottom:10px; display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600; background:rgba(0,0,0,.45); color:#fff; padding:5px 10px; border-radius:999px; backdrop-filter:blur(4px); }
+  .rc-genbadge .rc-dot{ width:7px; height:7px; border-radius:50%; background:#fff; animation:pulse 1.2s ease-in-out infinite; }
+  .rc-corner{ position:absolute; top:8px; right:8px; width:36px; height:36px; border-radius:50%; border:none; background:rgba(0,0,0,.38); color:#fff; display:flex; align-items:center; justify-content:center; padding:0; backdrop-filter:blur(4px); }
+  .rc-corner svg{ width:19px; height:19px; }
+  .rc-body{ padding:11px 13px 12px; }
+  .rc-title{ font-size:15.5px; font-weight:600; line-height:1.35; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; min-height:1.35em; }
+  .rc-actions{ display:flex; align-items:center; gap:4px; margin-top:9px; }
+  .rc-actions .rc-sp{ flex:1; }
+  .rc-actions .sr-cook{ width:34px; height:34px; }
+  .rc-actions .sr-share, .rc-actions .sr-del{ width:32px; height:32px; border-radius:9px; background:transparent; border:none; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; }
+  .rc-actions .sr-del{ color:var(--muted); font-size:15px; }
+  .rc-actions .sr-share svg{ width:18px; height:18px; }
   .list-tab{ font-family:inherit; font-size:14px; font-weight:600; padding:9px 16px; border-radius:10px; border:1.5px solid var(--line); background:transparent; color:var(--muted); }
   .list-tab.active{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
   #shareBanner{ display:flex; align-items:center; gap:12px; justify-content:space-between; background:var(--cream); border:1px solid var(--line); border-radius:14px; padding:14px 16px; margin-bottom:22px; font-size:15px; font-weight:600; }
@@ -308,7 +330,7 @@
       <div id="recentTitle" class="eyebrow" style="margin-bottom:0">RECETTES RÉCENTES</div>
       <button id="seeAllBtn" style="background:none;border:none;color:var(--accent);font-size:13px;font-weight:700;padding:4px 0">Tout voir →</button>
     </div>
-    <div id="homeRecentList" class="saved-list"></div>
+    <div id="homeRecentList" class="rc-grid"></div>
   </div>
 
   <div id="installBanner" class="hidden" style="display:flex;align-items:center;gap:12px;justify-content:space-between;background:var(--cream);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-top:26px">
@@ -334,7 +356,7 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);width:17px;height:17px;pointer-events:none"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
       <input type="search" id="searchInput" placeholder="Rechercher un plat, un ingrédient…" autocomplete="off" style="width:100%;font-family:inherit;font-size:15px;padding:12px 14px 12px 42px;border-radius:13px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);outline:none" />
     </div>
-    <div id="recipeList" class="saved-list"></div>
+    <div id="recipeList" class="rc-grid"></div>
     <div id="listEmpty" class="hidden" style="color:var(--muted);font-size:14px;line-height:1.5;padding:10px 2px"></div>
   </div>
 </section>
@@ -1369,6 +1391,32 @@ $("confirmCancel").addEventListener("click", ()=>closeConfirm(false));
 $("confirmOk").addEventListener("click", ()=>closeConfirm(true));
 $("confirmSheet").addEventListener("click",(e)=>{ if(e.target===$("confirmSheet")) closeConfirm(false); });
 
+// ---- carte recette (galerie) : photo 4:3 en haut, titre dessous, actions discrètes ----
+// mode "saved" : ♥ favori en overlay + partage + retrait ; "history" : 🔖 enregistrer + partage + suppression ;
+// "recent" (accueil) : carte épurée, juste le bouton cuisson.
+function recipeCard(r, mode){
+  const card=document.createElement("div");
+  card.className="rcard press";
+  card.setAttribute("role","button"); card.setAttribute("tabindex","0");
+  card.setAttribute("aria-label", r.title||"");
+  const img = (typeof r.image==="string" && r.image) ? `<img src="${esc(r.image)}" loading="lazy" alt="${esc(r.title||"")}"/>` : `<div class="rc-ph" aria-hidden="true">🍽️</div>`;
+  const gen = genPending.has(r._id) ? `<div class="rc-genbadge" role="status"><span class="rc-dot" aria-hidden="true"></span>${esc(t("heroGenLbl"))}</div>` : "";
+  let corner="", actions="";
+  if(mode==="saved"){
+    corner=`<button class="sr-fav rc-corner" aria-label="${t("ariaFav")}" aria-pressed="${r.fav?"true":"false"}">${r.fav?HEART_FILL:HEART_LINE}</button>`;
+    actions=`<button class="sr-cook" aria-label="${t("ariaCook")}"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button><span class="rc-sp"></span><button class="sr-share" aria-label="${t("ariaShare")}"><svg viewBox="0 0 24 24" fill="none" stroke="#B0A79B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="2.4"/><circle cx="6" cy="12" r="2.4"/><circle cx="18" cy="19" r="2.4"/><path d="M8.1 13.2l7.8 4.6M15.9 6.2l-7.8 4.6"/></svg></button><button class="sr-del" aria-label="${t("ariaRemove")}">✕</button>`;
+  } else if(mode==="history"){
+    corner=`<button class="sr-save rc-corner" aria-label="${t("ariaSave")}" aria-pressed="${r.saved?"true":"false"}">${r.saved?BM_FILL:BM_LINE}</button>`;
+    actions=`<button class="sr-cook" aria-label="${t("ariaCook")}"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button><span class="rc-sp"></span><button class="sr-share" aria-label="${t("ariaShare")}"><svg viewBox="0 0 24 24" fill="none" stroke="#B0A79B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="2.4"/><circle cx="6" cy="12" r="2.4"/><circle cx="18" cy="19" r="2.4"/><path d="M8.1 13.2l7.8 4.6M15.9 6.2l-7.8 4.6"/></svg></button><button class="sr-del" aria-label="${t("ariaDelete")}">✕</button>`;
+  } else {
+    actions=`<button class="sr-cook" aria-label="${t("ariaCook")}"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button><span class="rc-sp"></span>`;
+  }
+  card.innerHTML=`<div class="rc-photo">${img}${gen}${corner}</div><div class="rc-body"><div class="rc-title">${esc(r.title||"")}</div><div class="rc-actions">${actions}</div></div>`;
+  card.addEventListener("keydown",(e)=>{
+    if((e.key==="Enter"||e.key===" ") && e.target===card){ e.preventDefault(); loadRecipe({...r}); }
+  });
+  return card;
+}
 // ---- accueil : recettes récentes + recherche ----
 function renderHomeRecent(){
   const box=$("homeRecentList"); if(!box) return;
@@ -1376,13 +1424,12 @@ function renderHomeRecent(){
   $("homeRecent").classList.toggle("hidden", items.length===0);
   box.innerHTML="";
   items.forEach(r=>{
-    const row=document.createElement("div"); row.className="saved-row press";
-    row.innerHTML=`${r.image?`<img class="sr-thumb" src="${esc(r.image)}" loading="lazy" alt=""/>`:""}<span class="sr-name">${esc(r.title)}</span><button class="sr-cook" aria-label="${t("ariaCook")}"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>`;
-    row.addEventListener("click",(e)=>{
+    const card=recipeCard(r, "recent");
+    card.addEventListener("click",(e)=>{
       if(e.target.closest(".sr-cook")){ loadRecipe({...r}); cookStep=0; show("cook"); renderCook(); return; }
       loadRecipe({...r});
     });
-    box.appendChild(row);
+    box.appendChild(card);
   });
 }
 // un seul moteur de recherche : le champ accueil délègue au filtre existant de la liste
@@ -2214,6 +2261,7 @@ async function generatePhotoFor(entry, force){
   if(src==="ai" && !force) return false;              // pas de régénération sauf action manuelle explicite
   if(genPending.has(entry._id)) return false;
   genPending.add(entry._id); updateGenBadge();
+  try{ renderList(); renderHomeRecent(); }catch(e){}   // les cartes affichent le badge "en cours"
   try{
     const { data:sess } = await sb.auth.getSession();
     const jwt = sess && sess.session && sess.session.access_token;
@@ -2234,7 +2282,7 @@ async function generatePhotoFor(entry, force){
     renderList();
     return true;
   }catch(e){ return false; }
-  finally{ genPending.delete(entry._id); updateGenBadge(); }
+  finally{ genPending.delete(entry._id); updateGenBadge(); try{ renderList(); renderHomeRecent(); }catch(e){} }
 }
 function updateGenBadge(){
   const b=$("heroGenBadge"); if(!b) return;
@@ -2308,16 +2356,8 @@ function renderList(){
   }
   empty.classList.add("hidden");
   list.forEach(r=>{
-    const row=document.createElement("div"); row.className="saved-row";
-    let actions;
-    const shareHtml=`<button class="sr-share" aria-label="${t("ariaShare")}"><svg viewBox="0 0 24 24" fill="none" stroke="#B0A79B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="2.4"/><circle cx="6" cy="12" r="2.4"/><circle cx="18" cy="19" r="2.4"/><path d="M8.1 13.2l7.8 4.6M15.9 6.2l-7.8 4.6"/></svg></button>`;
-    if(listTab==="saved"){
-      actions=`<button class="sr-fav" aria-label="${t("ariaFav")}">${r.fav?HEART_FILL:HEART_LINE}</button>${shareHtml}<button class="sr-del" aria-label="${t("ariaRemove")}">✕</button>`;
-    } else {
-      actions=`<button class="sr-save" aria-label="${t("ariaSave")}">${r.saved?BM_FILL:BM_LINE}</button>${shareHtml}<button class="sr-del" aria-label="${t("ariaDelete")}">✕</button>`;
-    }
-    row.innerHTML=`${r.image?`<img class="sr-thumb" src="${esc(r.image)}" loading="lazy" alt=""/>`:""}<span class="sr-name">${esc(r.title)}</span><button class="sr-cook" aria-label="${t("ariaCook")}"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>${actions}`;
-    row.addEventListener("click",(e)=>{
+    const card=recipeCard(r, listTab==="saved" ? "saved" : "history");
+    card.addEventListener("click",(e)=>{
       if(e.target.closest(".sr-cook")){ loadRecipe({...r}); cookStep=0; show("cook"); renderCook(); return; }
       if(e.target.closest(".sr-share")){ shareRecipeData(r); return; }
       if(e.target.closest(".sr-fav")){ toggleFav(r._id); return; }
@@ -2329,7 +2369,7 @@ function renderList(){
       }
       loadRecipe({...r});
     });
-    box.appendChild(row);
+    box.appendChild(card);
   });
 }
 async function toggleFav(id){
