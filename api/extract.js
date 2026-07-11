@@ -149,12 +149,7 @@ async function fetchWebText(rawUrl) {
     clearTimeout(to);
     if (!r.ok) return null;
     const html = (await r.text()).slice(0, 600000);
-    // photo du plat via og:image
-    const og =
-      /<meta[^>]+property=["']og:image["'][^>]*content=["']([^"']+)["']/i.exec(html) ||
-      /<meta[^>]+content=["']([^"']+)["'][^>]*property=["']og:image["']/i.exec(html);
-    let img = og ? og[1] : null;
-    if (img && !/^https?:\/\//i.test(img)) img = null;
+    // la photo du plat n'est plus extraite (og:image) : elle est générée par IA via /api/generate-image
     // données structurées schema.org Recipe (très fiables quand présentes)
     const lds = [];
     const re = /<script[^>]*application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi;
@@ -171,24 +166,7 @@ async function fetchWebText(rawUrl) {
     if (!ld && text.length < 100) return null;
     return {
       text: (ld ? "DONNEES STRUCTUREES (schema.org Recipe):\n" + ld + "\n\n" : "") + "TEXTE DE LA PAGE:\n" + text,
-      image: img,
     };
-  } catch (e) { return null; }
-}
-
-// --- Photo du plat via Pexels (gratuit, clé dans PEXELS_API_KEY) ---
-async function pexelsPhoto(query) {
-  const key = process.env.PEXELS_API_KEY;
-  if (!key || !query) return null;
-  try {
-    const r = await fetch(
-      "https://api.pexels.com/v1/search?query=" + encodeURIComponent(query + " food") + "&per_page=1&orientation=landscape",
-      { headers: { Authorization: key } }
-    );
-    if (!r.ok) return null;
-    const d = await r.json();
-    const p = d.photos && d.photos[0];
-    return (p && p.src && (p.src.large || p.src.medium)) || null;
   } catch (e) { return null; }
 }
 
@@ -326,15 +304,10 @@ Exactement 4 idées, variées.`;
     // 1) Image (capture d'écran / photo d'un texte) -> Claude vision
     if (imgInput && typeof imgInput === "string" && imgInput.startsWith("data:image")) {
       const recipe = await askClaudeVision(imgInput);
-      if (recipe && recipe.found !== false && !recipe.image) {
-        const ph = await pexelsPhoto(recipe.imageQuery || recipe.title);
-        if (ph) recipe.image = ph;
-      }
       return res.status(200).json(recipe);
     }
 
     let source = "";
-    let image = null;
 
     if (text && text.trim().length > 20) {
       source = text;
@@ -345,10 +318,8 @@ Exactement 4 idées, variées.`;
         return res.status(200).json({ found: false, error: "Impossible de lire cette page. Colle le texte de la recette à la main." });
       }
       source = web.text;
-      image = web.image || null;
     } else {
       const ytId = extractVideoId(url); // non-null seulement pour YouTube
-      if (ytId) image = `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`;
       const [transcript, description] = await Promise.all([
         getTranscript(url),
         ytId ? getDescription(ytId) : Promise.resolve(""),
@@ -366,13 +337,7 @@ Exactement 4 idées, variées.`;
       source = 'IMPORTANT: Write ALL recipe content (title, ingredients names, steps, imageQuery) in ENGLISH, but keep the "category" field values in French exactly as listed in the schema (they are internal keys).\n\n' + source;
     }
     const recipe = await askClaude(source);
-    if (recipe && recipe.found !== false) {
-      recipe.image = image;
-      if (!recipe.image) {
-        const ph = await pexelsPhoto(recipe.imageQuery || recipe.title);
-        if (ph) recipe.image = ph;
-      }
-    }
+    // recipe.image reste vide : la photo est générée par IA côté front via /api/generate-image
     return res.status(200).json(recipe);
   } catch (e) {
     return res.status(200).json({ found: false, error: "Extraction impossible. Réessaie ou colle la description." });

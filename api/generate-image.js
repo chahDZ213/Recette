@@ -17,7 +17,13 @@ async function openaiImage(prompt, model, quality) {
       authorization: "Bearer " + process.env.OPENAI_API_KEY,
       "content-type": "application/json",
     },
-    body: JSON.stringify({ model, prompt, size: "1024x1024", quality, output_format: "webp" }),
+    // output_compression : recompression WebP par OpenAI (0-100). ~55 vise 150-250 Ko par image
+    // (sans lui : ~1,1 Mo). Ajustable via IMAGE_COMPRESSION sans toucher au code.
+    body: JSON.stringify({
+      model, prompt, size: "1024x1024", quality,
+      output_format: "webp",
+      output_compression: Math.min(100, Math.max(0, parseInt(process.env.IMAGE_COMPRESSION || "55", 10) || 55)),
+    }),
   });
   if (!r.ok) {
     const err = new Error("openai " + r.status);
