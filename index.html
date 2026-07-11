@@ -99,8 +99,6 @@
     #recipes.wrap{ max-width:840px; }     /* grille de recettes */
     #recipe{ max-width:720px; }           /* détail recette */
     #homeShortcuts{ grid-template-columns:1fr 1fr; }
-    #recipeList.saved-list{ display:grid; grid-template-columns:1fr 1fr; gap:12px; align-items:start; background:transparent; box-shadow:none; overflow:visible; }
-    #recipeList .saved-row{ background:var(--surface); border:1px solid var(--line); border-radius:14px; }
   }
   /* courses, planning, réglages, formulaires, cuisson : 620px inchangé (une colonne) */
 
@@ -168,11 +166,37 @@
 
   /* ---- mes recettes (accueil) ---- */
   .saved-list{ margin-top:14px; background:var(--surface); border-radius:16px; overflow:hidden; box-shadow:0 1px 3px rgba(26,24,23,.06); }
+  /* ---- galerie de recettes (grandes cartes photo) ----
+     1 colonne sur petits mobiles, 2 colonnes seulement quand la largeur garde une belle image (>=560px),
+     3 colonnes sur desktop (page Recettes, conteneur 840px). */
+  .rc-grid{ margin-top:14px; display:grid; grid-template-columns:1fr; gap:14px; align-items:start; }
+  @media(min-width:560px){ .rc-grid{ grid-template-columns:1fr 1fr; } }
+  @media(min-width:1024px){ #recipeList.rc-grid{ grid-template-columns:repeat(3,1fr); gap:16px; } }
+  .rcard{ position:relative; background:var(--surface); border:1px solid var(--line); border-radius:16px; overflow:hidden; cursor:pointer; box-shadow:0 1px 3px rgba(26,24,23,.06); transition:transform .12s; }
+  .rcard:active{ transform:scale(.985); }
+  .rcard:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+  .rc-photo{ position:relative; aspect-ratio:4/3; background:linear-gradient(140deg,var(--cream) 20%,var(--rowhover) 100%); }
+  .rc-photo img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .rc-ph{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:42px; opacity:.4; }
+  .rc-genbadge{ position:absolute; left:10px; bottom:10px; display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600; background:rgba(0,0,0,.45); color:#fff; padding:5px 10px; border-radius:999px; backdrop-filter:blur(4px); }
+  .rc-genbadge .rc-dot{ width:7px; height:7px; border-radius:50%; background:#fff; animation:pulse 1.2s ease-in-out infinite; }
+  .rc-corner{ position:absolute; top:8px; right:8px; width:36px; height:36px; border-radius:50%; border:none; background:rgba(0,0,0,.38); color:#fff; display:flex; align-items:center; justify-content:center; padding:0; backdrop-filter:blur(4px); }
+  .rc-corner svg{ width:19px; height:19px; }
+  .rc-body{ padding:11px 13px 12px; }
+  .rc-title{ font-size:15.5px; font-weight:600; line-height:1.35; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; min-height:1.35em; }
+  .rc-actions{ display:flex; align-items:center; gap:4px; margin-top:9px; }
+  .rc-actions .rc-sp{ flex:1; }
+  .rc-actions .sr-cook{ width:34px; height:34px; border-radius:50%; background:var(--accent); color:#fff; border:none; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; box-shadow:0 3px 10px rgba(0,0,0,.18); }
+  .rc-actions .sr-cook svg{ width:15px; height:15px; margin-left:2px; }
+  .rc-actions .sr-share, .rc-actions .sr-del{ width:32px; height:32px; border-radius:9px; background:transparent; border:none; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; }
+  .rc-actions .sr-del{ color:var(--muted); font-size:15px; }
+  .rc-actions .sr-share svg{ width:18px; height:18px; }
   .list-tab{ font-family:inherit; font-size:14px; font-weight:600; padding:9px 16px; border-radius:10px; border:1.5px solid var(--line); background:transparent; color:var(--muted); }
   .list-tab.active{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
   #shareBanner{ display:flex; align-items:center; gap:12px; justify-content:space-between; background:var(--cream); border:1px solid var(--line); border-radius:14px; padding:14px 16px; margin-bottom:22px; font-size:15px; font-weight:600; }
   #shareBanner button{ flex:none; font-family:inherit; font-size:13px; font-weight:600; padding:10px 14px; border-radius:10px; border:none; background:var(--accent); color:#fff; }
-  .public-mode #photoBtn, .public-mode #photoRemove, .public-mode #noteBtn, .public-mode #saveBtn, .public-mode #shareBtn, .public-mode #editIngBtn, .public-mode #collBtn, .public-mode #moreBtn, .public-mode #moreMenu{ display:none !important; }
+  .public-mode #photoBtn, .public-mode #photoRemove, .public-mode #genPhotoBtn, .public-mode #heroGenBadge, .public-mode #noteBtn, .public-mode #saveBtn, .public-mode #shareBtn, .public-mode #editIngBtn, .public-mode #collBtn, .public-mode #moreBtn, .public-mode #moreMenu{ display:none !important; }
+  @keyframes pulse{ 0%,100%{opacity:1} 50%{opacity:.35} }
   .more-item{ width:100%; display:flex; gap:11px; align-items:center; padding:11px 12px; border:none; background:none; color:var(--ink); font-family:inherit; font-size:14px; font-weight:600; border-radius:10px; text-align:left; }
   .more-item:active, .more-item:hover{ background:var(--cream); }
   .more-item:focus-visible{ outline:2px solid var(--accent); outline-offset:-2px; }
@@ -307,7 +331,7 @@
       <div id="recentTitle" class="eyebrow" style="margin-bottom:0">RECETTES RÉCENTES</div>
       <button id="seeAllBtn" style="background:none;border:none;color:var(--accent);font-size:13px;font-weight:700;padding:4px 0">Tout voir →</button>
     </div>
-    <div id="homeRecentList" class="saved-list"></div>
+    <div id="homeRecentList" class="rc-grid"></div>
   </div>
 
   <div id="installBanner" class="hidden" style="display:flex;align-items:center;gap:12px;justify-content:space-between;background:var(--cream);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-top:26px">
@@ -333,7 +357,7 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);width:17px;height:17px;pointer-events:none"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
       <input type="search" id="searchInput" placeholder="Rechercher un plat, un ingrédient…" autocomplete="off" style="width:100%;font-family:inherit;font-size:15px;padding:12px 14px 12px 42px;border-radius:13px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);outline:none" />
     </div>
-    <div id="recipeList" class="saved-list"></div>
+    <div id="recipeList" class="rc-grid"></div>
     <div id="listEmpty" class="hidden" style="color:var(--muted);font-size:14px;line-height:1.5;padding:10px 2px"></div>
   </div>
 </section>
@@ -503,6 +527,13 @@
   </div>
 
   <div style="background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px 20px;margin-bottom:16px">
+    <div id="photosCardTitle" style="font-size:15px;font-weight:600;margin-bottom:4px">Photos des recettes</div>
+    <div id="photosCardDesc" style="font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:14px">Génère une belle photo IA pour chaque recette qui n'en a pas. Tes photos personnelles ne sont jamais remplacées.</div>
+    <button id="backfillBtn" class="press" style="width:100%;font-size:15px;font-weight:600;padding:13px;border-radius:12px;border:none;background:var(--accent);color:#fff">🖼️ Générer les photos manquantes</button>
+    <div id="backfillStatus" role="status" style="font-size:13px;color:var(--muted);margin-top:10px;line-height:1.5"></div>
+  </div>
+
+  <div style="background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px 20px;margin-bottom:16px">
     <div style="font-size:15px;font-weight:600;margin-bottom:4px">✨ mise. premium</div>
     <div id="premiumStatus" style="font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:12px"></div>
     <div id="premiumForm">
@@ -541,6 +572,10 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
             <span id="morePhotoRmLbl">Retirer la photo</span>
           </button>
+          <button id="genPhotoBtn" class="more-item">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z"/><path d="M19 15l.9 2.6L22.5 18.5l-2.6.9-.9 2.6-.9-2.6-2.6-.9 2.6-.9z"/></svg>
+            <span id="moreGenLbl">Générer la photo (IA)</span>
+          </button>
           <button id="noteBtn" class="more-item">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
             <span id="moreNoteLbl">Ma note</span>
@@ -555,6 +590,10 @@
     <div class="hero-title">
       <span id="rPlatform" class="hero-plat"></span>
       <h1 id="rTitle"></h1>
+      <div id="heroGenBadge" class="hidden" role="status" style="display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:600;background:rgba(0,0,0,.45);color:#fff;padding:6px 12px;border-radius:999px;margin-top:8px;backdrop-filter:blur(4px)">
+        <span aria-hidden="true" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#fff;animation:pulse 1.2s ease-in-out infinite"></span>
+        <span id="heroGenLbl">Photo en cours de génération…</span>
+      </div>
     </div>
   </div>
   <input type="file" id="photoInput" accept="image/*" style="display:none" />
@@ -997,6 +1036,21 @@ const STR={
   weekAdded:(n)=>`✓ ${n} recette${n>1?"s":""} ajoutée${n>1?"s":""} aux courses`,
   weekClearBtn:"Vider la semaine", weekClearConfirm:"Vider tout le menu de la semaine ?",
   weekPickTitle:"Choisir une recette", weekPickPh:"Rechercher…", weekPickNone:"Aucune recette trouvée.",
+  // photos IA
+  photosCardTitle:"Photos des recettes",
+  photosCardDesc:"Génère une belle photo IA pour chaque recette qui n'en a pas. Tes photos personnelles ne sont jamais remplacées.",
+  backfillBtn:"🖼️ Générer les photos manquantes", backfillStop:"⏹ Arrêter", backfillStopping:"Arrêt en cours…",
+  backfillNone:"Toutes tes recettes ont déjà une photo 👌",
+  backfillConfirmTitle:"Générer les photos ?",
+  backfillConfirmDesc:(n,total)=>`${n} recette${n>1?"s":""}${total>n?` sur ${total}`:""} ser${n>1?"ont":"a"} traitée${n>1?"s":""} maintenant (~0,01 € par photo, ~20 s chacune). Tu pourras relancer pour les suivantes.`,
+  backfillConfirmOk:"Générer",
+  backfillProg:(d,t2)=>`Photos : ${d}/${t2}…`,
+  backfillDone:(d,rest)=>`✓ ${d} photo${d>1?"s":""} générée${d>1?"s":""}${rest>0?` — ${rest} restante${rest>1?"s":""}, relance quand tu veux`:""}`,
+  backfillDoneFail:(d,f)=>`${d} générée${d>1?"s":""}, ${f} échec${f>1?"s":""} — relance pour réessayer`,
+  genPhotoLbl:"Générer la photo (IA)", genPhotoStarted:"Génération de la photo…",
+  genPhotoDone:"Photo générée ✨", genPhotoFail:"La génération a échoué, réessaie plus tard",
+  genPhotoUser:"Ta photo personnelle est conservée",
+  heroGenLbl:"Photo en cours de génération…",
   // réglages
   settingsTitle:"Paramètres", acctLabel:"CONNECTÉ EN TANT QUE",
   notifCardTitle:"Notifications", notifCardDesc:"Pour être prévenu quand un minuteur se termine.",
@@ -1110,6 +1164,21 @@ const STR={
   weekAdded:(n)=>`✓ ${n} recipe${n>1?"s":""} added to groceries`,
   weekClearBtn:"Clear the week", weekClearConfirm:"Clear the whole weekly menu?",
   weekPickTitle:"Pick a recipe", weekPickPh:"Search…", weekPickNone:"No recipe found.",
+  // AI photos
+  photosCardTitle:"Recipe photos",
+  photosCardDesc:"Generates a beautiful AI photo for every recipe that doesn't have one. Your personal photos are never replaced.",
+  backfillBtn:"🖼️ Generate missing photos", backfillStop:"⏹ Stop", backfillStopping:"Stopping…",
+  backfillNone:"All your recipes already have a photo 👌",
+  backfillConfirmTitle:"Generate photos?",
+  backfillConfirmDesc:(n,total)=>`${n} recipe${n>1?"s":""}${total>n?` of ${total}`:""} will be processed now (~€0.01 per photo, ~20s each). You can run it again for the rest.`,
+  backfillConfirmOk:"Generate",
+  backfillProg:(d,t2)=>`Photos: ${d}/${t2}…`,
+  backfillDone:(d,rest)=>`✓ ${d} photo${d>1?"s":""} generated${rest>0?` — ${rest} left, run again anytime`:""}`,
+  backfillDoneFail:(d,f)=>`${d} generated, ${f} failed — run again to retry`,
+  genPhotoLbl:"Generate photo (AI)", genPhotoStarted:"Generating the photo…",
+  genPhotoDone:"Photo generated ✨", genPhotoFail:"Generation failed, try again later",
+  genPhotoUser:"Your personal photo is kept",
+  heroGenLbl:"Photo being generated…",
   // settings
   settingsTitle:"Settings", acctLabel:"SIGNED IN AS",
   notifCardTitle:"Notifications", notifCardDesc:"To get alerted when a timer ends.",
@@ -1244,7 +1313,7 @@ $("decodeBtn").addEventListener("click", async ()=>{
   try{
     const r=await callBackend({url:d.url});
     if(!r.found){ setError(r.error||t("errNotFound")); showAddPanel("text"); }
-    else { r.platform=d.platform; r.sourceUrl=d.url; await addToHistory(r); loadRecipe(r); }
+    else { r.platform=d.platform; r.sourceUrl=d.url; await addToHistory(r); loadRecipe(r); generatePhotoFor(r); }
   }catch(e){ setError(t("errServer")); }
   loading(false);
 });
@@ -1323,6 +1392,32 @@ $("confirmCancel").addEventListener("click", ()=>closeConfirm(false));
 $("confirmOk").addEventListener("click", ()=>closeConfirm(true));
 $("confirmSheet").addEventListener("click",(e)=>{ if(e.target===$("confirmSheet")) closeConfirm(false); });
 
+// ---- carte recette (galerie) : photo 4:3 en haut, titre dessous, actions discrètes ----
+// mode "saved" : ♥ favori en overlay + partage + retrait ; "history" : 🔖 enregistrer + partage + suppression ;
+// "recent" (accueil) : carte épurée, juste le bouton cuisson.
+function recipeCard(r, mode){
+  const card=document.createElement("div");
+  card.className="rcard press";
+  card.setAttribute("role","button"); card.setAttribute("tabindex","0");
+  card.setAttribute("aria-label", r.title||"");
+  const img = (typeof r.image==="string" && r.image) ? `<img src="${esc(r.image)}" loading="lazy" alt="${esc(r.title||"")}"/>` : `<div class="rc-ph" aria-hidden="true">🍽️</div>`;
+  const gen = genPending.has(r._id) ? `<div class="rc-genbadge" role="status"><span class="rc-dot" aria-hidden="true"></span>${esc(t("heroGenLbl"))}</div>` : "";
+  let corner="", actions="";
+  if(mode==="saved"){
+    corner=`<button class="sr-fav rc-corner" aria-label="${t("ariaFav")}" aria-pressed="${r.fav?"true":"false"}">${r.fav?HEART_FILL:HEART_LINE}</button>`;
+    actions=`<button class="sr-cook" aria-label="${t("ariaCook")}"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button><span class="rc-sp"></span><button class="sr-share" aria-label="${t("ariaShare")}"><svg viewBox="0 0 24 24" fill="none" stroke="#B0A79B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="2.4"/><circle cx="6" cy="12" r="2.4"/><circle cx="18" cy="19" r="2.4"/><path d="M8.1 13.2l7.8 4.6M15.9 6.2l-7.8 4.6"/></svg></button><button class="sr-del" aria-label="${t("ariaRemove")}">✕</button>`;
+  } else if(mode==="history"){
+    corner=`<button class="sr-save rc-corner" aria-label="${t("ariaSave")}" aria-pressed="${r.saved?"true":"false"}">${r.saved?BM_FILL:BM_LINE}</button>`;
+    actions=`<button class="sr-cook" aria-label="${t("ariaCook")}"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button><span class="rc-sp"></span><button class="sr-share" aria-label="${t("ariaShare")}"><svg viewBox="0 0 24 24" fill="none" stroke="#B0A79B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="2.4"/><circle cx="6" cy="12" r="2.4"/><circle cx="18" cy="19" r="2.4"/><path d="M8.1 13.2l7.8 4.6M15.9 6.2l-7.8 4.6"/></svg></button><button class="sr-del" aria-label="${t("ariaDelete")}">✕</button>`;
+  } else {
+    actions=`<button class="sr-cook" aria-label="${t("ariaCook")}"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button><span class="rc-sp"></span>`;
+  }
+  card.innerHTML=`<div class="rc-photo">${img}${gen}${corner}</div><div class="rc-body"><div class="rc-title">${esc(r.title||"")}</div><div class="rc-actions">${actions}</div></div>`;
+  card.addEventListener("keydown",(e)=>{
+    if((e.key==="Enter"||e.key===" ") && e.target===card){ e.preventDefault(); loadRecipe({...r}); }
+  });
+  return card;
+}
 // ---- accueil : recettes récentes + recherche ----
 function renderHomeRecent(){
   const box=$("homeRecentList"); if(!box) return;
@@ -1330,13 +1425,12 @@ function renderHomeRecent(){
   $("homeRecent").classList.toggle("hidden", items.length===0);
   box.innerHTML="";
   items.forEach(r=>{
-    const row=document.createElement("div"); row.className="saved-row press";
-    row.innerHTML=`${r.image?`<img class="sr-thumb" src="${esc(r.image)}" loading="lazy" alt=""/>`:""}<span class="sr-name">${esc(r.title)}</span><button class="sr-cook" aria-label="${t("ariaCook")}"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>`;
-    row.addEventListener("click",(e)=>{
+    const card=recipeCard(r, "recent");
+    card.addEventListener("click",(e)=>{
       if(e.target.closest(".sr-cook")){ loadRecipe({...r}); cookStep=0; show("cook"); renderCook(); return; }
       loadRecipe({...r});
     });
-    box.appendChild(row);
+    box.appendChild(card);
   });
 }
 // un seul moteur de recherche : le champ accueil délègue au filtre existant de la liste
@@ -1418,7 +1512,7 @@ async function generateIdea(idea, ing){
   showLoadOverlay(true, CREATE_STEPS);
   let ok=null, err=null;
   try{ const r=await callBackend({text:prompt}); if(!r.found) err=r.error||t("genFail"); else ok=r; }catch(e){ err=t("serverFail"); }
-  if(ok){ await addToHistory(ok); loadRecipe(ok); }
+  if(ok){ await addToHistory(ok); loadRecipe(ok); generatePhotoFor(ok); }
   showLoadOverlay(false);
   if(err) setIdeaMsg(err);
 }
@@ -1436,7 +1530,7 @@ $("recipeImgInput").addEventListener("change", async (e)=>{
     if(!r.found) err=r.error||"Je n'ai pas trouvé de recette dans cette image. Essaie une image plus nette.";
     else ok=r;
   }catch(e2){ err="Impossible de lire cette image. Réessaie."; }
-  if(ok){ await addToHistory(ok); loadRecipe(ok); }
+  if(ok){ await addToHistory(ok); loadRecipe(ok); generatePhotoFor(ok); }
   showLoadOverlay(false);
   if(err) setError(err);
 });
@@ -1475,7 +1569,7 @@ $("createBtn").addEventListener("click", async ()=>{
   try{
     const r=await callBackend({text:demande});
     if(!r.found) setError(r.error||"Je n'ai pas réussi à créer cette recette. Reformule ta demande.");
-    else { await addToHistory(r); loadRecipe(r); $("createText").value=""; }
+    else { await addToHistory(r); loadRecipe(r); generatePhotoFor(r); $("createText").value=""; }
   }catch(e){ setError("Le serveur n'a pas répondu."); }
   showLoadOverlay(false);
   $("createBtn").disabled=false; $("createBtn").textContent=lbl;
@@ -1488,7 +1582,7 @@ $("manualBtn").addEventListener("click", async ()=>{
   try{
     const r=await callBackend({text:t});
     if(!r.found) setError(r.error||"Pas de recette claire dans ce texte.");
-    else { await addToHistory(r); loadRecipe(r); $("manualText").value=""; }
+    else { await addToHistory(r); loadRecipe(r); generatePhotoFor(r); $("manualText").value=""; }
   }catch(e){ setError("Échec de la structuration."); }
   showLoadOverlay(false);
   $("manualBtn").textContent="Structurer ce texte"; $("manualBtn").disabled=false;
@@ -2023,6 +2117,7 @@ function applyHeroPhoto(){
     hero.style.backgroundImage="";          // retour au dégradé
     $("photoRemove").classList.add("hidden");
   }
+  updateGenBadge();
 }
 function fileToCompressed(file, maxDim=1000, quality=0.7){
   return new Promise((resolve,reject)=>{
@@ -2049,14 +2144,23 @@ $("photoInput").addEventListener("change", async (e)=>{
   if(!f || !recipe) return;
   try{
     recipe.image = await fileToCompressed(f);
+    recipe.imageSource = "user";               // photo perso : jamais remplacée par l'IA
     applyHeroPhoto();
     await persistRecipeChange();
   }catch(err){ /* image illisible : on ignore */ }
 });
 $("photoRemove").addEventListener("click", async ()=>{
   if(!recipe) return;
-  recipe.image=null; applyHeroPhoto();
+  recipe.image=null; recipe.imageSource=null; applyHeroPhoto();
   await persistRecipeChange();
+});
+$("genPhotoBtn").addEventListener("click", async ()=>{
+  if(!recipe || !recipe._id) return;
+  if(imageSourceOf(recipe)==="user"){ toast(t("genPhotoUser")); return; }   // la photo perso reste
+  if(genPending.has(recipe._id)) return;
+  toast(t("genPhotoStarted"));
+  const ok=await generatePhotoFor(recipe, true);                            // régénération manuelle explicite
+  toast(ok ? t("genPhotoDone") : t("genPhotoFail"));
 });
 $("editIngBtn").addEventListener("click", ()=>{ if(recipe){ fillEditFrom(recipe.ingredients); $("editIng").classList.remove("hidden"); } });
 $("editIngBack").addEventListener("click", ()=>$("editIng").classList.add("hidden"));
@@ -2137,6 +2241,54 @@ async function addToHistory(r){
     if(!error && data){ entry._dbid=data.id; r._dbid=data.id; entry._ts=new Date(data.created_at).getTime(); }
   }catch(e){ console.warn("historique:", e); }
 }
+// ---- photos IA (génération via /api/generate-image) ----
+// provenance d'une image : "user" (photo perso, intouchable), "ai" (générée), "legacy" (ancienne
+// image externe YouTube/Pexels/og:image, éligible au remplacement), null (pas d'image).
+function imageSourceOf(r){
+  if(!r) return null;
+  if(r.imageSource==="user" || r.imageSource==="ai") return r.imageSource;
+  const img=r.image;
+  if(typeof img==="string" && img.startsWith("data:image/")) return "user";
+  if(typeof img==="string" && img.indexOf("/storage/v1/object/public/recipe-images/")>-1) return "ai";
+  if(typeof img==="string" && /^https?:\/\//i.test(img)) return "legacy";
+  return null;
+}
+const genPending=new Set();
+let backfillBusy=false, backfillCancel=false;
+async function generatePhotoFor(entry, force){
+  if(!entry || !entry._id || !sb || !currentUserId) return false;
+  const src=imageSourceOf(entry);
+  if(src==="user") return false;                      // une photo perso n'est JAMAIS remplacée
+  if(src==="ai" && !force) return false;              // pas de régénération sauf action manuelle explicite
+  if(genPending.has(entry._id)) return false;
+  genPending.add(entry._id); updateGenBadge();
+  try{ renderList(); renderHomeRecent(); }catch(e){}   // les cartes affichent le badge "en cours"
+  try{
+    const { data:sess } = await sb.auth.getSession();
+    const jwt = sess && sess.session && sess.session.access_token;
+    if(!jwt) return false;
+    const ings=(entry.ingredients||[]).slice(0,5).map(i=>i&&i.name).filter(Boolean);
+    const r=await fetch("/api/generate-image",{ method:"POST",
+      headers:{ "content-type":"application/json", authorization:"Bearer "+jwt },
+      body:JSON.stringify({ recipeId:entry._id, title:entry.title||"", imageQuery:entry.imageQuery||"", ingredients:ings }) });
+    const d=await r.json().catch(()=>null);
+    if(!r.ok || !d || !d.url) return false;
+    // met à jour l'entrée du cache ET la recette ouverte, puis persiste dans Supabase
+    const live=allCache.find(x=>x._id===entry._id) || entry;
+    entry.image=d.url; entry.imageSource="ai";
+    live.image=d.url; live.imageSource="ai";
+    const clean={...live}; delete clean._dbid;
+    if(live._dbid){ try{ await sb.from("recipes").update({ data: clean }).eq("id", live._dbid); }catch(e){} }
+    if(recipe && recipe._id===entry._id){ recipe.image=d.url; recipe.imageSource="ai"; applyHeroPhoto(); }
+    renderList();
+    return true;
+  }catch(e){ return false; }
+  finally{ genPending.delete(entry._id); updateGenBadge(); try{ renderList(); renderHomeRecent(); }catch(e){} }
+}
+function updateGenBadge(){
+  const b=$("heroGenBadge"); if(!b) return;
+  b.classList.toggle("hidden", !(recipe && recipe._id && genPending.has(recipe._id)));
+}
 function currentIsSaved(){
   if(!recipe || !recipe._id) return false;
   const e=allCache.find(x=>x._id===recipe._id);
@@ -2205,16 +2357,8 @@ function renderList(){
   }
   empty.classList.add("hidden");
   list.forEach(r=>{
-    const row=document.createElement("div"); row.className="saved-row";
-    let actions;
-    const shareHtml=`<button class="sr-share" aria-label="${t("ariaShare")}"><svg viewBox="0 0 24 24" fill="none" stroke="#B0A79B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="2.4"/><circle cx="6" cy="12" r="2.4"/><circle cx="18" cy="19" r="2.4"/><path d="M8.1 13.2l7.8 4.6M15.9 6.2l-7.8 4.6"/></svg></button>`;
-    if(listTab==="saved"){
-      actions=`<button class="sr-fav" aria-label="${t("ariaFav")}">${r.fav?HEART_FILL:HEART_LINE}</button>${shareHtml}<button class="sr-del" aria-label="${t("ariaRemove")}">✕</button>`;
-    } else {
-      actions=`<button class="sr-save" aria-label="${t("ariaSave")}">${r.saved?BM_FILL:BM_LINE}</button>${shareHtml}<button class="sr-del" aria-label="${t("ariaDelete")}">✕</button>`;
-    }
-    row.innerHTML=`${r.image?`<img class="sr-thumb" src="${esc(r.image)}" loading="lazy" alt=""/>`:""}<span class="sr-name">${esc(r.title)}</span><button class="sr-cook" aria-label="${t("ariaCook")}"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>${actions}`;
-    row.addEventListener("click",(e)=>{
+    const card=recipeCard(r, listTab==="saved" ? "saved" : "history");
+    card.addEventListener("click",(e)=>{
       if(e.target.closest(".sr-cook")){ loadRecipe({...r}); cookStep=0; show("cook"); renderCook(); return; }
       if(e.target.closest(".sr-share")){ shareRecipeData(r); return; }
       if(e.target.closest(".sr-fav")){ toggleFav(r._id); return; }
@@ -2226,7 +2370,7 @@ function renderList(){
       }
       loadRecipe({...r});
     });
-    box.appendChild(row);
+    box.appendChild(card);
   });
 }
 async function toggleFav(id){
@@ -2670,6 +2814,9 @@ function applyLang(){
   set("recentTitle","recentTitle"); set("seeAllBtn","seeAll");
   set("recipesTitle","recipesTitle"); set("confirmCancel","confirmCancel");
   set("morePhotoLbl","morePhoto"); set("morePhotoRmLbl","morePhotoRm"); set("moreNoteLbl","moreNote"); set("moreShareLbl","moreShare");
+  set("moreGenLbl","genPhotoLbl"); set("heroGenLbl","heroGenLbl");
+  set("photosCardTitle","photosCardTitle"); set("photosCardDesc","photosCardDesc");
+  if($("backfillBtn") && !backfillBusy) $("backfillBtn").textContent=t("backfillBtn");
   if($("moreBtn")) $("moreBtn").setAttribute("aria-label", t("moreBtnAria"));
   updateCollLabel();
   set("navHomeLbl","navHome"); set("navRecipesLbl","navRecipes"); set("navAddLbl","navAdd"); set("navAddPlusTxt","navAdd");
@@ -2851,6 +2998,32 @@ function showAuth(){
 }
 
 // ---- paramètres ----
+// ---- backfill photos IA (Réglages) : jamais automatique, par lots, annulable, relançable ----
+const BACKFILL_MAX=30;   // plafond par lancement (maîtrise du coût) ; relancer traite les suivantes
+function backfillTargets(){
+  // uniquement les recettes sans photo IA valide ni photo perso ("legacy" ou aucune image)
+  return (allCache||[]).filter(r=>{ const s=imageSourceOf(r); return s!=="user" && s!=="ai"; });
+}
+$("backfillBtn").addEventListener("click", ()=>{
+  if(backfillBusy){ backfillCancel=true; $("backfillStatus").textContent=t("backfillStopping"); return; }
+  const targets=backfillTargets();
+  if(!targets.length){ toast(t("backfillNone")); $("backfillStatus").textContent=""; return; }
+  const n=Math.min(targets.length, BACKFILL_MAX);
+  askConfirm(t("backfillConfirmTitle"), t("backfillConfirmDesc")(n, targets.length), t("backfillConfirmOk"), async ()=>{
+    backfillBusy=true; backfillCancel=false;
+    $("backfillBtn").textContent=t("backfillStop");
+    let done=0, fail=0;
+    for(const entry of targets.slice(0, BACKFILL_MAX)){
+      if(backfillCancel) break;
+      (await generatePhotoFor(entry)) ? done++ : fail++;
+      $("backfillStatus").textContent=t("backfillProg")(done+fail, n);
+    }
+    backfillBusy=false; backfillCancel=false;
+    $("backfillBtn").textContent=t("backfillBtn");
+    const remaining=backfillTargets().length;
+    $("backfillStatus").textContent = fail ? t("backfillDoneFail")(done, fail) : t("backfillDone")(done, remaining);
+  });
+});
 $("acctBtn").addEventListener("click",()=>{ if($("acctEmail")) $("acctEmail").textContent=currentUser||""; refreshNotifStatus(); show("settings"); });
 $("settingsBack").addEventListener("click",()=>show("home"));
 
