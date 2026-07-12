@@ -98,7 +98,6 @@
     #home.wrap{ max-width:720px; }        /* accueil */
     #recipes.wrap{ max-width:840px; }     /* grille de recettes */
     #recipe{ max-width:720px; }           /* détail recette */
-    #homeShortcuts{ grid-template-columns:1fr 1fr; }
   }
   /* courses, planning, réglages, formulaires, cuisson : 620px inchangé (une colonne) */
 
@@ -315,13 +314,9 @@
   </button>
 
   <div id="homeShortcuts">
-    <button id="ideasOpen" class="press" style="width:100%;text-align:left;background:var(--cream);border:1px solid var(--line);border-radius:14px;padding:15px 16px;display:flex;align-items:center;gap:12px;color:var(--ink)">
-      <span style="font-size:22px">💡</span>
-      <span style="line-height:1.35"><b id="ideasTitle">Trouver une idée avec mes ingrédients</b><br><span id="ideasSub" style="font-size:13px;color:var(--muted)">Dis ce que t'as dans le frigo → mise. te trouve des idées</span></span>
-    </button>
-    <button id="weekOpen" class="press" style="width:100%;text-align:left;background:var(--cream);border:1px solid var(--line);border-radius:14px;padding:15px 16px;display:flex;align-items:center;gap:12px;color:var(--ink)">
-      <span style="font-size:22px">📅</span>
-      <span style="line-height:1.35"><b id="weekTitle">Planifier ma semaine</b><br><span id="weekSub" style="font-size:13px;color:var(--muted)">Planifie tes repas → liste de courses en un coup</span></span>
+    <button id="ideasOpen" class="press" style="width:100%;text-align:left;background:var(--cream);border:1px solid var(--line);border-radius:14px;padding:15px 16px;display:flex;align-items:center;gap:14px;color:var(--ink)">
+      <span style="font-size:34px;line-height:1">💡</span>
+      <span style="line-height:1.35"><b id="ideasTitle">Trouver une idée avec mes ingrédients</b></span>
     </button>
   </div>
 
@@ -523,7 +518,8 @@
     <div id="accentRow" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px"></div>
     <div id="bgLabel" style="font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.04em;margin-bottom:8px">FOND DE L'APP</div>
     <div id="bgRow" style="display:flex;gap:10px;flex-wrap:wrap"></div>
-    <div id="bgNote" style="font-size:12px;color:var(--muted);line-height:1.5;margin-top:10px">Le fond s'applique en mode clair. Le mode sombre garde son ambiance.</div>
+    <div id="bgNote" style="font-size:12px;color:var(--muted);line-height:1.5;margin-top:10px">Chaque thème garde ses propres couleurs de fond.</div>
+    <button id="resetTheme" class="press" style="width:100%;font-family:inherit;font-size:14px;font-weight:600;padding:11px;border-radius:11px;border:1.5px solid var(--line);background:transparent;color:var(--ink);margin-top:16px">↺ Réinitialiser le thème</button>
   </div>
 
   <div style="background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px 20px;margin-bottom:16px">
@@ -1064,7 +1060,10 @@ const STR={
   notifErr:"Une erreur est survenue.",
   appearTitle:"Apparence", appearDesc:"Personnalise les couleurs de ton app.",
   accentLabel:"COULEUR DES BOUTONS", bgLabel:"FOND DE L'APP",
-  bgNote:"Le fond s'applique en mode clair. Le mode sombre garde son ambiance.",
+  bgNote:"Chaque thème garde ses propres couleurs de fond.",
+  bgNoteLight:"Tu personnalises le fond du mode clair (☀️). Passe en sombre pour régler le fond sombre.",
+  bgNoteDark:"Tu personnalises le fond du mode sombre (🌙). Repasse en clair pour régler le fond clair.",
+  resetTheme:"↺ Réinitialiser le thème", resetThemeDone:"Thème réinitialisé",
   premiumActive:"✓ Premium actif sur cet appareil",
   premiumPitch:"Débloque les idées recettes, le menu de la semaine, la photo du frigo et la création de recettes par IA.",
   premiumCodePh:"Code d'accès", premiumRedeemBtn:"Activer", premiumChecking:"Vérification…", premiumBadCode:"Code invalide.",
@@ -1192,7 +1191,10 @@ const STR={
   notifErr:"Something went wrong.",
   appearTitle:"Appearance", appearDesc:"Customize your app colors.",
   accentLabel:"BUTTON COLOR", bgLabel:"APP BACKGROUND",
-  bgNote:"The background applies in light mode. Dark mode keeps its own vibe.",
+  bgNote:"Each theme keeps its own background colors.",
+  bgNoteLight:"You're customizing the light mode background (☀️). Switch to dark to set the dark background.",
+  bgNoteDark:"You're customizing the dark mode background (🌙). Switch back to light to set the light background.",
+  resetTheme:"↺ Reset theme", resetThemeDone:"Theme reset",
   premiumActive:"✓ Premium active on this device",
   premiumPitch:"Unlock recipe ideas, the weekly menu, the fridge photo and AI recipe creation.",
   premiumCodePh:"Access code", premiumRedeemBtn:"Activate", premiumChecking:"Checking…", premiumBadCode:"Invalid code.",
@@ -2088,7 +2090,7 @@ function renderWeekPick(q){
 }
 $("weekPickSearch").addEventListener("input",(e)=>renderWeekPick(e.target.value.trim()));
 $("weekPickClose").addEventListener("click",()=>$("weekPicker").classList.add("hidden"));
-$("weekOpen").addEventListener("click",()=>{ renderWeek(); show("week"); window.scrollTo(0,0); });
+// (le raccourci "Planifier ma semaine" de l'accueil a été retiré : le planning reste accessible via l'onglet Planning)
 $("weekBack").addEventListener("click",()=>{ show("home"); });
 $("weekClear").addEventListener("click",()=>{ if(confirm(t("weekClearConfirm"))){ setWeek({}); renderWeek(); } });
 $("weekToShop").addEventListener("click",()=>{
@@ -2679,6 +2681,7 @@ function applyTheme(t){
   const m=document.querySelector('meta[name="theme-color"]');
   if(m) m.setAttribute("content", t==="dark" ? "#1C1614" : "#E9DFCC");
   try{ refreshBgVars(); }catch(e){}
+  try{ renderBgRow(); }catch(e){}   // les presets de fond dépendent du thème
 }
 function initTheme(){
   let t=null;
@@ -2724,8 +2727,11 @@ function applyAccent(name){
   applyAccent(saved||"rose");
 })();
 
-// ---- fond de l'app personnalisable (mode clair) ----
-const BACKGROUNDS={
+// ---- fond de l'app personnalisable (par thème : clair ET sombre) ----
+// null = garder les valeurs par défaut du thème (définies en CSS). Seule la famille "fond"
+// est personnalisable (paper/surface/cream/line/rowhover) ; le texte (--ink/--muted) reste
+// géré par le thème -> les fonds sombres restant sombres, le contraste texte reste garanti.
+const LIGHT_BACKGROUNDS={
   creme: null,
   blanc: {paper:"#FFFFFF", surface:"#FAFAF8", cream:"#F1F0EB", line:"#E4E2DB", rowhover:"#F3F2ED"},
   pierre:{paper:"#ECEAE5", surface:"#F9F8F6", cream:"#E1DED7", line:"#D5D1C8", rowhover:"#E6E3DC"},
@@ -2733,41 +2739,71 @@ const BACKGROUNDS={
   ciel:  {paper:"#E3EAEF", surface:"#F5F9FB", cream:"#D9E3EA", line:"#C6D5DF", rowhover:"#DDE6EC"},
   poudre:{paper:"#F1E4E4", surface:"#FBF5F5", cream:"#EBDADA", line:"#DFC9C9", rowhover:"#EDDEDE"}
 };
-let currentBg="creme";
+const DARK_BACKGROUNDS={
+  brun:  null,   // ambiance sombre par défaut (valeurs CSS [data-theme="dark"])
+  noir:  {paper:"#141414", surface:"#1F1F1F", cream:"#2A2A2A", line:"#343434", rowhover:"#242424"},
+  foret: {paper:"#141A16", surface:"#1E261F", cream:"#28322A", line:"#354037", rowhover:"#232C25"},
+  nuit:  {paper:"#131722", surface:"#1D2230", cream:"#28303F", line:"#343D4E", rowhover:"#222836"},
+  prune: {paper:"#1A1420", surface:"#251E2C", cream:"#302738", line:"#3D3247", rowhover:"#2B2333"}
+};
+const BG_DEFAULT={light:"creme", dark:"brun"};
+function isDark(){ return (document.documentElement.getAttribute("data-theme")||"light")==="dark"; }
+function bgMap(){ return isDark()?DARK_BACKGROUNDS:LIGHT_BACKGROUNDS; }
+function bgKey(){ return isDark()?"mise_bg_dark":"mise_bg_light"; }
+function currentBgName(){
+  const map=bgMap(), def=isDark()?BG_DEFAULT.dark:BG_DEFAULT.light;
+  let n=null; try{ n=localStorage.getItem(bgKey()); }catch(e){}
+  return (n && Object.prototype.hasOwnProperty.call(map,n)) ? n : def;
+}
 function refreshBgVars(){
-  const root=document.documentElement;
-  const dark=(root.getAttribute("data-theme")||"light")==="dark";
-  const t=BACKGROUNDS[currentBg];
+  const root=document.documentElement, dark=isDark();
+  const preset=bgMap()[currentBgName()];
   ["paper","surface","cream","line","rowhover"].forEach(k=>{
-    if(!dark && t && t[k]) root.style.setProperty("--"+k, t[k]);
+    if(preset && preset[k]) root.style.setProperty("--"+k, preset[k]);
     else root.style.removeProperty("--"+k);
   });
   const m=document.querySelector('meta[name="theme-color"]');
-  if(m && !dark) m.setAttribute("content", (t&&t.paper)||"#E9DFCC");
+  if(m) m.setAttribute("content", (preset&&preset.paper) || (dark?"#1C1614":"#E9DFCC"));
 }
-function applyBackground(name){
-  if(!Object.prototype.hasOwnProperty.call(BACKGROUNDS,name)) name="creme";
-  currentBg=name;
-  try{ localStorage.setItem("mise_bg",name); }catch(e){}
-  refreshBgVars();
-  document.querySelectorAll(".bg-dot").forEach(d=>d.classList.toggle("active", d.dataset.name===name));
-}
-(function initBackgrounds(){
+function renderBgRow(){
   const row=$("bgRow"); if(!row) return;
-  Object.entries(BACKGROUNDS).forEach(([name,t])=>{
+  const map=bgMap(), cur=currentBgName(), dark=isDark();
+  row.innerHTML="";
+  Object.entries(map).forEach(([name,preset])=>{
     const b=document.createElement("button");
-    b.className="bg-dot press"; b.dataset.name=name; b.setAttribute("aria-label","fond "+name);
-    b.style.background=(t&&t.paper)||"#E9DFCC";
+    b.className="bg-dot press"+(name===cur?" active":""); b.dataset.name=name; b.setAttribute("aria-label","fond "+name);
+    b.style.background=(preset&&preset.paper) || (dark?"#1C1614":"#E9DFCC");
     b.addEventListener("click",()=>applyBackground(name));
     row.appendChild(b);
   });
-  let saved=null; try{ saved=localStorage.getItem("mise_bg"); }catch(e){}
-  applyBackground(saved||"creme");
+  const note=$("bgNote"); if(note) note.textContent=t(dark?"bgNoteDark":"bgNoteLight");
+}
+function applyBackground(name){
+  if(!Object.prototype.hasOwnProperty.call(bgMap(),name)) return;
+  try{ localStorage.setItem(bgKey(),name); }catch(e){}
+  refreshBgVars();
+  renderBgRow();
+}
+(function initBackgrounds(){
+  // migration douce : ancien mise_bg (qui ne s'appliquait qu'au clair) -> mise_bg_light
+  try{
+    const old=localStorage.getItem("mise_bg");
+    if(old && !localStorage.getItem("mise_bg_light")){ localStorage.setItem("mise_bg_light", old); }
+    if(old) localStorage.removeItem("mise_bg");
+  }catch(e){}
+  refreshBgVars();
+  renderBgRow();
 })();
+$("resetTheme").addEventListener("click",()=>{
+  try{ ["mise_accent","mise_bg_light","mise_bg_dark","mise_bg"].forEach(k=>localStorage.removeItem(k)); }catch(e){}
+  applyAccent("rose");
+  refreshBgVars(); renderBgRow();
+  toast(t("resetThemeDone"));
+});
 
 // ---- mise. premium ----
 function isPremium(){ try{ return localStorage.getItem("mise_premium")==="1"; }catch(e){ return false; } }
-const PREMIUM_LOCKED=["ideasOpen","weekOpen","photoIdea","createToggle"];
+const PREMIUM_LOCKED=["ideasOpen","photoIdea","createToggle"];
 function refreshLocks(){
   const p=isPremium();
   PREMIUM_LOCKED.forEach(id=>{
@@ -2825,8 +2861,7 @@ function applyLang(){
   set("urlLabel","urlLabel"); if($("url")) $("url").placeholder=t("urlPh");
   set("detectLabel","detected");
   set("decodeBtn","decodeBtn");
-  set("ideasTitle","ideasTitle"); set("ideasSub","ideasSub");
-  set("weekTitle","weekTitle"); set("weekSub","weekSub");
+  set("ideasTitle","ideasTitle");
   set("manualToggleLbl","manualToggle"); if($("manualText")) $("manualText").placeholder=t("manualPh"); set("manualBtn","manualBtn");
   set("createToggleLbl","createToggle"); set("createDesc","createDesc"); if($("createText")) $("createText").placeholder=t("createPh"); set("createBtn","createBtn");
   set("addRecipeLbl","addRecipeBtn"); set("addSheetTitle","addSheetTitle");
@@ -2858,7 +2893,8 @@ function applyLang(){
   // réglages
   set("settingsTitle","settingsTitle"); set("acctLabel","acctLabel");
   set("notifCardTitle","notifCardTitle"); set("notifCardDesc","notifCardDesc"); set("notifBtn","notifEnable");
-  set("appearTitle","appearTitle"); set("appearDesc","appearDesc"); set("accentLabel","accentLabel"); set("bgLabel","bgLabel"); set("bgNote","bgNote");
+  set("appearTitle","appearTitle"); set("appearDesc","appearDesc"); set("accentLabel","accentLabel"); set("bgLabel","bgLabel");
+  set("resetTheme","resetTheme"); try{ renderBgRow(); }catch(e){}   // note de fond dans la bonne langue + thème courant
   if($("premiumCode")) $("premiumCode").placeholder=t("premiumCodePh");
   set("premiumRedeem","premiumRedeemBtn");
   set("premModalTitle","premModalTitle"); set("premModalDesc","premModalDesc",true);
