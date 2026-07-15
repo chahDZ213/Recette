@@ -2561,7 +2561,7 @@ document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState=
 function speakStep(){
   if(!voiceOn || !recipe || !recipe.steps) return;
   const s=recipe.steps[cookStep]; if(!s) return;
-  try{ window.speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance((s.title?s.title+". ":"")+(s.content||"")); u.lang=(curLang==="en"?"en-US":"fr-FR"); u.rate=1; window.speechSynthesis.speak(u); }catch(e){}
+  try{ window.speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance((s.title?s.title+". ":"")+stepTextWithQty(s.content||"")); u.lang=(curLang==="en"?"en-US":"fr-FR"); u.rate=1; window.speechSynthesis.speak(u); }catch(e){}
 }
 function stopSpeak(){ try{ window.speechSynthesis.cancel(); }catch(e){} }
 function endCookExtras(){ releaseWakeLock(); stopSpeak(); voiceOn=false; { const b=$("voiceBtn"); if(b) b.classList.remove("on"); } stopHandsFree(); { const h=$("handsFreeBtn"); if(h) h.classList.remove("on"); } }
@@ -2605,6 +2605,76 @@ function cookChips(s){
     chips.map(c=>`<span style="display:inline-flex;align-items:center;gap:5px;font-size:14px;font-weight:600;padding:7px 13px;border-radius:11px;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.18);color:#fff;letter-spacing:.01em;white-space:nowrap">${c}</span>`).join("")+
     `</div>`;
 }
+// ---- quantités dans les étapes ----
+// L'extraction ne met volontairement pas les chiffres dans les étapes (pour que
+// l'ajustement des portions reste juste) : on les réinjecte ici à l'affichage,
+// calculés pour le nombre de portions choisi.
+const ING_STOP=new Set(["de","du","des","le","la","les","un","une","au","aux","en","et","ou","d","l","pour","gros","grosse","petit","petite","petites","moyen","moyenne","frais","fraiche","fraiches","the","a","an","of","and","or","to","for","fresh","large","small","medium"]);
+function normIng(s){ return (s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/œ/g,"oe").replace(/æ/g,"ae"); }
+function ingWordPattern(word){
+  // motif tolérant aux accents/ligatures pour retrouver un mot normalisé dans le texte d'origine
+  const map={a:"[aàâä]",e:"[eéèêë]",i:"[iîï]",o:"[oôö]",u:"[uùûü]",c:"[cç]",y:"[yÿ]"};
+  let w=word;
+  if(w.length>3) w=w.replace(/[sx]$/,"");   // tolère singulier/pluriel
+  let p="";
+  for(let i=0;i<w.length;i++){
+    const c=w[i];
+    if(c==="o"&&w[i+1]==="e"){ p+="(?:œ|[oôö][eéèêë])"; i++; continue; }
+    if(c==="a"&&w[i+1]==="e"){ p+="(?:æ|[aàâä][eéèêë])"; i++; continue; }
+    p+=map[c]||c.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+  }
+  return p+"(?:s|x)?";
+}
+const ING_BOUND="[a-zà-öø-ÿœæ0-9]";
+function stepQtyInserts(text){
+  if(!text||!recipe||!Array.isArray(recipe.ingredients)) return [];
+  const used=[], out=[];
+  const ings=recipe.ingredients
+    .map(ing=>{
+      const words=normIng(ing.name).split(/[^a-z0-9]+/).filter(w=>w.length>=3&&!ING_STOP.has(w));
+      return {ing,words};
+    })
+    .filter(x=>x.ing.amount!=null&&x.words.length)
+    .sort((a,b)=>b.words.length-a.words.length||b.ing.name.length-a.ing.name.length);
+  for(const {ing,words} of ings){
+    const val=(ing.amount*servings)/base;
+    const qty=smartVal(val, ing.unit)+(ing.unit?" "+ing.unit:"");
+    // le nom complet d'abord (plus précis), puis chaque mot significatif du plus long au plus court
+    const cands=[];
+    const full=normIng(ing.name).split(/[^a-z0-9]+/).filter(Boolean);
+    if(full.length>1) cands.push(full.map(ingWordPattern).join("[\\s'’,-]+"));
+    words.slice().sort((a,b)=>b.length-a.length).forEach(w=>cands.push(ingWordPattern(w)));
+    let placed=false;
+    for(const cand of cands){
+      if(placed) break;
+      const re=new RegExp("(^|[^"+ING_BOUND.slice(1,-1)+"])("+cand+")(?!"+ING_BOUND+")","gi");
+      let m;
+      while((m=re.exec(text))){
+        const start=m.index+m[1].length, end=start+m[2].length;
+        if(used.some(r=>start<r[1]&&end>r[0])) continue;   // déjà annoté (ex: « sucre » dans « sucre vanillé »)
+        used.push([start,end]); out.push({pos:end,qty}); placed=true; break;
+      }
+    }
+  }
+  return out.sort((a,b)=>a.pos-b.pos);
+}
+function stepHtmlWithQty(text){
+  const ins=stepQtyInserts(text);
+  if(!ins.length) return esc(text);
+  let html="", prev=0;
+  ins.forEach(({pos,qty})=>{
+    html+=esc(text.slice(prev,pos))+` <span style="color:${ACCENT};font-weight:600;white-space:nowrap">(${esc(qty)})</span>`;
+    prev=pos;
+  });
+  return html+esc(text.slice(prev));
+}
+function stepTextWithQty(text){
+  const ins=stepQtyInserts(text);
+  if(!ins.length) return text||"";
+  let out="", prev=0;
+  ins.forEach(({pos,qty})=>{ out+=text.slice(prev,pos)+" ("+qty+")"; prev=pos; });
+  return out+text.slice(prev);
+}
 function renderCook(){
   stopTimer();
   const steps=recipe.steps, total=steps.length, s=steps[cookStep];
@@ -2613,7 +2683,7 @@ function renderCook(){
   let html=`<div class="rise" style="margin:10px 0 auto;width:100%"><div class="mono" style="font-size:14px;color:${ACCENT};font-weight:500;margin-bottom:14px;letter-spacing:.04em">${t("stepWord")} ${cookStep+1}</div>`;
   if(s.title) html+=`<h2 class="mono" style="font-size:26px;font-weight:700;letter-spacing:-.02em;margin-bottom:18px;line-height:1.15">${esc(s.title)}</h2>`;
   html+=cookChips(s);
-  html+=`<p style="font-size:22px;line-height:1.45">${esc(s.content)}</p>`;
+  html+=`<p style="font-size:22px;line-height:1.45">${stepHtmlWithQty(s.content)}</p>`;
   const firstTimer=steps.findIndex(st=>st.timerSeconds);
   if(firstTimer>cookStep) html+=`<button id="skipToCook" class="press" style="margin-top:22px;font-size:14px;font-weight:600;padding:11px 18px;border-radius:11px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.09);color:#fff;display:inline-flex;align-items:center;gap:7px">${t("skipToCook")}</button>`;
   if(s.timerSeconds) html+=`<div id="timerSlot"></div>`;
