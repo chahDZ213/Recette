@@ -1,0 +1,41 @@
+<!doctype html>
+<!-- pay-retour.html — page de retour Stripe Checkout pour les apps SANS site propre
+     (Metria). Lit ?pay=success|cancel et ?app=… et invite à retourner dans l'app.
+     mise. et LTVTC Topo reviennent sur leur propre origine, pas ici. -->
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Paiement</title>
+<style>
+  :root{ --ink:#2A2521; --muted:#8A8178; --ok:#3E7C4F; --warn:#B4544B; --paper:#FBF7F1; }
+  @media (prefers-color-scheme: dark){ :root{ --ink:#EFE9E2; --muted:#A79D92; --paper:#221E1A; } }
+  body{ margin:0; font-family:-apple-system,'Segoe UI',system-ui,sans-serif; background:var(--paper); color:var(--ink);
+        min-height:100vh; display:flex; align-items:center; justify-content:center; text-align:center; padding:24px }
+  .card{ max-width:420px }
+  .badge{ font-size:52px; margin-bottom:14px }
+  h1{ font-size:22px; margin:0 0 10px }
+  p{ font-size:15px; color:var(--muted); line-height:1.6; margin:0 }
+  .test{ display:inline-block; margin-top:18px; font-size:12px; color:var(--muted); border:1px solid currentColor; border-radius:999px; padding:4px 12px }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="badge" id="badge">✅</div>
+  <h1 id="title">Paiement confirmé</h1>
+  <p id="desc">Merci ! Tu peux fermer cette page et retourner dans l'app.</p>
+  <span class="test">Environnement de test Stripe — aucun débit réel</span>
+</div>
+<script>
+  var q = new URLSearchParams(location.search);
+  var app = ({ metria: "Metria", mise: "mise.", ltvtc: "LTVTC Topo" })[q.get("app")] || "l'app";
+  if (q.get("pay") === "cancel") {
+    document.getElementById("badge").textContent = "✋";
+    document.getElementById("title").textContent = "Paiement annulé";
+    document.getElementById("desc").textContent = "Aucun débit. Tu peux fermer cette page et retourner dans " + app + ".";
+  } else {
+    document.getElementById("desc").textContent = "Merci ! Ferme cette page et retourne dans " + app + " : l'abonnement s'active en quelques secondes.";
+  }
+</script>
+</body>
+</html>

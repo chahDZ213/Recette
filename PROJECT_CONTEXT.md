@@ -2,7 +2,7 @@
 
 > **Document de référence pour les assistants IA** (Claude Code = ingénieur développeur principal, ChatGPT = architecture / produit / design / audits).
 > À maintenir à jour à chaque grosse modification du projet.
-> Dernière mise à jour : 2026-07-09.
+> Dernière mise à jour : 2026-07-17.
 
 ---
 
@@ -73,11 +73,17 @@ Recette/
 ├── manifest.json       ← manifeste PWA
 ├── icon-192.png / icon-512.png
 ├── package.json        ← seule dépendance : web-push
+├── pay-retour.html     ← page de retour Stripe pour les apps sans site (Metria)
 ├── api/
 │   ├── extract.js      ← endpoint principal : extraction, vision, idées, frigo, traduction, codes premium
 │   ├── schedule-push.js ← planifie un push différé via QStash
 │   ├── send-push.js    ← appelé par QStash, envoie le push (protégé par SEND_SECRET)
-│   └── cancel-push.js  ← annule un push planifié
+│   ├── cancel-push.js  ← annule un push planifié
+│   └── pay/            ← backend Stripe Checkout MODE TEST, PARTAGÉ entre mise., Metria et LTVTC Topo
+│       ├── _lib.js     ← catalogue produits par app, CORS, JWT, upsert premium_users
+│       ├── checkout.js ← crée une session Checkout (mise. exige le JWT Supabase)
+│       ├── status.js   ← vérifie le paiement (+ active le premium mise. si payé)
+│       └── webhook.js  ← webhook Stripe (checkout.session.completed / subscription.deleted)
 ├── icons/ing/          ← pack d'icônes d'ingrédients (WebP 96px, ~3,5 Ko/icône)
 │                          générées par ChatGPT (planches 3×3), découpées par icones-brutes/decoupe.py
 │                          (dossier hors dépôt, dans Projet/) ; affichées via ingEmoji() avec repli emoji
@@ -86,6 +92,7 @@ Recette/
 ```
 
 **Variables d'environnement Vercel :** `ANTHROPIC_API_KEY`, `SUPADATA_API_KEY`, `OPENAI_API_KEY` (photos IA), `IMAGE_MODEL` (défaut `gpt-image-2`), `IMAGE_QUALITY` (défaut `low`), `IMAGE_COMPRESSION` (défaut 55), `YOUTUBE_API_KEY` (opt.), `PREMIUM_CODES`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `SEND_SECRET`, `QSTASH_URL`, `QSTASH_TOKEN`, `PUBLIC_BASE_URL`, `ALLOWED_ORIGINS` (opt., protection API). `PEXELS_API_KEY` est obsolète (photos désormais générées par IA).
+**Paiements Stripe (MODE TEST)** : `STRIPE_SECRET_KEY` (sk_test_…), `SUPABASE_SERVICE_ROLE_KEY` (activation premium côté serveur), `STRIPE_WEBHOOK_SECRET` (whsec_…, optionnel — `status.js` sert de filet de sécurité sans webhook).
 
 ## 5. Fonctionnalités terminées
 
@@ -113,9 +120,11 @@ Recette/
 - 🔄 Animations de chargement rééquilibrées — livrées (messages 2,6 s, rattrapage accéléré quand le serveur a fini)
 - ✅ Refonte UX — **fusionnée en production le 2026-07-11** : navigation persistante (tabbar mobile <1024px / barre supérieure ≥1024px — Accueil · Recettes · ＋Ajouter · Planning · Courses ; « ＋ » = action pure, jamais une destination), sheet « Ajouter une recette » regroupant les 4 méthodes (dialog accessible : focus piégé, Échap, overlay), accueil simplifié (hero court + recherche déléguée + CTA unique + Récentes), page Recettes dédiée (`#recipes`, onglets Enregistrées/Récentes, confirmation de suppression avec focus sur Annuler), libellés clarifiés FR/EN (« Importer la recette », « Scanner une recette », « Ajouter à une collection »…), bouton contextuel Enregistrer/Collection (fin de l'enregistrement implicite d'assignCollection), menu « ⋯ » sur la recette, mode cuisson amélioré (contenu remonté, « Étape X sur Y », minuteur actif proéminent, confirmation de sortie si minuteur), responsive desktop (accueil 720px, recettes 840px + 2 colonnes ≥768px, détail 720px ; courses/planning/cuisson inchangés), accessibilité (focus-visible, rôles status/alert, aria-labels FR/EN, contrastes mesurés et corrigés ≥4,5:1 dans les deux thèmes)
 
+- ✅ **Stripe Checkout démo (2026-07-17)** : abonnement premium 3,99 €/mois en **MODE TEST** (carte 4242 4242 4242 4242). Backend `api/pay/` **partagé avec Metria et LTVTC Topo** (catalogue par app, prix inline `price_data` — rien à créer dans le dashboard). Bouton « Passer premium » dans Réglages (JWT obligatoire), retour `?pay=success&session_id=…` vérifié côté serveur avant activation, table Supabase `premium_users` (RLS : lecture de sa propre ligne, écriture service_role uniquement), synchro à la connexion (`syncPremiumFromCloud`), webhook `checkout.session.completed` / `customer.subscription.deleted`. Le code d'accès historique reste fonctionnel. Nécessite les env vars Stripe (section 4) — voir `../STRIPE-DEMO.md`.
+
 ## 7. Problèmes et points faibles connus
 
-1. **Premium contournable** : le statut est un simple `localStorage.mise_premium="1"`, vérifiable côté client uniquement. À migrer côté serveur (table Supabase + vérification dans `/api/extract`) avant toute monétisation sérieuse.
+1. **Premium contournable (atténué 2026-07-17)** : le gating reste côté client (`localStorage.mise_premium`), mais le statut payé existe désormais côté serveur (`premium_users`). Reste à faire : vérifier ce statut dans `/api/extract` pour les fonctions premium avant toute monétisation réelle.
 2. ~~RLS Supabase~~ ✅ vérifié (2026-07-11) : RLS actif sur `recipes` (4 policies `auth.uid() = user_id` : SELECT/INSERT/UPDATE/DELETE) et `shares` (lecture publique, création/suppression propriétaire).
 3. ~~`ALLOWED_ORIGINS`~~ ✅ activé (2026-07-11) : `ALLOWED_ORIGINS=https://recette-xi.vercel.app` dans Vercel (Production). Testé : origine étrangère → 403, origine légitime → 200. Note : les requêtes sans header `Origin` (curl/scripts) passent — protection contre les sites tiers, pas contre les scripts directs (voir premium côté serveur).
 4. **`index.html` monolithique (~2500 lignes)** : voulu (zéro build), mais la maintenabilité baisse à mesure que l'app grossit. Si le fichier dépasse ~4000 lignes, envisager un découpage.

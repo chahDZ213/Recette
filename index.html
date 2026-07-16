@@ -533,6 +533,9 @@
     <div style="font-size:15px;font-weight:600;margin-bottom:4px">✨ mise. premium</div>
     <div id="premiumStatus" style="font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:12px"></div>
     <div id="premiumForm">
+      <button id="premiumBuy" class="press" style="width:100%;font-size:15px;font-weight:600;padding:13px;border-radius:12px;border:none;background:var(--accent);color:#fff">✨ Passer premium — 3,99 €/mois</button>
+      <div id="premiumBuyMsg" class="hidden" style="font-size:13px;color:#B4544B;margin-top:8px"></div>
+      <div id="premiumOr" style="font-size:12px;color:var(--muted);margin:10px 0 8px;text-align:center">— ou avec un code d'accès —</div>
       <div style="display:flex;gap:8px">
         <input type="text" id="premiumCode" placeholder="Code d'accès" autocomplete="off" autocapitalize="characters" style="flex:1;min-width:0;font-family:inherit;font-size:15px;padding:11px 13px;border-radius:11px;border:1.5px solid var(--line);background:var(--paper);color:var(--ink);outline:none" />
         <button id="premiumRedeem" class="press" style="font-size:14px;font-weight:600;padding:11px 16px;border-radius:11px;border:none;background:var(--accent);color:#fff;flex-shrink:0">Activer</button>
@@ -1067,9 +1070,13 @@ const STR={
   premiumActive:"✓ Premium actif sur cet appareil",
   premiumPitch:"Débloque les idées recettes, le menu de la semaine, la photo du frigo et la création de recettes par IA.",
   premiumCodePh:"Code d'accès", premiumRedeemBtn:"Activer", premiumChecking:"Vérification…", premiumBadCode:"Code invalide.",
+  premiumBuyBtn:"✨ Passer premium — 3,99 €/mois", premiumOr:"— ou avec un code d'accès —",
+  premiumBuyErr:"Impossible d'ouvrir le paiement. Réessaie.", premiumNeedLogin:"Connecte-toi d'abord pour passer premium.",
+  payChecking:"Vérification du paiement…", payThanks:"Paiement confirmé — premium activé ✨",
+  payCancelled:"Paiement annulé.", payNotPaid:"Paiement non confirmé. Réessaie depuis les réglages.",
   premModalTitle:"Fonction Premium",
-  premModalDesc:"Cette fonction fait partie de <b>mise. premium</b>. Entre ton code d'accès dans les paramètres pour la débloquer.",
-  premModalGo:"Entrer mon code", premModalLater:"Plus tard",
+  premModalDesc:"Cette fonction fait partie de <b>mise. premium</b>. Débloque-la depuis les réglages : abonnement ou code d'accès.",
+  premModalGo:"Débloquer premium", premModalLater:"Plus tard",
   shareApp:"📲 Partager mise. à un ami", convertOpen:"🥄 Cuisiner sans balance",
   logout:"Se déconnecter / changer de compte",
   // recette
@@ -1198,9 +1205,13 @@ const STR={
   premiumActive:"✓ Premium active on this device",
   premiumPitch:"Unlock recipe ideas, the weekly menu, the fridge photo and AI recipe creation.",
   premiumCodePh:"Access code", premiumRedeemBtn:"Activate", premiumChecking:"Checking…", premiumBadCode:"Invalid code.",
+  premiumBuyBtn:"✨ Go premium — €3.99/month", premiumOr:"— or with an access code —",
+  premiumBuyErr:"Couldn't open the payment page. Please try again.", premiumNeedLogin:"Log in first to go premium.",
+  payChecking:"Checking your payment…", payThanks:"Payment confirmed — premium unlocked ✨",
+  payCancelled:"Payment cancelled.", payNotPaid:"Payment not confirmed. Try again from the settings.",
   premModalTitle:"Premium feature",
-  premModalDesc:"This feature is part of <b>mise. premium</b>. Enter your access code in the settings to unlock it.",
-  premModalGo:"Enter my code", premModalLater:"Later",
+  premModalDesc:"This feature is part of <b>mise. premium</b>. Unlock it from the settings: subscription or access code.",
+  premModalGo:"Unlock premium", premModalLater:"Later",
   shareApp:"📲 Share mise. with a friend", convertOpen:"🥄 Cook without a scale",
   logout:"Log out / switch account",
   // recipe
@@ -2911,6 +2922,56 @@ $("premiumRedeem").addEventListener("click", async ()=>{
 });
 refreshLocks();
 
+// ---- premium via Stripe Checkout (MODE TEST — carte 4242 4242 4242 4242) ----
+const PAY_API="/api/pay";
+$("premiumBuy").addEventListener("click", async ()=>{
+  const btn=$("premiumBuy"), msg=$("premiumBuyMsg");
+  msg.classList.add("hidden");
+  let jwt=null;
+  if(sb){ try{ const { data }=await sb.auth.getSession(); jwt=data&&data.session&&data.session.access_token; }catch(e){} }
+  if(!jwt){ toast(t("premiumNeedLogin")); showAuth(); return; }
+  btn.disabled=true; btn.textContent=t("payChecking");
+  try{
+    const r=await fetch(PAY_API+"/checkout",{
+      method:"POST",
+      headers:{"content-type":"application/json", authorization:"Bearer "+jwt},
+      body:JSON.stringify({app:"mise", plan:"premium_month", returnUrl:location.origin+location.pathname})
+    });
+    const d=await r.json().catch(()=>({}));
+    if(r.ok && d.url){ location.href=d.url; return; }   // → page Stripe hébergée
+    msg.textContent=(d&&d.error)||t("premiumBuyErr"); msg.classList.remove("hidden");
+  }catch(e){ msg.textContent=t("premiumBuyErr"); msg.classList.remove("hidden"); }
+  btn.disabled=false; btn.textContent=t("premiumBuyBtn");
+});
+// Retour de Stripe : ?pay=success&session_id=… (ou ?pay=cancel). On vérifie côté serveur
+// avant d'activer — le paramètre d'URL seul ne prouve rien.
+async function handlePayReturn(){
+  let q; try{ q=new URLSearchParams(location.search); }catch(e){ return; }
+  const pay=q.get("pay");
+  if(!pay) return;
+  const sid=q.get("session_id")||"";
+  q.delete("pay"); q.delete("session_id");
+  try{ history.replaceState(null,"",location.pathname+(q.toString()?"?"+q.toString():"")+location.hash); }catch(e){}
+  if(pay==="cancel"){ toast(t("payCancelled")); return; }
+  if(pay!=="success" || !sid) return;
+  toast(t("payChecking"));
+  try{
+    const r=await fetch(PAY_API+"/status?session_id="+encodeURIComponent(sid));
+    const d=await r.json().catch(()=>({}));
+    if(r.ok && d.paid){ try{ localStorage.setItem("mise_premium","1"); }catch(e){} refreshLocks(); toast(t("payThanks")); }
+    else toast(t("payNotPaid"));
+  }catch(e){ toast(t("payNotPaid")); }
+}
+// À la connexion : si le compte est premium côté serveur (table premium_users, RLS lecture
+// de sa propre ligne), on synchronise l'appareil. Un premium par code reste local (jamais écrasé).
+async function syncPremiumFromCloud(){
+  if(!sb || !currentUserId) return;
+  try{
+    const { data }=await sb.from("premium_users").select("active").eq("user_id",currentUserId).maybeSingle();
+    if(data && data.active){ try{ localStorage.setItem("mise_premium","1"); }catch(e){} refreshLocks(); }
+  }catch(e){}
+}
+
 // ---- langue (i18n) — application (étapes 1 & 2) ----
 function applyLang(){
   const set=(id,key,html)=>{ const el=$(id); if(!el) return; if(html) el.innerHTML=t(key); else el.textContent=t(key); };
@@ -2967,6 +3028,7 @@ function applyLang(){
   set("resetTheme","resetTheme"); try{ renderBgRow(); }catch(e){}   // note de fond dans la bonne langue + thème courant
   if($("premiumCode")) $("premiumCode").placeholder=t("premiumCodePh");
   set("premiumRedeem","premiumRedeemBtn");
+  set("premiumBuy","premiumBuyBtn"); set("premiumOr","premiumOr");
   set("premModalTitle","premModalTitle"); set("premModalDesc","premModalDesc",true);
   set("premiumGoSettings","premModalGo"); set("premiumClose","premModalLater");
   set("shareAppBtn","shareApp"); set("convertBtn","convertOpen"); set("logoutBtn","logout");
@@ -3093,6 +3155,7 @@ async function onSignedIn(session){
   if($("acctEmail")) $("acctEmail").textContent=currentUser;
   show("home");
   maybeShowInstall();
+  syncPremiumFromCloud();   // premium Stripe rattaché au compte (non bloquant)
   await loadRecipesFromDB();
   if(pendingPhotoId){ const id=pendingPhotoId; pendingPhotoId=null; openPhotoForRecipe(id); }
   else { restoreLastView(); }
@@ -3323,6 +3386,7 @@ $("logoutBtn").addEventListener("click", async ()=>{
 
 // init : lien de partage prioritaire, sinon reprise de session
 checkShareParam();
+handlePayReturn();   // retour éventuel de Stripe Checkout (indépendant de la session)
 (async function(){
   let session=null;
   if(sb){ try{ const { data } = await sb.auth.getSession(); session=(data&&data.session)||null; }catch(e){} }
