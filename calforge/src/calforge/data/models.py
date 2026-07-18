@@ -47,6 +47,22 @@ class EcuFileKind(StrEnum):
     UNKNOWN = "unknown"
 
 
+class AttachmentCategory(StrEnum):
+    PHOTO = "photo"
+    DOCUMENT = "document"
+    INVOICE = "invoice"
+    OTHER = "other"
+
+
+class HistoryEntryType(StrEnum):
+    INTERVENTION = "intervention"
+    DIAGNOSTIC = "diagnostic"
+    ROAD_TEST = "road_test"
+    LOG = "log"
+    CALIBRATION = "calibration"
+    NOTE = "note"
+
+
 class Vehicle(TimestampMixin, Base):
     """A customer vehicle. The central record everything else links to."""
 
@@ -66,6 +82,12 @@ class Vehicle(TimestampMixin, Base):
         back_populates="vehicle", cascade="all, delete-orphan"
     )
     ecu_files: Mapped[list[EcuFile]] = relationship(back_populates="vehicle")
+    attachments: Mapped[list[Attachment]] = relationship(
+        back_populates="vehicle", cascade="all, delete-orphan"
+    )
+    history_entries: Mapped[list[HistoryEntry]] = relationship(
+        back_populates="vehicle", cascade="all, delete-orphan"
+    )
 
 
 class Project(TimestampMixin, Base):
@@ -105,6 +127,10 @@ class EcuFile(TimestampMixin, Base):
     project_id: Mapped[int | None] = mapped_column(
         ForeignKey("projects.id", ondelete="SET NULL")
     )
+    #: Versioning: a modified calibration points to the file it derives from.
+    parent_file_id: Mapped[int | None] = mapped_column(
+        ForeignKey("ecu_files.id", ondelete="SET NULL")
+    )
     sha256: Mapped[str] = mapped_column(String(64), index=True)
     size_bytes: Mapped[int] = mapped_column(Integer)
     original_filename: Mapped[str] = mapped_column(String(255))
@@ -116,3 +142,46 @@ class EcuFile(TimestampMixin, Base):
 
     vehicle: Mapped[Vehicle | None] = relationship(back_populates="ecu_files")
     project: Mapped[Project | None] = relationship(back_populates="ecu_files")
+    parent: Mapped[EcuFile | None] = relationship(
+        remote_side="EcuFile.id", back_populates="derivatives"
+    )
+    derivatives: Mapped[list[EcuFile]] = relationship(back_populates="parent")
+
+
+class Attachment(TimestampMixin, Base):
+    """A document attached to a vehicle (photo, invoice, report…).
+
+    Content lives in the same content-addressed blob store as ECU binaries
+    (ADR-0003): deduplicated, immutable, integrity-checked.
+    """
+
+    __tablename__ = "attachments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    vehicle_id: Mapped[int] = mapped_column(ForeignKey("vehicles.id", ondelete="CASCADE"))
+    sha256: Mapped[str] = mapped_column(String(64), index=True)
+    size_bytes: Mapped[int] = mapped_column(Integer)
+    original_filename: Mapped[str] = mapped_column(String(255))
+    category: Mapped[str] = mapped_column(String(30), default=AttachmentCategory.OTHER.value)
+    notes: Mapped[str] = mapped_column(Text, default="")
+
+    vehicle: Mapped[Vehicle] = relationship(back_populates="attachments")
+
+
+class HistoryEntry(TimestampMixin, Base):
+    """One event in a vehicle's unified timeline (ADR-0006): mechanical
+    intervention, diagnostic, road test, datalog, calibration step or note."""
+
+    __tablename__ = "history_entries"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    vehicle_id: Mapped[int] = mapped_column(ForeignKey("vehicles.id", ondelete="CASCADE"))
+    project_id: Mapped[int | None] = mapped_column(
+        ForeignKey("projects.id", ondelete="SET NULL")
+    )
+    entry_type: Mapped[str] = mapped_column(String(30), default=HistoryEntryType.NOTE.value)
+    title: Mapped[str] = mapped_column(String(200))
+    content: Mapped[str] = mapped_column(Text, default="")
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    vehicle: Mapped[Vehicle] = relationship(back_populates="history_entries")

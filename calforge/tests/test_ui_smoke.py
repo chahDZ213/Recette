@@ -47,6 +47,84 @@ def test_search_filters_list(qapp, context) -> None:
         window.close()
 
 
+def test_vehicle_folder_panel_populates(qapp, context, sample_bin, tmp_path) -> None:
+    from datetime import UTC, datetime
+
+    from calforge.data.models import AttachmentCategory, HistoryEntryType
+    from calforge.services.dto import HistoryEntryInput, ProjectInput
+
+    vehicle = context.vehicles.create(VehicleInput(make="Audi", model="RS3", year=2022))
+    context.projects.create(ProjectInput(vehicle_id=vehicle.id, name="Stage 1"))
+    context.history.add(
+        HistoryEntryInput(
+            vehicle_id=vehicle.id,
+            entry_type=HistoryEntryType.INTERVENTION,
+            title="Pose décata",
+            occurred_at=datetime.now(UTC),
+        )
+    )
+    doc = tmp_path / "facture.pdf"
+    doc.write_bytes(b"%PDF fake")
+    context.attachments.add(vehicle.id, doc, category=AttachmentCategory.INVOICE)
+    context.ecu_files.import_file(sample_bin, vehicle_id=vehicle.id)
+
+    window = MainWindow(context)
+    try:
+        window._vehicle_list.setCurrentIndex(window._vehicle_model.index(0))
+        qapp.processEvents()
+        panel = window._details
+        assert panel._project_model.rowCount() == 1
+        assert panel._history_model.rowCount() == 1
+        assert panel._attachment_model.rowCount() == 1
+        assert panel._file_model.rowCount() == 1
+    finally:
+        window.close()
+
+
+def test_library_search_filters(qapp, context, sample_bin, tmp_path) -> None:
+    golf = context.vehicles.create(VehicleInput(make="VW", model="Golf"))
+    context.ecu_files.import_file(sample_bin, vehicle_id=golf.id)
+    other = tmp_path / "autre.bin"
+    other.write_bytes(b"other-content")
+    context.ecu_files.import_file(other, vehicle_id=golf.id)
+
+    window = MainWindow(context)
+    try:
+        library = window._library
+        assert library._model.rowCount() == 2
+        library._search.setText("autre")
+        qapp.processEvents()
+        assert library._model.rowCount() == 1
+        assert library._model.item_at(0).original_filename == "autre.bin"
+    finally:
+        window.close()
+
+
+def test_worker_result_reaches_gui_thread(qapp) -> None:
+    """Regression: QRunnable auto-deletion used to destroy the signals object
+    before the queued emission was delivered, silently dropping results."""
+    import threading
+    import time
+
+    from calforge.ui.workers import run_in_background
+
+    main_thread = threading.get_ident()
+    outcome: list[tuple] = []
+
+    run_in_background(
+        lambda: 42,
+        on_done=lambda value: outcome.append((value, threading.get_ident() == main_thread)),
+        on_error=lambda message: outcome.append(("error", message)),
+    )
+
+    deadline = time.monotonic() + 5
+    while not outcome and time.monotonic() < deadline:
+        qapp.processEvents()
+        time.sleep(0.01)
+
+    assert outcome == [(42, True)]
+
+
 def test_hex_model_renders_rows() -> None:
     model = HexTableModel()
     model.set_data(bytes(range(40)))

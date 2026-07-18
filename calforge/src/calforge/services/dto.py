@@ -10,7 +10,12 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from calforge.data.models import EcuFileKind, ProjectStatus
+from calforge.data.models import (
+    AttachmentCategory,
+    EcuFileKind,
+    HistoryEntryType,
+    ProjectStatus,
+)
 
 
 class _Dto(BaseModel):
@@ -93,6 +98,7 @@ class EcuFileDto(_Dto):
     id: int
     vehicle_id: int | None
     project_id: int | None
+    parent_file_id: int | None = None
     sha256: str
     size_bytes: int
     original_filename: str
@@ -101,4 +107,44 @@ class EcuFileDto(_Dto):
     identified_facts: dict
     hypotheses: tuple[HypothesisDto, ...]
     notes: str
+    created_at: datetime
+    #: Denormalised display labels, filled by the service while the ORM
+    #: session is still open (the UI must never trigger lazy loads).
+    vehicle_label: str | None = None
+    parent_label: str | None = None
+
+
+class AttachmentDto(_Dto):
+    id: int
+    vehicle_id: int
+    sha256: str
+    size_bytes: int
+    original_filename: str
+    category: AttachmentCategory
+    notes: str
+    created_at: datetime
+
+
+class HistoryEntryInput(BaseModel):
+    vehicle_id: int
+    project_id: int | None = None
+    entry_type: HistoryEntryType = HistoryEntryType.NOTE
+    title: str = Field(min_length=1, max_length=200)
+    content: str = ""
+    occurred_at: datetime
+
+    @field_validator("title", mode="before")
+    @classmethod
+    def _strip_title(cls, value: object) -> object:
+        return value.strip() if isinstance(value, str) else value
+
+
+class HistoryEntryDto(_Dto):
+    id: int
+    vehicle_id: int
+    project_id: int | None
+    entry_type: HistoryEntryType
+    title: str
+    content: str
+    occurred_at: datetime
     created_at: datetime

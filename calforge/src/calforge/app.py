@@ -19,7 +19,9 @@ from calforge.data.blobstore import BlobStore
 from calforge.data.database import Database
 from calforge.formats.base import FormatIdentifier
 from calforge.formats.generic import GenericBinaryIdentifier
+from calforge.services.attachments import AttachmentService
 from calforge.services.ecufiles import EcuFileService
+from calforge.services.history import HistoryService
 from calforge.services.projects import ProjectService
 from calforge.services.vehicles import VehicleService
 
@@ -49,11 +51,15 @@ class ApplicationContext:
         self.vehicles = VehicleService(self.database, self.bus)
         self.projects = ProjectService(self.database, self.bus)
         self.ecu_files = EcuFileService(self.database, self.blobs, self.bus, identifiers)
+        self.attachments = AttachmentService(self.database, self.blobs, self.bus)
+        self.history = HistoryService(self.database, self.bus)
 
         for interface, instance in (
             (VehicleService, self.vehicles),
             (ProjectService, self.projects),
             (EcuFileService, self.ecu_files),
+            (AttachmentService, self.attachments),
+            (HistoryService, self.history),
         ):
             self.registry.register(interface, instance)
 

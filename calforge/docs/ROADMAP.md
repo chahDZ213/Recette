@@ -11,14 +11,22 @@ Règle : une version n'est ouverte que lorsque la précédente est stable
 - Identification de formats extensible (faits vs hypothèses).
 - Diff binaire vectorisé ; UI sombre dockable ; vue hexadécimale ; tests.
 
-## v0.2 — Dossier véhicule complet & bibliothèque de fichiers
+## ✅ v0.2 — Dossier véhicule complet & bibliothèque (livrée)
 
-- Pièces jointes véhicule : photos, documents, factures (blob store réutilisé).
-- Historiques : interventions, diagnostics, essais routiers, logs (timeline).
-- Bibliothèque ECU globale : recherche par empreinte/nom/format, versioning
-  original → modifiés, commentaires.
-- Gestion multi-projets simultanés dans l'UI (onglets de projet).
-- Éditeur de fiche projet enrichi (statuts, jalons, échéances).
+- Pièces jointes véhicule : photos, documents, factures (blob store réutilisé,
+  export à la demande, suppression sans destruction du contenu).
+- Timeline unifiée : interventions, diagnostics, essais routiers, datalogs,
+  étapes de calibration, notes (ADR-0006).
+- Bibliothèque ECU globale : recherche instantanée (nom, SHA-256, format,
+  véhicule, notes), versioning original → modifiés (fichier parent).
+- Dossier véhicule en onglets : Fiche / Projets / Historique / Documents /
+  Fichiers ECU ; création et édition de projets.
+- Correctif majeur : livraison fiable des résultats des tâches d'arrière-plan
+  sur le thread GUI (cycle de vie QRunnable), avec test de non-régression.
+
+### Reporté en v0.3
+- Onglets de projet multiples dans la zone centrale (sera plus pertinent
+  combiné à la comparaison hexadécimale côte à côte).
 
 ## v0.3 — Analyse avancée
 
