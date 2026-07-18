@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "calforge"
+version = "0.1.0"
+description = "Professional AI-assisted ECU calibration workbench"
+readme = "README.md"
+requires-python = ">=3.13"
+license = { text = "Proprietary" }
+authors = [{ name = "CalForge Team" }]
+dependencies = [
+    "PySide6-Essentials>=6.7",
+    "SQLAlchemy>=2.0",
+    "alembic>=1.13",
+    "pydantic>=2.7",
+    "platformdirs>=4.2",
+    "numpy>=2.0",
+    "tomli-w>=1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.5",
+]
+
+[project.gui-scripts]
+calforge = "calforge.__main__:main"
+
+[project.entry-points."calforge.plugins"]
+# Built-in plugins are registered here so that external packages can use the
+# exact same mechanism to extend CalForge.
+generic-binary-format = "calforge.formats.generic:GenericBinaryIdentifier"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+calforge = ["data/migrations/**/*", "ui/assets/**/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "C4"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+# Qt model overrides require `QModelIndex()` as the default argument.
+"src/calforge/ui/models.py" = ["B008"]
