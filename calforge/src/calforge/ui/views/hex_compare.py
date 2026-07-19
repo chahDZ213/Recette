@@ -86,12 +86,16 @@ class HexCompareView(QWidget):
         nav.addWidget(prev_button)
         nav.addWidget(next_button)
 
+        report_button = QPushButton("Rapport de comparaison (PDF/HTML)…")
+        report_button.clicked.connect(self._export_report)
+
         regions_panel = QWidget()
         regions_layout = QVBoxLayout(regions_panel)
         regions_layout.setContentsMargins(0, 0, 0, 0)
         regions_layout.addWidget(QLabel("<b>Zones de différences</b>"))
         regions_layout.addWidget(self._region_table)
         regions_layout.addLayout(nav)
+        regions_layout.addWidget(report_button)
 
         self._model_a = HexTableModel()
         self._model_b = HexTableModel()
@@ -201,3 +205,13 @@ class HexCompareView(QWidget):
             return
         current = self._region_table.currentIndex().row()
         self._region_table.selectRow(max(0, min(count - 1, current + delta)))
+
+    def _export_report(self) -> None:
+        from calforge.ui.reporting import export_report
+
+        id_a, id_b = self._file_a.id, self._file_b.id
+        export_report(
+            self,
+            lambda: self._context.reports.comparison_report_html(id_a, id_b),
+            "comparaison.pdf",
+        )

@@ -15,13 +15,21 @@ from calforge.ui.theme import apply_dark_theme
 logger = logging.getLogger(__name__)
 
 
-def run(argv: list[str]) -> int:
+def run(argv: list[str], *, seed_demo: bool = False) -> int:
     app = QApplication(argv)
     app.setApplicationName(APP_NAME)
     app.setOrganizationName(APP_NAME)
     apply_dark_theme(app)
 
     context = ApplicationContext()
+
+    if seed_demo:
+        from calforge.demo import seed_demo as _seed
+
+        try:
+            _seed(context)
+        except Exception:
+            logger.exception("Demo seeding failed")
 
     window = MainWindow(context)
     window.show()

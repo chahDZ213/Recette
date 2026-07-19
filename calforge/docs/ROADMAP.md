@@ -81,10 +81,20 @@ Règle : une version n'est ouverte que lorsque la précédente est stable
 - Recherche sémantique (embeddings) dans notes/historiques/annotations →
   candidate pour une v0.6+ une fois un fournisseur d'embeddings abstrait.
 
-## v0.6 — Rapports & exports
+## ✅ v0.6 — Rapports & exports (livrée)
 
-- Rapports PDF : dossier véhicule, comparaison, journal d'intervention.
-- Exports (CSV/JSON) et modèles de rapport personnalisables.
+- Rapports HTML/PDF : dossier véhicule complet, comparaison de fichiers
+  (ADR-0010) — source unique HTML, PDF rendu par Qt sans dépendance ajoutée.
+- Les rapports listent les cartographies validées (faits) et signalent les
+  zones de différences recoupant des cartographies connues ; avertissement
+  d'honnêteté systématique.
+- Exports CSV (fichiers) et JSON (dossier véhicule structuré).
+- Lancement en une commande (`run.sh` / `run.bat`) et données de démonstration
+  pré-remplies (`--seed-demo`, idempotent) pour un premier essai immédiat.
+
+### Reporté
+- Modèles de rapport personnalisables et graphiques (nécessitent un second
+  moteur de rendu au-delà du sous-ensemble Qt rich text).
 
 ## v1.0 — Produit
 

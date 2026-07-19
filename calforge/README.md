@@ -7,9 +7,20 @@ comparaisons, historiques et documentation — avec une règle absolue : *aucune
 inventée*. Tout ce que le logiciel affiche est soit un **fait mesuré**, soit une
 **hypothèse** accompagnée de son niveau de confiance et de sa justification.
 
-## État actuel — Version 0.5 (assistant IA)
+## État actuel — Version 0.6 (rapports & exports)
 
-Nouveautés v0.5 :
+Nouveautés v0.6 :
+
+- **Rapports HTML/PDF** : dossier véhicule complet et comparaison de fichiers,
+  générés depuis une source HTML unique et rendus en PDF par Qt (sans
+  dépendance ajoutée, ADR-0010).
+- Les rapports listent les **cartographies validées** et signalent les zones
+  de différences touchant des cartographies connues.
+- **Exports CSV** (fichiers) et **JSON** (dossier véhicule structuré).
+- **Lancement en une commande** (`run.sh` / `run.bat`) et **données de
+  démonstration** pré-remplies pour un premier essai immédiat.
+
+Acquis v0.5 :
 
 - **Assistant IA** (Ctrl+J) contextuel : résume un fichier ou un véhicule,
   propose des pistes, répond aux questions — en ne s'appuyant que sur des
@@ -65,13 +76,33 @@ Acquis v0.2 :
 - Moteur de comparaison binaire vectorisé (NumPy) avec zones de différences.
 - Interface sombre PySide6 : docks déplaçables, onglets, vue hexadécimale,
   glisser-déposer, raccourcis clavier, journal intégré, imports multithreadés.
-- 87 tests automatiques (services, base, blobs, diff, formats, détection,
-  packs, assistant IA, UI offscreen).
+- 93 tests automatiques (services, base, blobs, diff, formats, détection,
+  packs, assistant IA, rapports/PDF, UI offscreen).
 
 Voir [docs/ROADMAP.md](docs/ROADMAP.md) pour les versions suivantes et
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) pour la conception détaillée.
 
-## Installation (développement)
+## Essayer en une commande
+
+Le plus simple, avec des données de démonstration pré-remplies :
+
+```bash
+# Windows : double-cliquez run.bat (ou en console)
+run.bat
+
+# Linux / macOS
+./run.sh
+```
+
+Le script crée l'environnement virtuel, installe l'application et la lance.
+Au premier démarrage, un véhicule de démonstration complet (Golf 7 GTI avec
+projets, historique, fichiers ECU, cartographie validée) est créé pour que
+vous ayez tout de suite quelque chose à explorer.
+
+Pré-requis : **Python 3.13** installé. Sous Linux, quelques bibliothèques Qt
+peuvent être nécessaires (`libegl1 libgl1 libxkbcommon0 libfontconfig1`).
+
+## Installation manuelle (développement)
 
 ```bash
 cd calforge
@@ -82,7 +113,8 @@ python3.13 -m venv .venv
 ## Lancer l'application
 
 ```bash
-.venv/bin/python -m calforge
+.venv/bin/python -m calforge            # démarrage normal
+.venv/bin/python -m calforge --seed-demo # avec données de démonstration
 ```
 
 ## Tests et qualité

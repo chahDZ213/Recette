@@ -31,6 +31,7 @@ from calforge.services.definitions import DefinitionService
 from calforge.services.ecufiles import EcuFileService
 from calforge.services.history import HistoryService
 from calforge.services.projects import ProjectService
+from calforge.services.reports import ReportService
 from calforge.services.vehicles import VehicleService
 
 logger = logging.getLogger(__name__)
@@ -82,6 +83,9 @@ class ApplicationContext:
             ),
         ]
         self.assistant = AssistantService(context_builder, providers, self.config.ai.provider)
+        self.reports = ReportService(
+            self.vehicles, self.projects, self.history, self.ecu_files, self.analysis
+        )
 
         for interface, instance in (
             (VehicleService, self.vehicles),
@@ -93,6 +97,7 @@ class ApplicationContext:
             (AnalysisService, self.analysis),
             (DefinitionService, self.definitions),
             (AssistantService, self.assistant),
+            (ReportService, self.reports),
         ):
             self.registry.register(interface, instance)
 

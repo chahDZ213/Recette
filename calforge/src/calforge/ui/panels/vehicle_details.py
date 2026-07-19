@@ -38,6 +38,7 @@ from calforge.ui.models import (
     HistoryTableModel,
     ProjectTableModel,
 )
+from calforge.ui.reporting import export_report
 from calforge.ui.workers import run_in_background
 
 logger = logging.getLogger(__name__)
@@ -83,7 +84,25 @@ class VehicleDetailsPanel(QWidget):
         self._sheet.setTextFormat(Qt.TextFormat.RichText)
         self._sheet.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
         self._sheet.setContentsMargins(8, 8, 8, 8)
-        self._tabs.addTab(self._sheet, "Fiche")
+
+        report_button = QPushButton("Rapport de dossier (PDF/HTML)…")
+        report_button.clicked.connect(self._export_vehicle_report)
+        json_button = QPushButton("Exporter (JSON)…")
+        json_button.clicked.connect(self._export_vehicle_json)
+        csv_button = QPushButton("Fichiers (CSV)…")
+        csv_button.clicked.connect(self._export_files_csv)
+
+        export_row = QHBoxLayout()
+        for button in (report_button, json_button, csv_button):
+            export_row.addWidget(button)
+        export_row.addStretch()
+
+        container = QWidget()
+        layout = QVBoxLayout(container)
+        layout.setContentsMargins(4, 4, 4, 4)
+        layout.addWidget(self._sheet, stretch=1)
+        layout.addLayout(export_row)
+        self._tabs.addTab(container, "Fiche")
 
     def _build_projects_tab(self) -> None:
         self._project_model = ProjectTableModel()
@@ -205,6 +224,55 @@ class VehicleDetailsPanel(QWidget):
         if vehicle.notes:
             rows.append(f"<p>{vehicle.notes}</p>")
         self._sheet.setText("".join(rows))
+
+    # ----------------------------------------------------------- reports ---
+
+    def _slug(self) -> str:
+        vehicle = self._vehicle
+        return (
+            "".join(c if c.isalnum() else "_" for c in vehicle.display_name)
+            if vehicle
+            else "vehicule"
+        )
+
+    def _export_vehicle_report(self) -> None:
+        if self._vehicle is None:
+            return
+        vehicle_id = self._vehicle.id
+        export_report(
+            self,
+            lambda: self._context.reports.vehicle_report_html(vehicle_id),
+            f"dossier_{self._slug()}.pdf",
+            on_status=lambda message, timeout: self.status_message.emit(message, timeout),
+        )
+
+    def _export_vehicle_json(self) -> None:
+        if self._vehicle is None:
+            return
+        target, _f = QFileDialog.getSaveFileName(
+            self, "Exporter en JSON", f"dossier_{self._slug()}.json", "JSON (*.json)"
+        )
+        if not target:
+            return
+        try:
+            self._context.reports.export_vehicle_json(self._vehicle.id, Path(target))
+            self.status_message.emit(f"Exporté : {target}", 6000)
+        except Exception as exc:
+            show_error(self, f"Export JSON échoué : {exc}")
+
+    def _export_files_csv(self) -> None:
+        if self._vehicle is None:
+            return
+        target, _f = QFileDialog.getSaveFileName(
+            self, "Exporter les fichiers (CSV)", f"fichiers_{self._slug()}.csv", "CSV (*.csv)"
+        )
+        if not target:
+            return
+        try:
+            self._context.reports.export_files_csv(self._vehicle.id, Path(target))
+            self.status_message.emit(f"Exporté : {target}", 6000)
+        except Exception as exc:
+            show_error(self, f"Export CSV échoué : {exc}")
 
     # ---------------------------------------------------------- refresh ----
 
