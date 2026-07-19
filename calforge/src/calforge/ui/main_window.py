@@ -43,6 +43,7 @@ from calforge.services.events import (
 from calforge.ui.dialogs import VehicleDialog, show_error
 from calforge.ui.dispatch import EventBridge, QtLogHandler
 from calforge.ui.models import VehicleListModel
+from calforge.ui.panels.assistant import AssistantPanel
 from calforge.ui.panels.library import EcuLibraryPanel
 from calforge.ui.panels.mappacks import MapPackPanel
 from calforge.ui.panels.vehicle_details import VehicleDetailsPanel
@@ -66,9 +67,11 @@ class MainWindow(QMainWindow):
         self._build_central_area()
         self._build_vehicle_dock()
         self._build_details_dock()
+        self._build_assistant_dock()
         self._build_log_dock()
         self._build_actions()
         self._connect_events()
+        self._tabs.currentChanged.connect(self._on_tab_changed)
         self._restore_layout()
         self.refresh_vehicles()
         self.statusBar().showMessage("Prêt")
@@ -137,6 +140,16 @@ class MainWindow(QMainWindow):
         self._details_dock.setWidget(self._details)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self._details_dock)
 
+    def _build_assistant_dock(self) -> None:
+        self._assistant = AssistantPanel(self._context)
+
+        self._assistant_dock = QDockWidget("Assistant IA", self)
+        self._assistant_dock.setObjectName("dock_assistant")
+        self._assistant_dock.setWidget(self._assistant)
+        # Share the right column vertically with the vehicle folder so both
+        # stay visible (folder on top, assistant below).
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self._assistant_dock)
+
     def _build_log_dock(self) -> None:
         self._log_view = QPlainTextEdit()
         self._log_view.setReadOnly(True)
@@ -184,6 +197,11 @@ class MainWindow(QMainWindow):
         packs_action.setShortcut(QKeySequence("Ctrl+M"))
         packs_action.triggered.connect(lambda: self._tabs.setCurrentIndex(2))
         file_menu.addAction(packs_action)
+
+        assistant_action = QAction("Assistant IA", self)
+        assistant_action.setShortcut(QKeySequence("Ctrl+J"))
+        assistant_action.triggered.connect(self._show_assistant)
+        file_menu.addAction(assistant_action)
 
         search_action = QAction("Rechercher", self)
         search_action.setShortcut(QKeySequence("Ctrl+F"))
@@ -258,13 +276,28 @@ class MainWindow(QMainWindow):
             for row, vehicle in enumerate(vehicles):
                 if vehicle.id == selected:
                     self._vehicle_list.setCurrentIndex(self._vehicle_model.index(row))
-                    self._details.set_vehicle(vehicle)
+                    self._set_current_vehicle(vehicle)
                     return
-        self._details.set_vehicle(None)
+        self._set_current_vehicle(None)
 
     def _on_vehicle_selected(self, current, _previous) -> None:
         vehicle = self._vehicle_model.vehicle_at(current.row()) if current.isValid() else None
+        self._set_current_vehicle(vehicle)
+
+    def _set_current_vehicle(self, vehicle) -> None:
         self._details.set_vehicle(vehicle)
+        self._assistant.set_vehicle(vehicle)
+
+    def _on_tab_changed(self, _index: int) -> None:
+        """Point the assistant at the ECU file of the active analysis tab."""
+        widget = self._tabs.currentWidget()
+        self._assistant.set_active_file(
+            widget.ecu_file if isinstance(widget, EcuFileView) else None
+        )
+
+    def _show_assistant(self) -> None:
+        self._assistant_dock.show()
+        self._assistant_dock.raise_()
 
     # ------------------------------------------------------------- actions --
 
@@ -349,6 +382,11 @@ class MainWindow(QMainWindow):
                 [self._vehicle_dock, self._details_dock],
                 [260, 620],
                 Qt.Orientation.Horizontal,
+            )
+            self.resizeDocks(
+                [self._details_dock, self._assistant_dock],
+                [440, 420],
+                Qt.Orientation.Vertical,
             )
 
     def closeEvent(self, event: QCloseEvent) -> None:

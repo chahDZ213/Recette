@@ -10,6 +10,10 @@ from __future__ import annotations
 
 import logging
 
+from calforge.ai.base import AiProvider
+from calforge.ai.context import ContextBuilder
+from calforge.ai.providers.anthropic import AnthropicProvider
+from calforge.ai.providers.offline import OfflineAnalyst
 from calforge.core.config import AppConfig
 from calforge.core.events import EventBus
 from calforge.core.logging import setup_logging
@@ -21,6 +25,7 @@ from calforge.formats.base import FormatIdentifier
 from calforge.formats.generic import GenericBinaryIdentifier
 from calforge.services.analysis import AnalysisService
 from calforge.services.annotations import AnnotationService
+from calforge.services.assistant import AssistantService
 from calforge.services.attachments import AttachmentService
 from calforge.services.definitions import DefinitionService
 from calforge.services.ecufiles import EcuFileService
@@ -60,6 +65,24 @@ class ApplicationContext:
         self.analysis = AnalysisService(self.database, self.ecu_files, self.bus)
         self.definitions = DefinitionService(self.database, self.ecu_files, self.bus)
 
+        context_builder = ContextBuilder(
+            self.ecu_files,
+            self.analysis,
+            self.annotations,
+            self.vehicles,
+            self.projects,
+            self.history,
+        )
+        providers: list[AiProvider] = [
+            OfflineAnalyst(),
+            AnthropicProvider(
+                model=self.config.ai.model,
+                api_key=self.config.ai.api_key,
+                max_tokens=self.config.ai.max_tokens,
+            ),
+        ]
+        self.assistant = AssistantService(context_builder, providers, self.config.ai.provider)
+
         for interface, instance in (
             (VehicleService, self.vehicles),
             (ProjectService, self.projects),
@@ -69,6 +92,7 @@ class ApplicationContext:
             (AnnotationService, self.annotations),
             (AnalysisService, self.analysis),
             (DefinitionService, self.definitions),
+            (AssistantService, self.assistant),
         ):
             self.registry.register(interface, instance)
 

@@ -182,6 +182,42 @@ def test_map_pack_panel_lists_imported_sources(qapp, context, tmp_path) -> None:
     assert panel._definition_model.item_at(0).name == "Injection — charge/régime"
 
 
+def test_assistant_panel_answers_and_tracks_target(qapp, context, tmp_path) -> None:
+    import time
+
+    from tests.test_mapdetect import build_synthetic_dump
+
+    data, _offset = build_synthetic_dump()
+    path = tmp_path / "a.bin"
+    path.write_bytes(data)
+    vehicle = context.vehicles.create(VehicleInput(make="VW", model="Golf"))
+    context.ecu_files.import_file(path, vehicle_id=vehicle.id)
+
+    window = MainWindow(context)
+    try:
+        window._vehicle_list.setCurrentIndex(window._vehicle_model.index(0))
+        qapp.processEvents()
+        panel = window._assistant
+        assert panel._vehicle is not None  # vehicle target tracked
+
+        # Open the file analysis tab → assistant targets the file.
+        file = context.ecu_files.list_for_vehicle(vehicle.id)[0]
+        window._open_hex_view(file)
+        qapp.processEvents()
+        assert panel._file is not None and panel._file.id == file.id
+
+        # Offline summary is synchronous enough to complete on the pool.
+        panel._summarize_file()
+        deadline = time.monotonic() + 5
+        while panel._last_answer is None and time.monotonic() < deadline:
+            qapp.processEvents()
+            time.sleep(0.01)
+        assert panel._last_answer is not None
+        assert file.original_filename in panel._last_answer.text
+    finally:
+        window.close()
+
+
 def test_hex_model_highlights() -> None:
     from PySide6.QtCore import Qt
     from PySide6.QtGui import QColor

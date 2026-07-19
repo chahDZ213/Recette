@@ -283,6 +283,10 @@ class EcuFileView(QWidget):
         self._load_content()
         self._refresh_side_panels()
 
+    @property
+    def ecu_file(self) -> EcuFileDto:
+        return self._file
+
     # ------------------------------------------------------------- loading --
 
     def _load_content(self) -> None:

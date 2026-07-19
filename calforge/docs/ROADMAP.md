@@ -64,11 +64,22 @@ Règle : une version n'est ouverte que lorsque la précédente est stable
 ### Reporté
 - Importeurs Damos/A2L/ECM → traduits vers le modèle calforge-pack.
 
-## v0.5 — Assistant IA
+## ✅ v0.5 — Assistant IA (livrée)
 
-- Abstraction fournisseur (local/API) ; l'IA analyse, explique, résume,
-  compare, propose — toujours avec confiance affichée et validation humaine.
-- Recherche sémantique dans les notes, historiques et annotations.
+- Abstraction de fournisseur (ADR-0009) : analyste hors-ligne déterministe par
+  défaut (zéro config, zéro réseau) + fournisseur Claude optionnel (SDK
+  officiel, activé par clé API).
+- Frontière de contexte factuel : l'IA ne reçoit que faits mesurés et
+  hypothèses déjà scorées ; jamais de fichier brut ni d'accès aux services.
+- Opérations : résumé de fichier/véhicule, propositions de pistes, question
+  libre ; chaque réponse affiche fournisseur, faits utilisés, hypothèses,
+  confiance et avertissement, et est enregistrable dans l'historique.
+- Contrat d'honnêteté imposé dans le prompt système du fournisseur Claude.
+- Dock « Assistant IA » (Ctrl+J) contextuel (véhicule / fichier actif).
+
+### Reporté
+- Recherche sémantique (embeddings) dans notes/historiques/annotations →
+  candidate pour une v0.6+ une fois un fournisseur d'embeddings abstrait.
 
 ## v0.6 — Rapports & exports
 

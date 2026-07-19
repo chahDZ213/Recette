@@ -41,7 +41,11 @@ La composition a lieu en un seul endroit : `calforge.app.ApplicationContext`
 | `data.models` | Schéma ORM (jamais exposé hors de `services`) | — |
 | `services.*` | Transactions, DTOs, publication d'événements | — |
 | `analysis.diff` | Diff binaire vectorisé NumPy | — |
+| `analysis.mapdetect` | Détection heuristique de cartographies | détecteurs tiers |
 | `formats.*` | Identification de formats ECU (extensible) | plugins tiers |
+| `packs` | Format ouvert de définitions (calforge-pack/1) | importeurs A2L/Damos |
+| `ai.*` | Assistant : fournisseurs, contexte factuel (ADR-0009) | LLM local, autre vendeur |
+| `labels` | Libellés FR partagés (feuille, sans Qt) | table i18n (v1.0) |
 | `ui.*` | PySide6 ; parle uniquement aux services | autre frontend |
 
 ## Règles de conception non négociables

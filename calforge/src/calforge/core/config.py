@@ -41,6 +41,24 @@ class BackupConfig(BaseModel):
     keep_last: int = 20
 
 
+class AiConfig(BaseModel):
+    """AI assistant configuration.
+
+    ``provider`` selects the default assistant backend by name. ``offline``
+    (a deterministic local analyst) is always available and requires no
+    network or key. The Claude provider activates only when an API key is
+    present (``api_key`` here or the ``ANTHROPIC_API_KEY`` environment
+    variable) and the ``anthropic`` SDK is installed. The key is never
+    written to the config file by default — leave it empty and use the
+    environment variable to avoid storing secrets on disk.
+    """
+
+    provider: str = "offline"
+    model: str = "claude-sonnet-5"
+    api_key: str = ""
+    max_tokens: int = 1024
+
+
 class AppConfig(BaseModel):
     """Root configuration object.
 
@@ -55,6 +73,7 @@ class AppConfig(BaseModel):
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     ui: UiConfig = Field(default_factory=UiConfig)
     backup: BackupConfig = Field(default_factory=BackupConfig)
+    ai: AiConfig = Field(default_factory=AiConfig)
 
     @property
     def database_path(self) -> Path:

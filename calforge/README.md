@@ -7,9 +7,27 @@ comparaisons, historiques et documentation — avec une règle absolue : *aucune
 inventée*. Tout ce que le logiciel affiche est soit un **fait mesuré**, soit une
 **hypothèse** accompagnée de son niveau de confiance et de sa justification.
 
-## État actuel — Version 0.4 (Map Packs & définitions)
+## État actuel — Version 0.5 (assistant IA)
 
-Nouveautés v0.4 :
+Nouveautés v0.5 :
+
+- **Assistant IA** (Ctrl+J) contextuel : résume un fichier ou un véhicule,
+  propose des pistes, répond aux questions — en ne s'appuyant que sur des
+  **faits mesurés** et des **hypothèses déjà scorées**, jamais sur le fichier
+  brut (ADR-0009).
+- **Deux fournisseurs interchangeables** : un analyste **hors-ligne**
+  déterministe par défaut (aucune configuration, aucun réseau, aucune clé) et
+  un fournisseur **Claude** optionnel (SDK officiel, activé par clé API).
+- Chaque réponse affiche son fournisseur, les faits utilisés, les hypothèses,
+  et un avertissement ; elle est enregistrable dans l'historique du véhicule.
+- L'assistant n'invente jamais de donnée : le contrat faits/hypothèses est
+  imposé jusque dans le prompt système du fournisseur IA.
+
+Configuration de l'IA (optionnelle) : renseignez `ANTHROPIC_API_KEY` dans
+l'environnement, ou `[ai] provider = "anthropic"` dans `calforge.toml`. Sans
+clé, l'analyste hors-ligne est utilisé.
+
+Acquis v0.4 :
 
 - **Map Packs** (Ctrl+M) : format ouvert `calforge-pack/1` (JSON), import et
   export sans perte, plusieurs sources de définitions par calculateur.
@@ -47,8 +65,8 @@ Acquis v0.2 :
 - Moteur de comparaison binaire vectorisé (NumPy) avec zones de différences.
 - Interface sombre PySide6 : docks déplaçables, onglets, vue hexadécimale,
   glisser-déposer, raccourcis clavier, journal intégré, imports multithreadés.
-- 74 tests automatiques (services, base, blobs, diff, formats, détection,
-  packs, UI offscreen).
+- 87 tests automatiques (services, base, blobs, diff, formats, détection,
+  packs, assistant IA, UI offscreen).
 
 Voir [docs/ROADMAP.md](docs/ROADMAP.md) pour les versions suivantes et
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) pour la conception détaillée.
@@ -83,6 +101,7 @@ python3.13 -m venv .venv
 | `Ctrl+I`  | Importer des fichiers ECU |
 | `Ctrl+L`  | Bibliothèque ECU globale |
 | `Ctrl+M`  | Map Packs (sources de définitions) |
+| `Ctrl+J`  | Assistant IA |
 | `Ctrl+F`  | Recherche instantanée |
 | `Ctrl+Q`  | Quitter |
 

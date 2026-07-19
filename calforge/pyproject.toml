@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "calforge"
-version = "0.4.0"
+version = "0.5.0"
 description = "Professional AI-assisted ECU calibration workbench"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -24,6 +24,10 @@ dependencies = [
 dev = [
     "pytest>=8.0",
     "ruff>=0.5",
+]
+# Optional Claude-backed assistant. Absent this, the offline analyst is used.
+ai = [
+    "anthropic>=0.40",
 ]
 
 [project.gui-scripts]
