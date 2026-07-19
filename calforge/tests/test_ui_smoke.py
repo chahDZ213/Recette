@@ -162,6 +162,26 @@ def test_ecu_file_view_and_compare_view(qapp, context, tmp_path) -> None:
     assert region.offset == 0x40
 
 
+def test_map_pack_panel_lists_imported_sources(qapp, context, tmp_path) -> None:
+    from tests.test_definitions import write_pack
+
+    from calforge.ui.panels.mappacks import MapPackPanel
+
+    write_pack(
+        tmp_path / "p.calpack.json",
+        name="Pack démo",
+        matchers=[{"kind": "size", "size": 1024}],
+    )
+    context.definitions.import_pack(tmp_path / "p.calpack.json")
+
+    panel = MapPackPanel(context)
+    assert panel._source_model.rowCount() == 1
+    panel._source_table.selectRow(0)
+    qapp.processEvents()
+    assert panel._definition_model.rowCount() == 1
+    assert panel._definition_model.item_at(0).name == "Injection — charge/régime"
+
+
 def test_hex_model_highlights() -> None:
     from PySide6.QtCore import Qt
     from PySide6.QtGui import QColor

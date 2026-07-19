@@ -181,9 +181,40 @@ class AnnotationDto(_Dto):
         return self.offset + self.length
 
 
+class DefinitionSourceDto(_Dto):
+    id: int
+    name: str
+    description: str
+    map_count: int = 0
+    created_at: datetime
+
+
+class MapDefinitionDto(_Dto):
+    id: int
+    source_id: int
+    name: str
+    category: str
+    offset: int
+    rows: int
+    cols: int
+    element_size: int
+    endianness: str
+    factor: float
+    value_offset: float
+    unit: str
+    description: str
+
+    @property
+    def shape_label(self) -> str:
+        bits = 8 * self.element_size
+        suffix = f" {self.endianness.upper()}" if self.endianness else ""
+        return f"{self.rows}×{self.cols} · {bits} bits{suffix}"
+
+
 class MapCandidateDto(_Dto):
     id: int
     ecu_file_id: int
+    definition_id: int | None = None
     offset: int
     rows: int
     cols: int

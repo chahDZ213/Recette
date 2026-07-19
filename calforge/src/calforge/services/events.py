@@ -8,6 +8,7 @@ from calforge.core.events import Event
 from calforge.services.dto import (
     AnnotationDto,
     AttachmentDto,
+    DefinitionSourceDto,
     EcuFileDto,
     HistoryEntryDto,
     MapCandidateDto,
@@ -89,3 +90,13 @@ class MapCandidatesRefreshed(Event):
 @dataclass(frozen=True, slots=True, kw_only=True)
 class MapCandidateUpdated(Event):
     candidate: MapCandidateDto
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DefinitionSourceImported(Event):
+    source: DefinitionSourceDto
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DefinitionSourceDeleted(Event):
+    source_id: int

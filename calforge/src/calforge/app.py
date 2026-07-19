@@ -22,6 +22,7 @@ from calforge.formats.generic import GenericBinaryIdentifier
 from calforge.services.analysis import AnalysisService
 from calforge.services.annotations import AnnotationService
 from calforge.services.attachments import AttachmentService
+from calforge.services.definitions import DefinitionService
 from calforge.services.ecufiles import EcuFileService
 from calforge.services.history import HistoryService
 from calforge.services.projects import ProjectService
@@ -57,6 +58,7 @@ class ApplicationContext:
         self.history = HistoryService(self.database, self.bus)
         self.annotations = AnnotationService(self.database, self.bus)
         self.analysis = AnalysisService(self.database, self.ecu_files, self.bus)
+        self.definitions = DefinitionService(self.database, self.ecu_files, self.bus)
 
         for interface, instance in (
             (VehicleService, self.vehicles),
@@ -66,6 +68,7 @@ class ApplicationContext:
             (HistoryService, self.history),
             (AnnotationService, self.annotations),
             (AnalysisService, self.analysis),
+            (DefinitionService, self.definitions),
         ):
             self.registry.register(interface, instance)
 

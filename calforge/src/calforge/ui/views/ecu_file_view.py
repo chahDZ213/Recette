@@ -33,7 +33,12 @@ from PySide6.QtWidgets import (
 
 from calforge.app import ApplicationContext
 from calforge.data.models import AnnotationKind, MapCandidateStatus
-from calforge.services.dto import AnnotationInput, EcuFileDto, MapCandidateDto
+from calforge.services.dto import (
+    AnnotationInput,
+    EcuFileDto,
+    MapCandidateDto,
+    MapDefinitionDto,
+)
 from calforge.ui.dialogs import show_error
 from calforge.ui.models import (
     AnnotationTableModel,
@@ -100,18 +105,42 @@ class AnnotationDialog(QDialog):
 
 
 class Map2DDialog(QDialog):
-    """2D heatmap rendering of a map candidate's decoded values."""
+    """2D heatmap rendering of a map candidate's decoded values.
+
+    When the candidate comes from a definition, raw values are converted to
+    physical units (``physical = raw × factor + value_offset``) and the unit
+    is displayed — raw values stay visible in the cell tooltips.
+    """
 
     def __init__(
-        self, candidate: MapCandidateDto, values: np.ndarray, parent: QWidget | None = None
+        self,
+        candidate: MapCandidateDto,
+        values: np.ndarray,
+        parent: QWidget | None = None,
+        definition: MapDefinitionDto | None = None,
     ) -> None:
         super().__init__(parent)
         title = candidate.name or f"Candidat 0x{candidate.offset:X}"
         self.setWindowTitle(f"Vue 2D — {title}")
         self.resize(min(1100, 90 + 62 * candidate.cols), min(760, 200 + 26 * candidate.rows))
 
+        unit_note = ""
+        converted = values.astype(np.float64)
+        decimals = 0
+        if definition is not None and (definition.factor != 1.0 or definition.value_offset != 0.0):
+            converted = values * definition.factor + definition.value_offset
+            decimals = 2
+            unit_label = definition.unit or "unité physique"
+            unit_note = (
+                f" · valeurs converties en <b>{unit_label}</b> "
+                f"(brut × {definition.factor:g} + {definition.value_offset:g})"
+            )
+        elif definition is not None and definition.unit:
+            unit_note = f" · unité : <b>{definition.unit}</b>"
+
         header = QLabel(
-            f"<b>{title}</b> · {candidate.shape_label} · offset 0x{candidate.offset:X}<br>"
+            f"<b>{title}</b> · {candidate.shape_label} · offset 0x{candidate.offset:X}"
+            f"{unit_note}<br>"
             f"<span style='color:{PALETTE['text_dim']};'>Confiance {candidate.confidence:.0%} — "
             f"{candidate.rationale}</span>"
         )
@@ -121,14 +150,15 @@ class Map2DDialog(QDialog):
         table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         table.setHorizontalHeaderLabels([str(c) for c in range(candidate.cols)])
         table.setVerticalHeaderLabels([str(r) for r in range(candidate.rows)])
-        low, high = float(values.min()), float(values.max())
+        low, high = float(converted.min()), float(converted.max())
         span = (high - low) or 1.0
         cold, hot = QColor("#2b5db8"), QColor(PALETTE["danger"])
         for row in range(candidate.rows):
             for col in range(candidate.cols):
-                value = int(values[row, col])
-                item = QTableWidgetItem(str(value))
+                value = float(converted[row, col])
+                item = QTableWidgetItem(f"{value:.{decimals}f}")
                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                item.setToolTip(f"brut : {int(values[row, col])}")
                 t = (value - low) / span
                 item.setBackground(
                     QColor(
@@ -172,12 +202,20 @@ class EcuFileView(QWidget):
         detect_button = QPushButton("Détecter les cartographies")
         detect_button.clicked.connect(self._detect_maps)
         self._detect_button = detect_button
+        apply_button = QPushButton("Appliquer les définitions")
+        apply_button.setToolTip(
+            "Applique les packs de définitions correspondant à ce fichier "
+            "(empreinte, signature ou taille)"
+        )
+        apply_button.clicked.connect(self._apply_definitions)
+        self._apply_button = apply_button
         self._status = QLabel()
 
         toolbar = QHBoxLayout()
         toolbar.addWidget(self._goto)
         toolbar.addWidget(annotate_button)
         toolbar.addWidget(detect_button)
+        toolbar.addWidget(apply_button)
         toolbar.addWidget(self._status)
         toolbar.addStretch()
 
@@ -395,6 +433,28 @@ class EcuFileView(QWidget):
 
         run_in_background(lambda: service.detect_maps(file_id), on_done, on_error)
 
+    def _apply_definitions(self) -> None:
+        service = self._context.definitions
+        file_id = self._file.id
+        self._apply_button.setEnabled(False)
+        self._status.setText("Application des définitions…")
+
+        def on_done(candidates: object) -> None:
+            self._apply_button.setEnabled(True)
+            applied = [c for c in candidates if c.definition_id is not None]  # type: ignore[union-attr]
+            if applied:
+                self._status.setText(f"{len(applied)} définition(s) appliquée(s)")
+            else:
+                self._status.setText("Aucun pack ne correspond à ce fichier")
+            self._refresh_side_panels()
+
+        def on_error(message: str) -> None:
+            self._apply_button.setEnabled(True)
+            self._status.setText("")
+            show_error(self, f"Application échouée : {message}")
+
+        run_in_background(lambda: service.apply_definitions(file_id), on_done, on_error)
+
     def _selected_candidate(self) -> MapCandidateDto | None:
         index = self._candidate_table.currentIndex()
         return self._candidate_model.item_at(index.row()) if index.isValid() else None
@@ -429,14 +489,24 @@ class EcuFileView(QWidget):
         candidate = self._selected_candidate()
         if candidate is None:
             return
-        service = self._context.analysis
+        analysis = self._context.analysis
+        definitions = self._context.definitions
 
-        def on_done(values: object) -> None:
-            assert isinstance(values, np.ndarray)
-            Map2DDialog(candidate, values, self).exec()
+        def work() -> tuple[np.ndarray, MapDefinitionDto | None]:
+            values = analysis.read_map_values(candidate.id)
+            definition = (
+                definitions.get_definition(candidate.definition_id)
+                if candidate.definition_id is not None
+                else None
+            )
+            return values, definition
+
+        def on_done(payload: object) -> None:
+            values, definition = payload  # type: ignore[misc]
+            Map2DDialog(candidate, values, self, definition=definition).exec()
 
         run_in_background(
-            lambda: service.read_map_values(candidate.id),
+            work,
             on_done=on_done,
             on_error=lambda message: show_error(self, f"Décodage échoué : {message}"),
         )

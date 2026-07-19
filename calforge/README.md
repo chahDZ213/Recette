@@ -7,9 +7,21 @@ comparaisons, historiques et documentation — avec une règle absolue : *aucune
 inventée*. Tout ce que le logiciel affiche est soit un **fait mesuré**, soit une
 **hypothèse** accompagnée de son niveau de confiance et de sa justification.
 
-## État actuel — Version 0.3 (analyse avancée)
+## État actuel — Version 0.4 (Map Packs & définitions)
 
-Nouveautés v0.3 :
+Nouveautés v0.4 :
+
+- **Map Packs** (Ctrl+M) : format ouvert `calforge-pack/1` (JSON), import et
+  export sans perte, plusieurs sources de définitions par calculateur.
+- **Correspondance automatique** définitions ↔ fichiers : empreinte SHA-256
+  exacte, signature d'octets ou taille — la confiance des cartographies
+  proposées reflète la force de la correspondance (ADR-0008).
+- **Conversion physique** dans la vue 2D : `physique = brut × facteur +
+  offset`, unité affichée, valeurs brutes en infobulle.
+- Les décisions humaines (validations/rejets) ne sont jamais écrasées par
+  l'application d'un pack.
+
+Acquis v0.3 :
 
 - **Détection de cartographies** : heuristique axe monotone + bloc régulier,
   confiance plafonnée à 85 % avec justification, validation/rejet humains
@@ -35,8 +47,8 @@ Acquis v0.2 :
 - Moteur de comparaison binaire vectorisé (NumPy) avec zones de différences.
 - Interface sombre PySide6 : docks déplaçables, onglets, vue hexadécimale,
   glisser-déposer, raccourcis clavier, journal intégré, imports multithreadés.
-- 62 tests automatiques (services, base, blobs, diff, formats, détection,
-  UI offscreen).
+- 74 tests automatiques (services, base, blobs, diff, formats, détection,
+  packs, UI offscreen).
 
 Voir [docs/ROADMAP.md](docs/ROADMAP.md) pour les versions suivantes et
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) pour la conception détaillée.
@@ -70,6 +82,7 @@ python3.13 -m venv .venv
 | `F2`      | Modifier le véhicule sélectionné |
 | `Ctrl+I`  | Importer des fichiers ECU |
 | `Ctrl+L`  | Bibliothèque ECU globale |
+| `Ctrl+M`  | Map Packs (sources de définitions) |
 | `Ctrl+F`  | Recherche instantanée |
 | `Ctrl+Q`  | Quitter |
 

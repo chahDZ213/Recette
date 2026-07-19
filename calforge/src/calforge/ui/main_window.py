@@ -44,6 +44,7 @@ from calforge.ui.dialogs import VehicleDialog, show_error
 from calforge.ui.dispatch import EventBridge, QtLogHandler
 from calforge.ui.models import VehicleListModel
 from calforge.ui.panels.library import EcuLibraryPanel
+from calforge.ui.panels.mappacks import MapPackPanel
 from calforge.ui.panels.vehicle_details import VehicleDetailsPanel
 from calforge.ui.views.ecu_file_view import EcuFileView
 from calforge.ui.views.hex_compare import HexCompareView
@@ -89,11 +90,14 @@ class MainWindow(QMainWindow):
 
         self._library = EcuLibraryPanel(self._context)
         self._library.hex_requested.connect(self._open_hex_view)
+        self._map_packs = MapPackPanel(self._context)
 
         self._tabs.addTab(welcome, "Bienvenue")
         self._tabs.addTab(self._library, "Bibliothèque ECU")
+        self._tabs.addTab(self._map_packs, "Map Packs")
         bar = self._tabs.tabBar()
-        for permanent in (0, 1):
+        self._permanent_tabs = 3
+        for permanent in range(self._permanent_tabs):
             bar.setTabButton(permanent, bar.ButtonPosition.RightSide, None)
         self.setCentralWidget(self._tabs)
 
@@ -175,6 +179,11 @@ class MainWindow(QMainWindow):
         library_action.setShortcut(QKeySequence("Ctrl+L"))
         library_action.triggered.connect(lambda: self._tabs.setCurrentIndex(1))
         file_menu.addAction(library_action)
+
+        packs_action = QAction("Map Packs", self)
+        packs_action.setShortcut(QKeySequence("Ctrl+M"))
+        packs_action.triggered.connect(lambda: self._tabs.setCurrentIndex(2))
+        file_menu.addAction(packs_action)
 
         search_action = QAction("Rechercher", self)
         search_action.setShortcut(QKeySequence("Ctrl+F"))
@@ -303,7 +312,7 @@ class MainWindow(QMainWindow):
         self._tabs.setCurrentIndex(index)
 
     def _close_tab(self, index: int) -> None:
-        if index > 1:  # welcome + library tabs stay
+        if index >= self._permanent_tabs:  # welcome/library/packs tabs stay
             self._tabs.removeTab(index)
 
     # --------------------------------------------------------- drag & drop --

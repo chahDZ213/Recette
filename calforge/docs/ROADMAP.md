@@ -47,11 +47,22 @@ Règle : une version n'est ouverte que lorsque la précédente est stable
   avec les fichiers de définition (v0.4) — décision documentée en ADR-0007.
 - Onglets de projet multiples dans la zone centrale.
 
-## v0.4 — Map Packs & définitions
+## ✅ v0.4 — Map Packs & définitions (livrée)
 
-- Modèle de définitions : plusieurs sources de définition par calculateur.
-- Import de packs, organisation automatique, classement, historique.
-- Association définitions ↔ fichiers par empreinte et signatures.
+- Format ouvert « calforge-pack/1 » (JSON versionné, ADR-0008) : import et
+  export sans perte, éditable à la main.
+- Sources multiples par calculateur, chacune avec ses critères de
+  correspondance : SHA-256 exact, signature d'octets, taille.
+- Application au magasin de candidats : confiance dérivée de la force de la
+  correspondance (0,95 / 0,85 / 0,60), justification nommant le pack,
+  validation humaine conservée, décisions humaines jamais écrasées.
+- Conversion physique (facteur/offset/unité) affichée dans la vue 2D,
+  valeurs brutes en infobulle.
+- Onglet « Map Packs » (Ctrl+M) : sources, cartographies définies,
+  import/export/suppression.
+
+### Reporté
+- Importeurs Damos/A2L/ECM → traduits vers le modèle calforge-pack.
 
 ## v0.5 — Assistant IA
 

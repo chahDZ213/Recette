@@ -184,15 +184,20 @@ class Annotation(TimestampMixin, Base):
 class MapCandidateRecord(TimestampMixin, Base):
     """A detected map candidate and its human-validation state.
 
-    ``confidence`` and ``rationale`` come from the heuristic detector and are
-    immutable; only ``status`` and ``name`` change, through explicit user
-    action (ADR-0004: hypotheses require human validation).
+    ``confidence`` and ``rationale`` come from the detector that produced the
+    candidate (heuristic scan or an applied definition — ``definition_id``
+    links back to the definition in that case) and are immutable; only
+    ``status`` and ``name`` change, through explicit user action (ADR-0004:
+    hypotheses require human validation).
     """
 
     __tablename__ = "map_candidates"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     ecu_file_id: Mapped[int] = mapped_column(ForeignKey("ecu_files.id", ondelete="CASCADE"))
+    definition_id: Mapped[int | None] = mapped_column(
+        ForeignKey("map_definitions.id", ondelete="SET NULL")
+    )
     offset: Mapped[int] = mapped_column(Integer)
     rows: Mapped[int] = mapped_column(Integer)
     cols: Mapped[int] = mapped_column(Integer)
@@ -204,6 +209,75 @@ class MapCandidateRecord(TimestampMixin, Base):
     name: Mapped[str] = mapped_column(String(200), default="")
 
     ecu_file: Mapped[EcuFile] = relationship(back_populates="map_candidates")
+
+
+class DefinitionSource(TimestampMixin, Base):
+    """A pack of map definitions from one provenance (personal work, a
+    community pack, a commercial pack). Several sources may target the same
+    ECU — the product requirement of multiple definition sources per ECU."""
+
+    __tablename__ = "definition_sources"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(200), unique=True)
+    description: Mapped[str] = mapped_column(Text, default="")
+
+    definitions: Mapped[list[MapDefinition]] = relationship(
+        back_populates="source", cascade="all, delete-orphan"
+    )
+    matchers: Mapped[list[DefinitionMatcher]] = relationship(
+        back_populates="source", cascade="all, delete-orphan"
+    )
+
+
+class MapDefinition(TimestampMixin, Base):
+    """One named map inside a definition source, with raw→physical conversion
+    (``physical = raw * factor + value_offset``, displayed in ``unit``)."""
+
+    __tablename__ = "map_definitions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    source_id: Mapped[int] = mapped_column(
+        ForeignKey("definition_sources.id", ondelete="CASCADE")
+    )
+    name: Mapped[str] = mapped_column(String(200))
+    category: Mapped[str] = mapped_column(String(50), default="other")
+    offset: Mapped[int] = mapped_column(Integer)
+    rows: Mapped[int] = mapped_column(Integer)
+    cols: Mapped[int] = mapped_column(Integer)
+    element_size: Mapped[int] = mapped_column(Integer)
+    endianness: Mapped[str] = mapped_column(String(2), default="")
+    factor: Mapped[float] = mapped_column(Float, default=1.0)
+    value_offset: Mapped[float] = mapped_column(Float, default=0.0)
+    unit: Mapped[str] = mapped_column(String(30), default="")
+    description: Mapped[str] = mapped_column(Text, default="")
+
+    source: Mapped[DefinitionSource] = relationship(back_populates="definitions")
+
+
+class MatcherKind(StrEnum):
+    SHA256 = "sha256"
+    SIGNATURE = "signature"
+    SIZE = "size"
+
+
+class DefinitionMatcher(TimestampMixin, Base):
+    """A criterion tying a definition source to calibration files.
+
+    A source applies to a file when ANY of its matchers matches; the matcher
+    kind determines the confidence of the resulting candidates (exact hash >
+    byte signature > size)."""
+
+    __tablename__ = "definition_matchers"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    source_id: Mapped[int] = mapped_column(
+        ForeignKey("definition_sources.id", ondelete="CASCADE")
+    )
+    kind: Mapped[str] = mapped_column(String(20))
+    payload: Mapped[dict] = mapped_column(JSON)
+
+    source: Mapped[DefinitionSource] = relationship(back_populates="matchers")
 
 
 class Attachment(TimestampMixin, Base):
