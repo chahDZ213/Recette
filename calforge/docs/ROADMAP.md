@@ -28,14 +28,24 @@ Règle : une version n'est ouverte que lorsque la précédente est stable
 - Onglets de projet multiples dans la zone centrale (sera plus pertinent
   combiné à la comparaison hexadécimale côte à côte).
 
-## v0.3 — Analyse avancée
+## ✅ v0.3 — Analyse avancée (livrée)
 
-- Vue de comparaison hexadécimale côte à côte avec surlignage des zones.
-- Détection heuristique de zones « cartographies » (axes monotones, gradients)
-  avec **score de confiance + justification + validation manuelle**.
-- Annotations persistantes sur offsets/plages ; favoris de navigation.
-- Vues 2D (tableau) et 3D (surface) des zones validées.
-- Statistiques de fichier (entropie par bloc, histogrammes).
+- Comparaison hexadécimale côte à côte : défilement synchronisé, zones de
+  différences surlignées, navigation zone par zone.
+- Détection heuristique de cartographies (ADR-0007) : axe monotone + bloc à
+  variation régulière, 8/16 bits LE/BE, **confiance plafonnée à 85 % +
+  justification + validation/rejet humains persistants**.
+- Annotations et favoris de navigation persistants sur plages d'octets,
+  surlignés dans la vue hexadécimale, avec saut direct.
+- Vue 2D des candidats (tableau à gradient thermique).
+- Statistiques : entropie globale et par bloc, histogramme d'octets.
+- Vue fichier unifiée : hexa + « Aller à l'offset » + annotations +
+  candidats dans un onglet par fichier.
+
+### Reporté
+- Vue 3D (surface) : attend QtDataVisualization ou OpenGL custom, pertinent
+  avec les fichiers de définition (v0.4) — décision documentée en ADR-0007.
+- Onglets de projet multiples dans la zone centrale.
 
 ## v0.4 — Map Packs & définitions
 

@@ -7,7 +7,20 @@ comparaisons, historiques et documentation — avec une règle absolue : *aucune
 inventée*. Tout ce que le logiciel affiche est soit un **fait mesuré**, soit une
 **hypothèse** accompagnée de son niveau de confiance et de sa justification.
 
-## État actuel — Version 0.2 (dossier véhicule complet)
+## État actuel — Version 0.3 (analyse avancée)
+
+Nouveautés v0.3 :
+
+- **Détection de cartographies** : heuristique axe monotone + bloc régulier,
+  confiance plafonnée à 85 % avec justification, validation/rejet humains
+  persistants, vue 2D à gradient thermique (ADR-0007).
+- **Comparaison hexadécimale côte à côte** : défilement synchronisé,
+  différences surlignées, navigation zone par zone.
+- **Annotations & favoris** : notes persistantes sur plages d'octets,
+  surlignage dans la vue hexadécimale, saut direct, « Aller à l'offset ».
+- Statistiques binaires : entropie par bloc, histogramme.
+
+Acquis v0.2 :
 
 - Noyau applicatif modulaire : configuration validée, journalisation complète,
   bus d'événements, registre de services, système de plugins (entry points).
@@ -22,7 +35,8 @@ inventée*. Tout ce que le logiciel affiche est soit un **fait mesuré**, soit u
 - Moteur de comparaison binaire vectorisé (NumPy) avec zones de différences.
 - Interface sombre PySide6 : docks déplaçables, onglets, vue hexadécimale,
   glisser-déposer, raccourcis clavier, journal intégré, imports multithreadés.
-- 46 tests automatiques (services, base, blobs, diff, formats, UI offscreen).
+- 62 tests automatiques (services, base, blobs, diff, formats, détection,
+  UI offscreen).
 
 Voir [docs/ROADMAP.md](docs/ROADMAP.md) pour les versions suivantes et
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) pour la conception détaillée.

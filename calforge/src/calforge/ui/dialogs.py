@@ -1,4 +1,4 @@
-"""Modal dialogs: vehicle/project/history forms, attachment metadata, diff summary."""
+"""Modal dialogs: vehicle/project/history forms, attachment metadata."""
 
 from __future__ import annotations
 
@@ -16,14 +16,11 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QMessageBox,
     QSpinBox,
-    QTableWidget,
-    QTableWidgetItem,
     QTextEdit,
     QVBoxLayout,
     QWidget,
 )
 
-from calforge.analysis.diff import DiffResult
 from calforge.data.models import AttachmentCategory, HistoryEntryType, ProjectStatus
 from calforge.services.dto import (
     HistoryEntryInput,
@@ -280,44 +277,6 @@ class AttachmentMetaDialog(QDialog):
 
     def notes(self) -> str:
         return self._notes.text().strip()
-
-
-class DiffResultDialog(QDialog):
-    """Summary of a byte-level comparison between two files."""
-
-    def __init__(self, name_a: str, name_b: str, result: DiffResult, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
-        self.setWindowTitle("Comparaison binaire")
-        self.setMinimumSize(560, 420)
-
-        layout = QVBoxLayout(self)
-        if result.identical:
-            summary = "Les deux fichiers sont strictement identiques."
-        else:
-            summary = (
-                f"{result.total_changed_bytes} octet(s) modifié(s) "
-                f"dans {len(result.regions)} zone(s)."
-            )
-        header = QLabel(f"<b>{name_a}</b> ⟷ <b>{name_b}</b><br>{summary}")
-        header.setWordWrap(True)
-        layout.addWidget(header)
-
-        table = QTableWidget(len(result.regions), 4)
-        table.setHorizontalHeaderLabels(["Début", "Fin", "Longueur", "Octets modifiés"])
-        table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        for row, region in enumerate(result.regions):
-            for col, value in enumerate(
-                (f"0x{region.offset:X}", f"0x{region.end:X}", str(region.length), str(region.changed_bytes))
-            ):
-                table.setItem(row, col, QTableWidgetItem(value))
-        table.resizeColumnsToContents()
-        layout.addWidget(table)
-
-        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
-        buttons.button(QDialogButtonBox.StandardButton.Close).setText("Fermer")
-        buttons.rejected.connect(self.reject)
-        buttons.clicked.connect(self.accept)
-        layout.addWidget(buttons)
 
 
 def show_error(parent: QWidget | None, message: str) -> None:

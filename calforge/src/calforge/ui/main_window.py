@@ -20,7 +20,6 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QMessageBox,
     QPlainTextEdit,
-    QTableView,
     QTabWidget,
     QVBoxLayout,
     QWidget,
@@ -41,12 +40,13 @@ from calforge.services.events import (
     VehicleDeleted,
     VehicleUpdated,
 )
-from calforge.ui.dialogs import DiffResultDialog, VehicleDialog, show_error
+from calforge.ui.dialogs import VehicleDialog, show_error
 from calforge.ui.dispatch import EventBridge, QtLogHandler
-from calforge.ui.models import HexTableModel, VehicleListModel
+from calforge.ui.models import VehicleListModel
 from calforge.ui.panels.library import EcuLibraryPanel
 from calforge.ui.panels.vehicle_details import VehicleDetailsPanel
-from calforge.ui.workers import run_in_background
+from calforge.ui.views.ecu_file_view import EcuFileView
+from calforge.ui.views.hex_compare import HexCompareView
 
 logger = logging.getLogger(__name__)
 
@@ -292,41 +292,15 @@ class MainWindow(QMainWindow):
             self._context.vehicles.delete(vehicle.id)
 
     def _compare_files(self, file_a: EcuFileDto, file_b: EcuFileDto) -> None:
-        service = self._context.ecu_files
-        self.statusBar().showMessage("Comparaison en cours…")
-
-        def on_done(result: object) -> None:
-            self.statusBar().showMessage("Comparaison terminée", 5000)
-            DiffResultDialog(
-                file_a.original_filename, file_b.original_filename, result, self
-            ).exec()
-
-        run_in_background(
-            lambda: service.compare(file_a.id, file_b.id),
-            on_done=on_done,
-            on_error=lambda message: show_error(self, f"Comparaison échouée : {message}"),
-        )
+        view = HexCompareView(self._context, file_a, file_b)
+        title = f"{file_a.original_filename} ⟷ {file_b.original_filename}"
+        index = self._tabs.addTab(view, title)
+        self._tabs.setCurrentIndex(index)
 
     def _open_hex_view(self, file: EcuFileDto) -> None:
-        service = self._context.ecu_files
-
-        def on_done(data: object) -> None:
-            assert isinstance(data, bytes)
-            model = HexTableModel()
-            model.set_data(data)
-            view = QTableView()
-            view.setModel(model)
-            view.horizontalHeader().setDefaultSectionSize(32)
-            view.horizontalHeader().setStretchLastSection(True)
-            view.verticalHeader().setDefaultSectionSize(22)
-            index = self._tabs.addTab(view, file.original_filename)
-            self._tabs.setCurrentIndex(index)
-
-        run_in_background(
-            lambda: service.read_content(file.id),
-            on_done=on_done,
-            on_error=lambda message: show_error(self, f"Lecture échouée : {message}"),
-        )
+        view = EcuFileView(self._context, file)
+        index = self._tabs.addTab(view, file.original_filename)
+        self._tabs.setCurrentIndex(index)
 
     def _close_tab(self, index: int) -> None:
         if index > 1:  # welcome + library tabs stay

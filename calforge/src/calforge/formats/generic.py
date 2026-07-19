@@ -7,23 +7,15 @@ hedged hypotheses derived from well-known ECU dump characteristics
 
 from __future__ import annotations
 
-import math
-from collections import Counter
 from pathlib import Path
 
+from calforge.analysis.stats import shannon_entropy
 from calforge.formats.base import Hypothesis, IdentificationReport
+
+__all__ = ["GenericBinaryIdentifier", "shannon_entropy"]
 
 # Flash memory sizes commonly seen in ECU full dumps (256 KiB .. 32 MiB).
 _COMMON_FLASH_SIZES = {1 << n for n in range(18, 26)}
-
-
-def shannon_entropy(data: bytes) -> float:
-    """Shannon entropy in bits/byte (0.0 = constant, 8.0 = uniform random)."""
-    if not data:
-        return 0.0
-    counts = Counter(data)
-    total = len(data)
-    return -sum((c / total) * math.log2(c / total) for c in counts.values())
 
 
 class GenericBinaryIdentifier:

@@ -7,18 +7,23 @@ lazily from an in-memory buffer, so multi-MB dumps cost nothing to display.
 
 from __future__ import annotations
 
+from bisect import bisect_right
 from typing import Any
 
 from PySide6.QtCore import QAbstractListModel, QAbstractTableModel, QModelIndex, Qt
+from PySide6.QtGui import QColor
 
 from calforge.services.dto import (
+    AnnotationDto,
     AttachmentDto,
     EcuFileDto,
     HistoryEntryDto,
+    MapCandidateDto,
     ProjectDto,
     VehicleDto,
 )
 from calforge.ui.labels import (
+    CANDIDATE_STATUS_LABELS,
     CATEGORY_LABELS,
     ENTRY_TYPE_LABELS,
     KIND_LABELS,
@@ -78,6 +83,9 @@ class _DtoTableModel[T](QAbstractTableModel):
 
     def item_at(self, row: int) -> T | None:
         return self._items[row] if 0 <= row < len(self._items) else None
+
+    def items(self) -> list[T]:
+        return list(self._items)
 
     def rowCount(self, parent: QModelIndex = QModelIndex()) -> int:
         return 0 if parent.isValid() else len(self._items)
@@ -235,18 +243,45 @@ class EcuFileTableModel(QAbstractTableModel):
 
 
 class HexTableModel(QAbstractTableModel):
-    """Read-only hexadecimal view: 16 bytes per row + ASCII column."""
+    """Read-only hexadecimal view: 16 bytes per row + ASCII column.
+
+    Supports range highlighting (diff regions, annotations, map candidates):
+    ``set_highlights`` takes ``(start, end_exclusive, QColor)`` tuples; lookup
+    is O(log n) per cell via bisect on the sorted starts.
+    """
 
     BYTES_PER_ROW = 16
 
     def __init__(self) -> None:
         super().__init__()
         self._data = b""
+        self._highlights: list[tuple[int, int, QColor]] = []
+        self._starts: list[int] = []
 
     def set_data(self, data: bytes) -> None:
         self.beginResetModel()
         self._data = data
         self.endResetModel()
+
+    def set_highlights(self, highlights: list[tuple[int, int, QColor]]) -> None:
+        self._highlights = sorted(highlights, key=lambda h: h[0])
+        self._starts = [h[0] for h in self._highlights]
+        if self._data:
+            top_left = self.index(0, 0)
+            bottom_right = self.index(self.rowCount() - 1, self.columnCount() - 1)
+            self.dataChanged.emit(
+                top_left, bottom_right, [Qt.ItemDataRole.BackgroundRole]
+            )
+
+    def _highlight_for(self, byte_offset: int) -> QColor | None:
+        position = bisect_right(self._starts, byte_offset) - 1
+        if position < 0:
+            return None
+        start, end, color = self._highlights[position]
+        return color if start <= byte_offset < end else None
+
+    def index_for_offset(self, byte_offset: int) -> QModelIndex:
+        return self.index(byte_offset // self.BYTES_PER_ROW, byte_offset % self.BYTES_PER_ROW)
 
     def rowCount(self, parent: QModelIndex = QModelIndex()) -> int:
         if parent.isValid():
@@ -265,9 +300,13 @@ class HexTableModel(QAbstractTableModel):
         return f"{section * self.BYTES_PER_ROW:08X}"
 
     def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> Any:
+        row_start = index.row() * self.BYTES_PER_ROW
+        if role == Qt.ItemDataRole.BackgroundRole:
+            if index.column() >= self.BYTES_PER_ROW or not self._highlights:
+                return None
+            return self._highlight_for(row_start + index.column())
         if role != Qt.ItemDataRole.DisplayRole:
             return None
-        row_start = index.row() * self.BYTES_PER_ROW
         chunk = self._data[row_start : row_start + self.BYTES_PER_ROW]
         if index.column() == self.BYTES_PER_ROW:
             return "".join(chr(b) if 0x20 <= b < 0x7F else "·" for b in chunk)
@@ -275,6 +314,45 @@ class HexTableModel(QAbstractTableModel):
         if offset >= len(chunk):
             return ""
         return f"{chunk[offset]:02X}"
+
+
+class AnnotationTableModel(_DtoTableModel[AnnotationDto]):
+    HEADERS = ("Offset", "Long.", "Type", "Titre")
+
+    def display(self, item: AnnotationDto, column: int) -> str | None:
+        if column == 0:
+            return f"0x{item.offset:X}"
+        if column == 1:
+            return str(item.length)
+        if column == 2:
+            return "★ Favori" if item.kind.value == "bookmark" else "Note"
+        if column == 3:
+            return item.title
+        return None
+
+    def tooltip(self, item: AnnotationDto) -> str | None:
+        return item.comment or None
+
+
+class MapCandidateTableModel(_DtoTableModel[MapCandidateDto]):
+    HEADERS = ("Offset", "Dimensions", "Confiance", "Statut", "Nom")
+
+    def display(self, item: MapCandidateDto, column: int) -> str | None:
+        if column == 0:
+            return f"0x{item.offset:X}"
+        if column == 1:
+            return item.shape_label
+        if column == 2:
+            return f"{item.confidence:.0%}"
+        if column == 3:
+            return CANDIDATE_STATUS_LABELS[item.status]
+        if column == 4:
+            return item.name or "—"
+        return None
+
+    def tooltip(self, item: MapCandidateDto) -> str | None:
+        # The rationale must always accompany the confidence (ADR-0004).
+        return item.rationale
 
 
 def _human_size(size: int) -> str:

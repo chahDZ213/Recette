@@ -7,6 +7,7 @@ high-contrast) only swap this dictionary.
 
 from __future__ import annotations
 
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QApplication
 
 PALETTE = {
@@ -20,6 +21,24 @@ PALETTE = {
     "accent_hover": "#5c9dfd",
     "danger": "#e05561",
     "success": "#57ab5a",
+    "warning": "#d29922",
+}
+
+
+def highlight_color(name: str, alpha: int) -> QColor:
+    """Semi-transparent overlay colour for hex-view range highlighting."""
+    color = QColor(PALETTE[name])
+    color.setAlpha(alpha)
+    return color
+
+
+#: Shared highlight roles so every view colours ranges consistently.
+HIGHLIGHTS = {
+    "diff": lambda: highlight_color("danger", 120),
+    "annotation": lambda: highlight_color("accent", 90),
+    "bookmark": lambda: highlight_color("success", 90),
+    "candidate": lambda: highlight_color("warning", 80),
+    "candidate_validated": lambda: highlight_color("success", 120),
 }
 
 _QSS = """

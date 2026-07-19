@@ -10,6 +10,7 @@ from calforge.data.models import (
     AttachmentCategory,
     EcuFileKind,
     HistoryEntryType,
+    MapCandidateStatus,
     ProjectStatus,
 )
 
@@ -30,6 +31,12 @@ CATEGORY_LABELS: dict[AttachmentCategory, str] = {
     AttachmentCategory.DOCUMENT: "Document",
     AttachmentCategory.INVOICE: "Facture",
     AttachmentCategory.OTHER: "Autre",
+}
+
+CANDIDATE_STATUS_LABELS: dict[MapCandidateStatus, str] = {
+    MapCandidateStatus.PROPOSED: "Proposé",
+    MapCandidateStatus.VALIDATED: "Validé",
+    MapCandidateStatus.REJECTED: "Rejeté",
 }
 
 ENTRY_TYPE_LABELS: dict[HistoryEntryType, str] = {

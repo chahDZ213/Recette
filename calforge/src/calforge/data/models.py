@@ -16,7 +16,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from enum import StrEnum
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -52,6 +52,17 @@ class AttachmentCategory(StrEnum):
     DOCUMENT = "document"
     INVOICE = "invoice"
     OTHER = "other"
+
+
+class AnnotationKind(StrEnum):
+    ANNOTATION = "annotation"
+    BOOKMARK = "bookmark"
+
+
+class MapCandidateStatus(StrEnum):
+    PROPOSED = "proposed"
+    VALIDATED = "validated"
+    REJECTED = "rejected"
 
 
 class HistoryEntryType(StrEnum):
@@ -146,6 +157,53 @@ class EcuFile(TimestampMixin, Base):
         remote_side="EcuFile.id", back_populates="derivatives"
     )
     derivatives: Mapped[list[EcuFile]] = relationship(back_populates="parent")
+    annotations: Mapped[list[Annotation]] = relationship(
+        back_populates="ecu_file", cascade="all, delete-orphan"
+    )
+    map_candidates: Mapped[list[MapCandidateRecord]] = relationship(
+        back_populates="ecu_file", cascade="all, delete-orphan"
+    )
+
+
+class Annotation(TimestampMixin, Base):
+    """A user note or bookmark anchored to a byte range of an ECU file."""
+
+    __tablename__ = "annotations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    ecu_file_id: Mapped[int] = mapped_column(ForeignKey("ecu_files.id", ondelete="CASCADE"))
+    offset: Mapped[int] = mapped_column(Integer)
+    length: Mapped[int] = mapped_column(Integer, default=1)
+    kind: Mapped[str] = mapped_column(String(20), default=AnnotationKind.ANNOTATION.value)
+    title: Mapped[str] = mapped_column(String(200))
+    comment: Mapped[str] = mapped_column(Text, default="")
+
+    ecu_file: Mapped[EcuFile] = relationship(back_populates="annotations")
+
+
+class MapCandidateRecord(TimestampMixin, Base):
+    """A detected map candidate and its human-validation state.
+
+    ``confidence`` and ``rationale`` come from the heuristic detector and are
+    immutable; only ``status`` and ``name`` change, through explicit user
+    action (ADR-0004: hypotheses require human validation).
+    """
+
+    __tablename__ = "map_candidates"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    ecu_file_id: Mapped[int] = mapped_column(ForeignKey("ecu_files.id", ondelete="CASCADE"))
+    offset: Mapped[int] = mapped_column(Integer)
+    rows: Mapped[int] = mapped_column(Integer)
+    cols: Mapped[int] = mapped_column(Integer)
+    element_size: Mapped[int] = mapped_column(Integer)
+    endianness: Mapped[str] = mapped_column(String(2), default="")
+    confidence: Mapped[float] = mapped_column(Float)
+    rationale: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(20), default=MapCandidateStatus.PROPOSED.value)
+    name: Mapped[str] = mapped_column(String(200), default="")
+
+    ecu_file: Mapped[EcuFile] = relationship(back_populates="map_candidates")
 
 
 class Attachment(TimestampMixin, Base):

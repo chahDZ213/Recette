@@ -11,9 +11,11 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from calforge.data.models import (
+    AnnotationKind,
     AttachmentCategory,
     EcuFileKind,
     HistoryEntryType,
+    MapCandidateStatus,
     ProjectStatus,
 )
 
@@ -148,3 +150,61 @@ class HistoryEntryDto(_Dto):
     content: str
     occurred_at: datetime
     created_at: datetime
+
+
+class AnnotationInput(BaseModel):
+    ecu_file_id: int
+    offset: int = Field(ge=0)
+    length: int = Field(default=1, ge=1)
+    kind: AnnotationKind = AnnotationKind.ANNOTATION
+    title: str = Field(min_length=1, max_length=200)
+    comment: str = ""
+
+    @field_validator("title", mode="before")
+    @classmethod
+    def _strip_title(cls, value: object) -> object:
+        return value.strip() if isinstance(value, str) else value
+
+
+class AnnotationDto(_Dto):
+    id: int
+    ecu_file_id: int
+    offset: int
+    length: int
+    kind: AnnotationKind
+    title: str
+    comment: str
+    created_at: datetime
+
+    @property
+    def end(self) -> int:
+        return self.offset + self.length
+
+
+class MapCandidateDto(_Dto):
+    id: int
+    ecu_file_id: int
+    offset: int
+    rows: int
+    cols: int
+    element_size: int
+    endianness: str
+    confidence: float
+    rationale: str
+    status: MapCandidateStatus
+    name: str
+    created_at: datetime
+
+    @property
+    def byte_length(self) -> int:
+        return self.rows * self.cols * self.element_size
+
+    @property
+    def end(self) -> int:
+        return self.offset + self.byte_length
+
+    @property
+    def shape_label(self) -> str:
+        bits = 8 * self.element_size
+        suffix = f" {self.endianness.upper()}" if self.endianness else ""
+        return f"{self.rows}×{self.cols} · {bits} bits{suffix}"

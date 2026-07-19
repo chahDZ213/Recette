@@ -6,9 +6,11 @@ from dataclasses import dataclass
 
 from calforge.core.events import Event
 from calforge.services.dto import (
+    AnnotationDto,
     AttachmentDto,
     EcuFileDto,
     HistoryEntryDto,
+    MapCandidateDto,
     ProjectDto,
     VehicleDto,
 )
@@ -65,3 +67,25 @@ class HistoryEntryAdded(Event):
 class HistoryEntryDeleted(Event):
     entry_id: int
     vehicle_id: int
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class AnnotationAdded(Event):
+    annotation: AnnotationDto
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class AnnotationDeleted(Event):
+    annotation_id: int
+    ecu_file_id: int
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class MapCandidatesRefreshed(Event):
+    ecu_file_id: int
+    candidates: tuple[MapCandidateDto, ...]
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class MapCandidateUpdated(Event):
+    candidate: MapCandidateDto
