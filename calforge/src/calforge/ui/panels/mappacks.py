@@ -7,9 +7,14 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
+    QCheckBox,
     QFileDialog,
+    QGroupBox,
     QHBoxLayout,
+    QInputDialog,
     QLabel,
+    QListWidget,
+    QListWidgetItem,
     QMessageBox,
     QPushButton,
     QSplitter,
@@ -127,9 +132,120 @@ class MapPackPanel(QWidget):
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
-        layout.addWidget(splitter)
+        layout.addWidget(splitter, 1)
         layout.addWidget(hint)
+        layout.addWidget(self._build_catalogue_box())
         self.refresh()
+
+    # -------------------------------------------------- automatic catalogue --
+
+    def _build_catalogue_box(self) -> QGroupBox:
+        """Configuration for the automatic pack catalogue (ADR-0013).
+
+        Lets the user register sources they are entitled to use (local folders
+        / NAS / synced drives, or base URLs they own or subscribe to) and opt
+        into fetching a matching pack on its own when a file is imported.
+        """
+        box = QGroupBox("Catalogue automatique")
+        box_layout = QVBoxLayout(box)
+
+        self._auto_fetch_check = QCheckBox(
+            "Chercher automatiquement un pack à l'import d'un fichier"
+        )
+        self._auto_fetch_check.setChecked(self._context.config.packs.auto_fetch)
+        self._auto_fetch_check.toggled.connect(self._on_auto_fetch_toggled)
+        box_layout.addWidget(self._auto_fetch_check)
+
+        self._sources_list = QListWidget()
+        self._sources_list.setToolTip(
+            "Sources que vous configurez et êtes en droit d'utiliser : dossiers "
+            "locaux / NAS / disques synchronisés, ou URLs de base que vous "
+            "possédez ou auxquelles vous êtes abonné."
+        )
+        self._sources_list.setMaximumHeight(110)
+        box_layout.addWidget(self._sources_list)
+
+        source_buttons = QHBoxLayout()
+        add_dir = QPushButton("Ajouter un dossier…")
+        add_dir.clicked.connect(self._add_catalogue_dir)
+        add_url = QPushButton("Ajouter une URL…")
+        add_url.clicked.connect(self._add_catalogue_url)
+        remove_source = QPushButton("Retirer")
+        remove_source.clicked.connect(self._remove_catalogue_source)
+        for button in (add_dir, add_url, remove_source):
+            source_buttons.addWidget(button)
+        source_buttons.addStretch()
+        box_layout.addLayout(source_buttons)
+
+        catalogue_hint = QLabel(
+            "CalForge ne télécharge un pack que depuis vos propres sources — "
+            "jamais en fouillant le web. Une URL de base est interrogée pour "
+            "l'empreinte exacte du fichier (« &lt;url&gt;/&lt;sha256&gt;.calpack.json »). "
+            "Sans source configurée, aucune connexion réseau n'est effectuée."
+        )
+        catalogue_hint.setWordWrap(True)
+        catalogue_hint.setStyleSheet("color: #8b939e;")
+        box_layout.addWidget(catalogue_hint)
+
+        self._refresh_catalogue_sources()
+        return box
+
+    def _refresh_catalogue_sources(self) -> None:
+        self._sources_list.clear()
+        packs = self._context.config.packs
+        for directory in packs.catalogue_dirs:
+            item = QListWidgetItem(f"📁  {directory}")
+            item.setData(Qt.ItemDataRole.UserRole, ("dir", directory))
+            self._sources_list.addItem(item)
+        for url in packs.catalogue_urls:
+            item = QListWidgetItem(f"🌐  {url}")
+            item.setData(Qt.ItemDataRole.UserRole, ("url", url))
+            self._sources_list.addItem(item)
+
+    def _on_auto_fetch_toggled(self, checked: bool) -> None:
+        self._context.config.packs.auto_fetch = checked
+        self._context.config.save()
+
+    def _add_catalogue_dir(self) -> None:
+        directory = QFileDialog.getExistingDirectory(self, "Choisir un dossier de packs")
+        if not directory:
+            return
+        packs = self._context.config.packs
+        if directory not in packs.catalogue_dirs:
+            packs.catalogue_dirs.append(directory)
+            self._context.config.save()
+            self._refresh_catalogue_sources()
+
+    def _add_catalogue_url(self) -> None:
+        url, ok = QInputDialog.getText(
+            self,
+            "Ajouter une URL de catalogue",
+            "URL de base (l'app demandera « <url>/<sha256>.calpack.json ») :",
+        )
+        url = url.strip()
+        if not ok or not url:
+            return
+        if not (url.startswith("http://") or url.startswith("https://")):
+            show_error(self, "L'URL doit commencer par http:// ou https://.")
+            return
+        packs = self._context.config.packs
+        if url not in packs.catalogue_urls:
+            packs.catalogue_urls.append(url)
+            self._context.config.save()
+            self._refresh_catalogue_sources()
+
+    def _remove_catalogue_source(self) -> None:
+        item = self._sources_list.currentItem()
+        if item is None:
+            return
+        kind, value = item.data(Qt.ItemDataRole.UserRole)
+        packs = self._context.config.packs
+        if kind == "dir" and value in packs.catalogue_dirs:
+            packs.catalogue_dirs.remove(value)
+        elif kind == "url" and value in packs.catalogue_urls:
+            packs.catalogue_urls.remove(value)
+        self._context.config.save()
+        self._refresh_catalogue_sources()
 
     def refresh(self) -> None:
         selected = self._selected_source()

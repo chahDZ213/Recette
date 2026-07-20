@@ -27,6 +27,7 @@ from calforge.services.analysis import AnalysisService
 from calforge.services.annotations import AnnotationService
 from calforge.services.assistant import AssistantService
 from calforge.services.attachments import AttachmentService
+from calforge.services.catalogue import CatalogueService
 from calforge.services.definitions import DefinitionService
 from calforge.services.ecufiles import EcuFileService
 from calforge.services.history import HistoryService
@@ -65,6 +66,9 @@ class ApplicationContext:
         self.annotations = AnnotationService(self.database, self.bus)
         self.analysis = AnalysisService(self.database, self.ecu_files, self.bus)
         self.definitions = DefinitionService(self.database, self.ecu_files, self.bus)
+        self.catalogue = CatalogueService(
+            self.definitions, self.ecu_files, self.config.packs
+        )
 
         context_builder = ContextBuilder(
             self.ecu_files,
@@ -96,6 +100,7 @@ class ApplicationContext:
             (AnnotationService, self.annotations),
             (AnalysisService, self.analysis),
             (DefinitionService, self.definitions),
+            (CatalogueService, self.catalogue),
             (AssistantService, self.assistant),
             (ReportService, self.reports),
         ):

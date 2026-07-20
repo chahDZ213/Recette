@@ -49,6 +49,7 @@ from calforge.ui.panels.mappacks import MapPackPanel
 from calforge.ui.panels.vehicle_details import VehicleDetailsPanel
 from calforge.ui.views.ecu_file_view import EcuFileView
 from calforge.ui.views.hex_compare import HexCompareView
+from calforge.ui.workers import run_in_background
 
 logger = logging.getLogger(__name__)
 
@@ -258,10 +259,37 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(
                 f"Importé : {event.ecu_file.original_filename}{note}", 8000
             )
+            if not event.deduplicated:
+                self._maybe_auto_fetch_packs(event.ecu_file.id)
         elif isinstance(event, AttachmentAdded | AttachmentDeleted):
             self._details.refresh_documents()
         elif isinstance(event, HistoryEntryAdded | HistoryEntryDeleted):
             self._details.refresh_history()
+
+    def _maybe_auto_fetch_packs(self, file_id: int) -> None:
+        """If the automatic catalogue is enabled, look up and apply matching
+        packs for a freshly imported file — on a worker thread (no UI block)."""
+        config = self._context.config.packs
+        if not (config.auto_fetch and self._context.catalogue.enabled):
+            return
+        catalogue = self._context.catalogue
+        definitions = self._context.definitions
+
+        def work() -> int:
+            sources = catalogue.fetch_for_file(file_id)
+            if sources:
+                definitions.apply_definitions(file_id)
+            return len(sources)
+
+        def on_done(count: object) -> None:
+            if count:
+                self._map_packs.refresh()
+                self._details.refresh_files()
+                self.statusBar().showMessage(
+                    f"Catalogue : {count} pack(s) trouvé(s) et appliqué(s).", 8000
+                )
+
+        run_in_background(work, on_done=on_done, on_error=lambda _m: None)
 
     def refresh_vehicles(self) -> None:
         current = self._details.current_vehicle

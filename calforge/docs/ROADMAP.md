@@ -118,7 +118,24 @@ Règle : une version n'est ouverte que lorsque la précédente est stable
 - Le pack généré reste soumis à validation humaine (ADR-0004) une fois
   appliqué. Bouton dédié dans la vue de comparaison.
 
-### Reporté (v0.9+)
+## ✅ v0.9 — Catalogue automatique de Map Packs (livrée)
+
+- Catalogue automatique (ADR-0013) : `CatalogueService` va chercher le pack
+  correspondant tout seul depuis des sources que l'utilisateur configure et est
+  en droit d'utiliser — dossiers locaux / NAS / disques synchronisés, ou URLs de
+  base possédées/abonnées (interrogées à l'empreinte exacte
+  `<url>/<sha256>.calpack.json`). **Jamais** de fouille du web pour des fichiers
+  ECU sous copyright.
+- Désactivé par défaut : sans source configurée, aucune connexion réseau. Le
+  fetcher réseau est injectable, donc la fonctionnalité est testée entièrement
+  hors ligne.
+- Auto-fetch à l'import (option) : un fichier importé déclenche, en tâche de
+  fond, la recherche et l'application du pack ; miss silencieux, succès signalé
+  dans la barre d'état. UI de configuration dans le panneau *Map Packs*.
+- Même pipeline de confiance : un pack récupéré propose des cartographies à
+  valider (ADR-0004), il n'est jamais présenté comme certain.
+
+### Reporté (v1.0+)
 - Détection de blocs lisses sans axe explicite ; nommage automatique des maps
   apprises (injection/boost/limiteurs) par signature ; édition 3D surface.
 

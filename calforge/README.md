@@ -7,7 +7,27 @@ comparaisons, historiques et documentation — avec une règle absolue : *aucune
 inventée*. Tout ce que le logiciel affiche est soit un **fait mesuré**, soit une
 **hypothèse** accompagnée de son niveau de confiance et de sa justification.
 
-## État actuel — Version 0.8 (génération automatique de Map Packs)
+## État actuel — Version 0.9 (catalogue automatique de Map Packs)
+
+Nouveautés v0.9 (ADR-0013) — **le logiciel va chercher le pack tout seul** :
+
+- **Catalogue automatique** : au lieu de fournir manuellement un pack à chaque
+  import, CalForge peut trouver et charger le pack correspondant **de lui-même**
+  — depuis *vos* sources : un dossier local, un partage NAS de votre atelier, ou
+  une URL que vous possédez ou à laquelle vous êtes abonné.
+- **Uniquement des sources légitimes** : CalForge **ne fouille jamais le web**
+  pour télécharger des fichiers ECU sous copyright. Il n'interroge que les
+  sources que *vous* configurez et êtes en droit d'utiliser. Une URL de base est
+  interrogée pour l'empreinte **exacte** du fichier (`<url>/<sha256>.calpack.json`),
+  donc une correspondance en ligne concerne, par construction, précisément votre
+  fichier.
+- **Désactivé par défaut, respectueux de la vie privée** : sans source
+  configurée, **aucune** connexion réseau n'est effectuée. Le catalogue ne fait
+  rien tant que vous n'avez pas ajouté une source et coché « Chercher
+  automatiquement à l'import » (panneau *Map Packs* → « Catalogue automatique »).
+- **Même pipeline de confiance** : un pack récupéré est appliqué comme n'importe
+  quel autre — il *propose* des cartographies que vous **validez** (jamais
+  présentées comme certaines, ADR-0004).
 
 Nouveautés v0.8 (ADR-0012) — **le logiciel fabrique ses propres Map Packs** :
 

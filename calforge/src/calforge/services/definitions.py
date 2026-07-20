@@ -93,6 +93,11 @@ class DefinitionService:
             raise PackImportError(f"Pack invalide ({path.name}) : {exc}") from exc
         return self._persist_pack(pack)
 
+    def import_pack_model(self, pack: Pack) -> DefinitionSourceDto:
+        """Import an already-parsed :class:`~calforge.packs.Pack` (used by the
+        automatic catalogue). Raises ``PackImportError`` if the name exists."""
+        return self._persist_pack(pack)
+
     def _persist_pack(self, pack: Pack) -> DefinitionSourceDto:
         """Store a validated Pack as a new definition source (shared by import
         and the automatic pack builders)."""

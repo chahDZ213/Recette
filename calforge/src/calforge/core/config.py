@@ -63,6 +63,28 @@ class AiConfig(BaseModel):
     max_tokens: int = 1024
 
 
+class PacksConfig(BaseModel):
+    """Automatic Map Pack catalogue.
+
+    CalForge can fetch matching packs on its own from **sources the user
+    configures and is entitled to use** — never by scraping the open web
+    (ADR-0013). Two source kinds:
+
+    - ``catalogue_dirs``: local folders / mounted NAS / synced cloud drives
+      holding ``*.calpack.json`` files. Scanned and matched by file fingerprint.
+    - ``catalogue_urls``: base URLs; the app requests
+      ``<url>/<sha256>.calpack.json`` for the imported file's exact hash.
+
+    Everything is **off by default**: with no sources and ``auto_fetch`` false,
+    the app makes no network calls whatsoever.
+    """
+
+    catalogue_dirs: list[str] = Field(default_factory=list)
+    catalogue_urls: list[str] = Field(default_factory=list)
+    auto_fetch: bool = False
+    request_timeout_s: float = 10.0
+
+
 class AppConfig(BaseModel):
     """Root configuration object.
 
@@ -78,6 +100,7 @@ class AppConfig(BaseModel):
     ui: UiConfig = Field(default_factory=UiConfig)
     backup: BackupConfig = Field(default_factory=BackupConfig)
     ai: AiConfig = Field(default_factory=AiConfig)
+    packs: PacksConfig = Field(default_factory=PacksConfig)
 
     @property
     def database_path(self) -> Path:

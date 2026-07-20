@@ -13,5 +13,5 @@ Lower layers never import from higher layers. The UI only talks to
 ``calforge.services`` and communicates back through the event bus.
 """
 
-__version__ = "0.8.0"
+__version__ = "0.9.0"
 APP_NAME = "CalForge"
