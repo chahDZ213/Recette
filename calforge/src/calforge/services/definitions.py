@@ -17,6 +17,7 @@ from pathlib import Path
 from pydantic import ValidationError
 from sqlalchemy import func, select
 
+from calforge.analysis import packbuilder
 from calforge.core.events import EventBus
 from calforge.data.database import Database
 from calforge.data.models import (
@@ -90,7 +91,11 @@ class DefinitionService:
             pack = Pack.model_validate(json.loads(path.read_text(encoding="utf-8")))
         except (OSError, json.JSONDecodeError, ValidationError) as exc:
             raise PackImportError(f"Pack invalide ({path.name}) : {exc}") from exc
+        return self._persist_pack(pack)
 
+    def _persist_pack(self, pack: Pack) -> DefinitionSourceDto:
+        """Store a validated Pack as a new definition source (shared by import
+        and the automatic pack builders)."""
         with self._db.session() as session:
             existing = session.scalar(
                 select(DefinitionSource).where(DefinitionSource.name == pack.name)
@@ -112,7 +117,7 @@ class DefinitionService:
                 session.add(MapDefinition(source_id=source.id, **map_def.model_dump()))
             dto = self._source_dto(source, map_count=len(pack.maps))
 
-        logger.info("Imported pack %r (%d maps)", pack.name, len(pack.maps))
+        logger.info("Persisted pack %r (%d maps)", pack.name, len(pack.maps))
         self._bus.publish(DefinitionSourceImported(source=dto))
         return dto
 
@@ -186,6 +191,136 @@ class DefinitionService:
     def _source_dto(source: DefinitionSource, *, map_count: int) -> DefinitionSourceDto:
         dto = DefinitionSourceDto.model_validate(source)
         return dto.model_copy(update={"map_count": map_count})
+
+    # ----------------------------------------------------- pack building --
+
+    def build_pack_from_comparison(
+        self,
+        original_id: int,
+        modified_ids: list[int],
+        *,
+        name: str | None = None,
+    ) -> DefinitionSourceDto:
+        """Learn a Map Pack by comparing an original to modified file(s).
+
+        The regions that a real tune changed and that also look like maps
+        become high-confidence definitions; changed-only regions are included
+        best-effort. The pack matches the original by SHA-256 + size, so
+        applying it later re-proposes the same maps for human validation.
+        """
+        if not modified_ids:
+            raise ValueError("Sélectionnez au moins un fichier modifié à comparer.")
+        original = self._files.get(original_id)
+        original_bytes = self._files.read_content(original_id)
+        modified_bytes = [self._files.read_content(mid) for mid in modified_ids]
+
+        discovered = packbuilder.discover_maps_from_comparison(original_bytes, modified_bytes)
+        if not discovered:
+            raise PackImportError(
+                "Aucune différence exploitable : les fichiers sont identiques ou "
+                "les zones modifiées sont trop petites pour être des cartographies."
+            )
+
+        pack_name = name or f"Pack appris — {original.original_filename}"
+        maps = []
+        for m in discovered:
+            kind = "détectée+modifiée" if m.from_geometry else "zone modifiée"
+            maps.append(
+                PackMap(
+                    name=f"Carte {kind} @0x{m.offset:X}",
+                    category="apprise",
+                    offset=m.offset,
+                    rows=m.rows,
+                    cols=m.cols,
+                    element_size=m.element_size,
+                    endianness=m.endianness,
+                    factor=1.0,
+                    value_offset=0.0,
+                    unit="",
+                    description=(
+                        f"Découverte par comparaison ({m.changed_bytes} octet(s) "
+                        f"modifié(s), confiance {m.confidence:.0%}). "
+                        + ("Forme de cartographie confirmée. " if m.from_geometry else "")
+                        + "À vérifier avant toute utilisation."
+                    ),
+                )
+            )
+        pack = Pack.model_validate(
+            {
+                "format": PACK_FORMAT,
+                "name": pack_name,
+                "description": (
+                    f"Pack généré automatiquement en comparant "
+                    f"« {original.original_filename} » à {len(modified_ids)} fichier(s) "
+                    "modifié(s). Chaque cartographie doit être vérifiée."
+                ),
+                "matchers": [
+                    {"kind": "sha256", "sha256": original.sha256},
+                    {"kind": "size", "size": original.size_bytes},
+                ],
+                "maps": [m.model_dump() for m in maps],
+            }
+        )
+        logger.info(
+            "Built pack from comparison of #%d vs %s: %d map(s)",
+            original_id, modified_ids, len(maps),
+        )
+        return self._persist_pack(pack)
+
+    def build_pack_from_validated(
+        self, file_id: int, *, name: str | None = None
+    ) -> DefinitionSourceDto:
+        """Turn a file's human-validated maps into a reusable Map Pack.
+
+        This captures the user's own validation work so a matching file later
+        gets the same maps proposed automatically — the app learning from its
+        operator."""
+        file = self._files.get(file_id)
+        with self._db.session() as session:
+            validated = session.scalars(
+                select(MapCandidateRecord).where(
+                    MapCandidateRecord.ecu_file_id == file_id,
+                    MapCandidateRecord.status == MapCandidateStatus.VALIDATED.value,
+                )
+            ).all()
+            rows = [
+                {
+                    "name": v.name or f"Carte @0x{v.offset:X}",
+                    "category": "validée",
+                    "offset": v.offset,
+                    "rows": v.rows,
+                    "cols": v.cols,
+                    "element_size": v.element_size,
+                    "endianness": v.endianness,
+                    "factor": 1.0,
+                    "value_offset": 0.0,
+                    "unit": "",
+                    "description": "Cartographie validée par l'utilisateur.",
+                }
+                for v in validated
+            ]
+        if not rows:
+            raise PackImportError(
+                "Aucune cartographie validée sur ce fichier. Validez d'abord des "
+                "cartographies dans la vue d'analyse."
+            )
+        pack = Pack.model_validate(
+            {
+                "format": PACK_FORMAT,
+                "name": name or f"Pack validé — {file.original_filename}",
+                "description": (
+                    f"Pack construit à partir des cartographies validées de "
+                    f"« {file.original_filename} »."
+                ),
+                "matchers": [
+                    {"kind": "sha256", "sha256": file.sha256},
+                    {"kind": "size", "size": file.size_bytes},
+                ],
+                "maps": rows,
+            }
+        )
+        logger.info("Built pack from %d validated map(s) of file #%d", len(rows), file_id)
+        return self._persist_pack(pack)
 
     # ----------------------------------------------------------- matching --
 

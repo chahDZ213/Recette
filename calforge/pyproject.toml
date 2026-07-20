@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "calforge"
-version = "0.7.0"
+version = "0.8.0"
 description = "Professional AI-assisted ECU calibration workbench"
 readme = "README.md"
 requires-python = ">=3.13"

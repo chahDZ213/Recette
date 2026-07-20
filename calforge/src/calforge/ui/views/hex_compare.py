@@ -8,10 +8,11 @@ from __future__ import annotations
 
 import logging
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
+    QMessageBox,
     QPushButton,
     QSplitter,
     QTableView,
@@ -53,6 +54,9 @@ def _make_hex_table(model: HexTableModel) -> QTableView:
 
 
 class HexCompareView(QWidget):
+    #: Emitted after a Map Pack is generated so the host can refresh views.
+    pack_generated = Signal()
+
     def __init__(
         self,
         context: ApplicationContext,
@@ -89,6 +93,13 @@ class HexCompareView(QWidget):
         report_button = QPushButton("Rapport de comparaison (PDF/HTML)…")
         report_button.clicked.connect(self._export_report)
 
+        pack_button = QPushButton("Générer un Map Pack (A = ori, B = modifié)")
+        pack_button.setToolTip(
+            "Apprend les cartographies à partir des différences : les zones "
+            "modifiées qui ressemblent à des maps deviennent un pack réutilisable."
+        )
+        pack_button.clicked.connect(self._build_pack)
+
         regions_panel = QWidget()
         regions_layout = QVBoxLayout(regions_panel)
         regions_layout.setContentsMargins(0, 0, 0, 0)
@@ -96,6 +107,7 @@ class HexCompareView(QWidget):
         regions_layout.addWidget(self._region_table)
         regions_layout.addLayout(nav)
         regions_layout.addWidget(report_button)
+        regions_layout.addWidget(pack_button)
 
         self._model_a = HexTableModel()
         self._model_b = HexTableModel()
@@ -214,4 +226,25 @@ class HexCompareView(QWidget):
             self,
             lambda: self._context.reports.comparison_report_html(id_a, id_b),
             "comparaison.pdf",
+        )
+
+    def _build_pack(self) -> None:
+        """Learn a Map Pack from A (original) vs B (modified)."""
+        original_id, modified_id = self._file_a.id, self._file_b.id
+        service = self._context.definitions
+
+        def on_done(source: object) -> None:
+            self.pack_generated.emit()
+            QMessageBox.information(
+                self,
+                "Map Pack généré",
+                f"Pack « {source.name} » créé avec {source.map_count} cartographie(s).\n\n"  # type: ignore[attr-defined]
+                "Retrouvez-le dans l'onglet « Map Packs ». Chaque cartographie "
+                "reste une hypothèse à valider avant utilisation.",
+            )
+
+        run_in_background(
+            lambda: service.build_pack_from_comparison(original_id, [modified_id]),
+            on_done=on_done,
+            on_error=lambda message: show_error(self, f"Génération du pack échouée : {message}"),
         )

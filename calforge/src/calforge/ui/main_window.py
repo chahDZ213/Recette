@@ -335,6 +335,7 @@ class MainWindow(QMainWindow):
 
     def _compare_files(self, file_a: EcuFileDto, file_b: EcuFileDto) -> None:
         view = HexCompareView(self._context, file_a, file_b)
+        view.pack_generated.connect(self._map_packs.refresh)
         title = f"{file_a.original_filename} ⟷ {file_b.original_filename}"
         index = self._tabs.addTab(view, title)
         self._tabs.setCurrentIndex(index)

@@ -107,9 +107,20 @@ Règle : une version n'est ouverte que lorsque la précédente est stable
 - Détecteur : recherche web des techniques réelles (axe monotone + table
   lisse, comparaison ori/modifié) intégrée à la stratégie.
 
-### Reporté (v0.8+)
-- Détection de blocs lisses sans axe explicite ; détection de maps par
-  comparaison ori↔modifié promue en candidats ; édition 3D.
+## ✅ v0.8 — Génération automatique de Map Packs (livrée)
+
+- Apprentissage par comparaison (ADR-0012) : `packbuilder` croise les zones
+  réellement modifiées (ori↔tuné) avec les formes de maps détectées ; double
+  preuve = confiance élevée, zones changées sans forme en meilleur effort.
+- `build_pack_from_comparison` (depuis des fichiers tunés) et
+  `build_pack_from_validated` (depuis vos validations) créent de vraies
+  sources de définitions, réutilisables et exportables (calforge-pack/1).
+- Le pack généré reste soumis à validation humaine (ADR-0004) une fois
+  appliqué. Bouton dédié dans la vue de comparaison.
+
+### Reporté (v0.9+)
+- Détection de blocs lisses sans axe explicite ; nommage automatique des maps
+  apprises (injection/boost/limiteurs) par signature ; édition 3D surface.
 
 ## v1.0 — Produit
 

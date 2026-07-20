@@ -7,7 +7,23 @@ comparaisons, historiques et documentation — avec une règle absolue : *aucune
 inventée*. Tout ce que le logiciel affiche est soit un **fait mesuré**, soit une
 **hypothèse** accompagnée de son niveau de confiance et de sa justification.
 
-## État actuel — Version 0.7 (import universel & éditeur de cartographie)
+## État actuel — Version 0.8 (génération automatique de Map Packs)
+
+Nouveautés v0.8 (ADR-0012) — **le logiciel fabrique ses propres Map Packs** :
+
+- **Apprentissage par comparaison** : donnez un fichier original et un (ou
+  plusieurs) fichier(s) déjà modifié(s) du même ECU ; CalForge identifie les
+  zones réellement changées qui ressemblent à des cartographies et **génère un
+  Map Pack** réutilisable. C'est la méthode qu'utilisent les humains
+  (« comparer à un fichier tuné connu »), automatisée et fondée sur la preuve.
+- **Double preuve** : une zone retenue a *changé* ET *ressemble à une map* —
+  confiance élevée ; les zones changées sans forme reconnue sont incluses en
+  meilleur effort, clairement marquées.
+- **Pack depuis vos validations** : transformez les cartographies que vous
+  avez validées en un pack réutilisable (le logiciel apprend de vous).
+- Le pack généré passe par le même pipeline : appliqué, il *propose* les maps
+  que vous **validez** (jamais présentées comme certaines).
+- Bouton « Générer un Map Pack » dans la vue de comparaison.
 
 Nouveautés v0.7 (ADR-0011) :
 
