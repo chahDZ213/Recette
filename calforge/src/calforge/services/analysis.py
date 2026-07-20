@@ -16,7 +16,7 @@ from calforge.analysis import mapdetect
 from calforge.core.events import EventBus
 from calforge.data.database import Database
 from calforge.data.models import MapCandidateRecord, MapCandidateStatus
-from calforge.services.dto import MapCandidateDto
+from calforge.services.dto import EcuFileDto, MapCandidateDto
 from calforge.services.ecufiles import EcuFileService
 from calforge.services.events import MapCandidatesRefreshed, MapCandidateUpdated
 
@@ -124,3 +124,61 @@ class AnalysisService:
             candidate.element_size,
             candidate.endianness,
         )
+
+    def edit_map(
+        self,
+        candidate_id: int,
+        new_values: np.ndarray,
+        *,
+        output_filename: str | None = None,
+    ) -> EcuFileDto:
+        """Write ``new_values`` into the candidate's block and save the result
+        as a NEW modified file (the original is never altered — ADR-0003).
+
+        ``new_values`` must match the candidate's shape; values are clamped to
+        the storage type's range. Returns the new file's DTO.
+        """
+        candidate = self.get_candidate(candidate_id)
+        if new_values.shape != (candidate.rows, candidate.cols):
+            raise ValueError(
+                f"Dimensions {new_values.shape} incompatibles avec la "
+                f"cartographie {candidate.rows}×{candidate.cols}."
+            )
+        original = self._files.read_content(candidate.ecu_file_id)
+        edited = mapdetect.encode_block(
+            original,
+            candidate.offset,
+            new_values,
+            candidate.element_size,
+            candidate.endianness,
+        )
+        parent = self._files.get(candidate.ecu_file_id)
+        name = output_filename or self._derived_name(parent.original_filename)
+        map_label = candidate.name or f"0x{candidate.offset:X}"
+        dto = self._files.create_derivative(
+            candidate.ecu_file_id,
+            edited,
+            name,
+            notes=f"Cartographie « {map_label} » modifiée depuis {parent.original_filename}.",
+        )
+        logger.info(
+            "Map %r edited on file #%d -> new file #%d",
+            map_label, candidate.ecu_file_id, dto.id,
+        )
+        return dto
+
+    def scale_map(
+        self, candidate_id: int, percent: float, *, output_filename: str | None = None
+    ) -> EcuFileDto:
+        """Scale every cell of a map by ``percent`` % (common tuning op) and
+        save as a new file. +10 means ×1.10."""
+        values = self.read_map_values(candidate_id)
+        scaled = values.astype(np.float64) * (1.0 + percent / 100.0)
+        return self.edit_map(candidate_id, scaled, output_filename=output_filename)
+
+    @staticmethod
+    def _derived_name(parent_name: str) -> str:
+        stem, dot, ext = parent_name.rpartition(".")
+        base = stem if dot else parent_name
+        suffix = f".{ext}" if dot else ""
+        return f"{base}_modifie{suffix}"

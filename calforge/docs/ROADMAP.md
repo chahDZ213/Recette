@@ -96,6 +96,21 @@ Règle : une version n'est ouverte que lorsque la précédente est stable
 - Modèles de rapport personnalisables et graphiques (nécessitent un second
   moteur de rendu au-delà du sous-ensemble Qt rich text).
 
+## ✅ v0.7 — Import universel & éditeur de cartographie (livrée)
+
+- Import universel (ADR-0011) : tout fichier accepté, sélecteur par défaut
+  « Tous les fichiers », aucune restriction par extension/format/taille.
+- Éditeur 2D : édition directe des cellules + outil « +X % » (sélection ou
+  carte entière), enregistrement en nouveau fichier dérivé ; original
+  préservé octet par octet (encode_block non destructif, ADR-0003).
+- Export d'un fichier ECU sur le disque (nom/extension libres).
+- Détecteur : recherche web des techniques réelles (axe monotone + table
+  lisse, comparaison ori/modifié) intégrée à la stratégie.
+
+### Reporté (v0.8+)
+- Détection de blocs lisses sans axe explicite ; détection de maps par
+  comparaison ori↔modifié promue en candidats ; édition 3D.
+
 ## v1.0 — Produit
 
 - Empaquetage Windows signé (installeur), mises à jour.

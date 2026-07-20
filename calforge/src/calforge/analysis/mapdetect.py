@@ -208,3 +208,38 @@ def decode_block(
     else:
         raise ValueError(f"Unsupported element size: {element_size}")
     return flat.reshape(rows, cols).astype(np.int64)
+
+
+def encode_block(
+    data: bytes,
+    offset: int,
+    values: np.ndarray,
+    element_size: int,
+    endianness: str,
+) -> bytes:
+    """Return a copy of ``data`` with ``values`` written into the block at
+    ``offset``. The original bytes are never mutated (immutability, ADR-0003):
+    a new bytes object is returned for a fresh, separate blob.
+
+    Values are clamped to the storage type's range (a tuner asking for more
+    than the cell can hold gets the max, not an overflow), which keeps the
+    write safe on real ECU dumps.
+    """
+    rows, cols = values.shape
+    count = rows * cols
+    end = offset + count * element_size
+    if offset < 0 or end > len(data):
+        raise ValueError("Block exceeds file bounds")
+    if element_size == 1:
+        dtype = np.dtype(np.uint8)
+        max_value = 0xFF
+    elif element_size == 2:
+        dtype = np.dtype("<u2" if endianness == "le" else ">u2")
+        max_value = 0xFFFF
+    else:
+        raise ValueError(f"Unsupported element size: {element_size}")
+
+    clamped = np.clip(np.rint(values), 0, max_value).astype(dtype)
+    buffer = bytearray(data)
+    buffer[offset:end] = clamped.reshape(-1).tobytes()
+    return bytes(buffer)

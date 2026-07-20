@@ -43,6 +43,21 @@ from calforge.ui.workers import run_in_background
 
 logger = logging.getLogger(__name__)
 
+# The import must accept ANY file — no format, ECU, make or year is ever
+# rejected. "Tous les fichiers" is the default filter; the ECU list below is
+# only a convenience shortcut, never a restriction (see ADR-0011). The known
+# extensions span the common dump/read tools and formats across the industry.
+_ECU_EXTENSIONS = (
+    "*.bin *.ori *.mod *.ori1 *.ori2 *.mpc *.kp *.dtf *.hex *.ihex *.s19 *.s28 *.s37 "
+    "*.frf *.sgo *.odx *.pdx *.simos *.dam *.damos *.a2l *.kess *.mpps *.ktag *.bdm "
+    "*.jtag *.full *.read *.rd *.wr *.dam *.C16 *.M16 *.enc *.dec *.fls *.eep *.map "
+    "*.dtc *.cal *.par *.tun *.ecu *.vr *.bmw *.dts *.checksum *.original"
+)
+IMPORT_FILTER = (
+    "Tous les fichiers (*);;"
+    f"Fichiers ECU connus ({_ECU_EXTENSIONS})"
+)
+
 
 def _make_table(model, *, stretch_last: bool = True) -> QTableView:
     table = QTableView()
@@ -162,12 +177,22 @@ class VehicleDetailsPanel(QWidget):
         self._version_button.clicked.connect(self._import_version_dialog)
         self._compare_button = QPushButton("Comparer")
         self._compare_button.clicked.connect(self._request_compare)
-        self._hex_button = QPushButton("Hexadécimal")
+        self._hex_button = QPushButton("Ouvrir / Éditer")
+        self._hex_button.setToolTip("Vue hexadécimale, détection et édition de cartographies")
         self._hex_button.clicked.connect(self._request_hex)
+        self._export_button = QPushButton("Exporter…")
+        self._export_button.setToolTip("Enregistrer ce fichier (ex. modifié) sur le disque")
+        self._export_button.clicked.connect(self._export_file)
 
         self._tabs.addTab(
             self._tab_layout(
-                [self._import_button, self._version_button, self._compare_button, self._hex_button],
+                [
+                    self._import_button,
+                    self._version_button,
+                    self._compare_button,
+                    self._hex_button,
+                    self._export_button,
+                ],
                 self._file_table,
             ),
             "Fichiers ECU",
@@ -415,15 +440,13 @@ class VehicleDetailsPanel(QWidget):
         self._version_button.setEnabled(len(selected) == 1)
         self._compare_button.setEnabled(len(selected) == 2)
         self._hex_button.setEnabled(len(selected) == 1)
+        self._export_button.setEnabled(len(selected) == 1)
 
     def open_import_dialog(self) -> None:
         if self._vehicle is None:
             return
         paths, _f = QFileDialog.getOpenFileNames(
-            self,
-            "Importer des fichiers ECU",
-            "",
-            "Fichiers binaires (*.bin *.ori *.mod *.hex *.frf *.dat);;Tous les fichiers (*)",
+            self, "Importer des fichiers ECU (tout format accepté)", "", IMPORT_FILTER
         )
         self.import_paths([Path(p) for p in paths])
 
@@ -436,7 +459,7 @@ class VehicleDetailsPanel(QWidget):
             self,
             f"Importer une version dérivée de {parent_file.original_filename}",
             "",
-            "Fichiers binaires (*.bin *.ori *.mod *.hex *.frf *.dat);;Tous les fichiers (*)",
+            IMPORT_FILTER,
         )
         self.import_paths([Path(p) for p in paths], parent_file_id=parent_file.id)
 
@@ -468,3 +491,20 @@ class VehicleDetailsPanel(QWidget):
         selected = self.selected_files()
         if len(selected) == 2:
             self.compare_requested.emit(selected[0], selected[1])
+
+    def _export_file(self) -> None:
+        selected = self.selected_files()
+        if len(selected) != 1:
+            return
+        file = selected[0]
+        target, _f = QFileDialog.getSaveFileName(
+            self, "Exporter le fichier ECU", file.original_filename, IMPORT_FILTER
+        )
+        if not target:
+            return
+        service = self._context.ecu_files
+        run_in_background(
+            lambda: service.export_to(file.id, Path(target)),
+            on_done=lambda saved: self.status_message.emit(f"Exporté : {saved}", 6000),
+            on_error=lambda message: show_error(self, f"Export échoué : {message}"),
+        )

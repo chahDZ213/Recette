@@ -72,6 +72,32 @@ class BlobStore:
         logger.info("Stored blob %s (%d bytes)", sha256, size)
         return StoredBlob(sha256=sha256, size_bytes=size, already_existed=False)
 
+    def store_bytes(self, data: bytes) -> StoredBlob:
+        """Store an in-memory buffer (e.g. an edited calibration) as a blob.
+
+        Same atomic, deduplicated, read-only guarantees as ``store_file`` — a
+        modified map produces a new blob and never touches the original."""
+        sha256 = hashlib.sha256(data).hexdigest()
+        size = len(data)
+        target = self._path_for(sha256)
+        if target.is_file():
+            return StoredBlob(sha256=sha256, size_bytes=size, already_existed=True)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        fd, tmp_name = tempfile.mkstemp(dir=target.parent, prefix=".write-")
+        tmp = Path(tmp_name)
+        try:
+            with os.fdopen(fd, "wb") as out:
+                out.write(data)
+                out.flush()
+                os.fsync(out.fileno())
+            os.chmod(tmp, 0o444)
+            tmp.replace(target)
+        except Exception:
+            tmp.unlink(missing_ok=True)
+            raise
+        logger.info("Stored blob %s (%d bytes, in-memory)", sha256, size)
+        return StoredBlob(sha256=sha256, size_bytes=size, already_existed=False)
+
     def open_path(self, sha256: str) -> Path:
         """Return the on-disk path of a blob, verifying it exists."""
         path = self._path_for(sha256)

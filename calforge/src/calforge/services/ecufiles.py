@@ -110,6 +110,57 @@ class EcuFileService:
         self._bus.publish(EcuFileImported(ecu_file=dto, deduplicated=stored.already_existed))
         return dto
 
+    def create_derivative(
+        self,
+        parent_file_id: int,
+        data: bytes,
+        filename: str,
+        *,
+        notes: str = "",
+    ) -> EcuFileDto:
+        """Create a new modified file from in-memory bytes (e.g. an edited map).
+
+        The new file is a MODIFIED derivative of its parent, inherits the
+        parent's vehicle/project, and gets a fresh content-addressed blob. The
+        parent (and its blob) are never touched (ADR-0003).
+        """
+        stored = self._blobs.store_bytes(data)
+        report = run_identification(self._identifiers, Path(filename), data)
+        with self._db.session() as session:
+            parent = session.get(EcuFile, parent_file_id)
+            if parent is None:
+                raise EcuFileNotFoundError(parent_file_id)
+            record = EcuFile(
+                vehicle_id=parent.vehicle_id,
+                project_id=parent.project_id,
+                parent_file_id=parent_file_id,
+                sha256=stored.sha256,
+                size_bytes=stored.size_bytes,
+                original_filename=filename,
+                kind=EcuFileKind.MODIFIED.value,
+                format_name=report.format_name,
+                identified_facts=dict(report.facts),
+                hypotheses=[asdict(h) for h in report.hypotheses],
+                notes=notes,
+            )
+            session.add(record)
+            session.flush()
+            dto = self._to_dto(record, session)
+        logger.info(
+            "Created modified file %r as #%d from parent #%d (sha256=%s)",
+            filename, dto.id, parent_file_id, stored.sha256[:12],
+        )
+        self._bus.publish(EcuFileImported(ecu_file=dto, deduplicated=stored.already_existed))
+        return dto
+
+    def export_to(self, file_id: int, target: Path) -> Path:
+        """Write a file's binary content out to disk (integrity-checked)."""
+        data = self.read_content(file_id)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(data)
+        logger.info("Exported file #%d to %s", file_id, target)
+        return target
+
     def get(self, file_id: int) -> EcuFileDto:
         with self._db.session() as session:
             record = session.get(EcuFile, file_id)

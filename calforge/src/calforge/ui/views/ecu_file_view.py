@@ -10,12 +10,13 @@ from __future__ import annotations
 import logging
 
 import numpy as np
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QCheckBox,
     QDialog,
     QDialogButtonBox,
+    QDoubleSpinBox,
     QFormLayout,
     QHBoxLayout,
     QLabel,
@@ -105,12 +106,22 @@ class AnnotationDialog(QDialog):
 
 
 class Map2DDialog(QDialog):
-    """2D heatmap rendering of a map candidate's decoded values.
+    """Editable 2D map view.
 
-    When the candidate comes from a definition, raw values are converted to
-    physical units (``physical = raw × factor + value_offset``) and the unit
-    is displayed — raw values stay visible in the cell tooltips.
+    Cells hold **raw** values (exactly what is written to the binary), so
+    edits are unambiguous and safe. When a definition provides a factor, the
+    physical value is shown in each cell's tooltip. Editing tools:
+
+    - type a new value directly into any cell,
+    - select a region (or all) and apply a percentage change (+X %),
+
+    and save the result as a NEW modified file — the original is never
+    altered (ADR-0003). Passing ``context`` enables editing; without it the
+    view is read-only.
     """
+
+    #: Emitted with the new EcuFileDto after a successful "save as new file".
+    file_created = Signal(object)
 
     def __init__(
         self,
@@ -118,22 +129,22 @@ class Map2DDialog(QDialog):
         values: np.ndarray,
         parent: QWidget | None = None,
         definition: MapDefinitionDto | None = None,
+        context: ApplicationContext | None = None,
     ) -> None:
         super().__init__(parent)
+        self._candidate = candidate
+        self._definition = definition
+        self._context = context
+        self._editable = context is not None
         title = candidate.name or f"Candidat 0x{candidate.offset:X}"
-        self.setWindowTitle(f"Vue 2D — {title}")
-        self.resize(min(1100, 90 + 62 * candidate.cols), min(760, 200 + 26 * candidate.rows))
+        self.setWindowTitle(("Éditeur 2D — " if self._editable else "Vue 2D — ") + title)
+        self.resize(min(1150, 120 + 66 * candidate.cols), min(780, 260 + 26 * candidate.rows))
 
         unit_note = ""
-        converted = values.astype(np.float64)
-        decimals = 0
         if definition is not None and (definition.factor != 1.0 or definition.value_offset != 0.0):
-            converted = values * definition.factor + definition.value_offset
-            decimals = 2
-            unit_label = definition.unit or "unité physique"
             unit_note = (
-                f" · valeurs converties en <b>{unit_label}</b> "
-                f"(brut × {definition.factor:g} + {definition.value_offset:g})"
+                f" · unité physique <b>{definition.unit or '?'}</b> = brut × "
+                f"{definition.factor:g} + {definition.value_offset:g} (édition en brut)"
             )
         elif definition is not None and definition.unit:
             unit_note = f" · unité : <b>{definition.unit}</b>"
@@ -146,21 +157,96 @@ class Map2DDialog(QDialog):
         )
         header.setWordWrap(True)
 
-        table = QTableWidget(candidate.rows, candidate.cols)
-        table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        table.setHorizontalHeaderLabels([str(c) for c in range(candidate.cols)])
-        table.setVerticalHeaderLabels([str(r) for r in range(candidate.rows)])
-        low, high = float(converted.min()), float(converted.max())
-        span = (high - low) or 1.0
-        cold, hot = QColor("#2b5db8"), QColor(PALETTE["danger"])
+        self._table = QTableWidget(candidate.rows, candidate.cols)
+        trigger = (
+            QTableWidget.EditTrigger.DoubleClicked | QTableWidget.EditTrigger.AnyKeyPressed
+            if self._editable
+            else QTableWidget.EditTrigger.NoEditTriggers
+        )
+        self._table.setEditTriggers(trigger)
+        self._table.setHorizontalHeaderLabels([str(c) for c in range(candidate.cols)])
+        self._table.setVerticalHeaderLabels([str(r) for r in range(candidate.rows)])
         for row in range(candidate.rows):
             for col in range(candidate.cols):
-                value = float(converted[row, col])
-                item = QTableWidgetItem(f"{value:.{decimals}f}")
+                item = QTableWidgetItem()
                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-                item.setToolTip(f"brut : {int(values[row, col])}")
-                t = (value - low) / span
-                item.setBackground(
+                self._table.setItem(row, col, item)
+                self._set_cell(row, col, int(values[row, col]))
+        self._recolor()
+        self._table.resizeColumnsToContents()
+        self._table.itemChanged.connect(lambda _i: self._recolor())
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(header)
+
+        if self._editable:
+            tools = QHBoxLayout()
+            tools.addWidget(QLabel("Modifier de"))
+            self._percent = QDoubleSpinBox()
+            self._percent.setRange(-95.0, 500.0)
+            self._percent.setValue(10.0)
+            self._percent.setSuffix(" %")
+            self._percent.setDecimals(1)
+            tools.addWidget(self._percent)
+            apply_sel = QPushButton("Appliquer à la sélection")
+            apply_sel.clicked.connect(lambda: self._apply_percent(selection_only=True))
+            apply_all = QPushButton("Appliquer à toute la carte")
+            apply_all.clicked.connect(lambda: self._apply_percent(selection_only=False))
+            tools.addWidget(apply_sel)
+            tools.addWidget(apply_all)
+            tools.addStretch()
+            layout.addLayout(tools)
+
+        layout.addWidget(self._table)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        buttons.button(QDialogButtonBox.StandardButton.Close).setText("Fermer")
+        buttons.rejected.connect(self.reject)
+        buttons.accepted.connect(self.accept)
+        if self._editable:
+            save = QPushButton("Enregistrer comme nouveau fichier…")
+            save.setDefault(True)
+            save.clicked.connect(self._save_as_new_file)
+            buttons.addButton(save, QDialogButtonBox.ButtonRole.ActionRole)
+        buttons.clicked.connect(
+            lambda b: self.reject() if buttons.buttonRole(b) == QDialogButtonBox.ButtonRole.RejectRole else None
+        )
+        layout.addWidget(buttons)
+
+    # ---------------------------------------------------------- cell I/O ----
+
+    def _max_value(self) -> int:
+        return 0xFFFF if self._candidate.element_size == 2 else 0xFF
+
+    def _set_cell(self, row: int, col: int, raw: int) -> None:
+        item = self._table.item(row, col)
+        item.setText(str(raw))
+        if self._definition and (self._definition.factor != 1.0 or self._definition.value_offset != 0.0):
+            physical = raw * self._definition.factor + self._definition.value_offset
+            item.setToolTip(f"physique : {physical:.2f} {self._definition.unit}")
+
+    def _cell_value(self, row: int, col: int) -> int:
+        try:
+            return int(round(float(self._table.item(row, col).text())))
+        except (ValueError, AttributeError):
+            return 0
+
+    def current_values(self) -> np.ndarray:
+        rows, cols = self._candidate.rows, self._candidate.cols
+        return np.array(
+            [[self._cell_value(r, c) for c in range(cols)] for r in range(rows)],
+            dtype=np.int64,
+        )
+
+    def _recolor(self) -> None:
+        values = self.current_values().astype(np.float64)
+        low, high = float(values.min()), float(values.max())
+        span = (high - low) or 1.0
+        cold, hot = QColor("#2b5db8"), QColor(PALETTE["danger"])
+        for row in range(self._candidate.rows):
+            for col in range(self._candidate.cols):
+                t = (float(values[row, col]) - low) / span
+                self._table.item(row, col).setBackground(
                     QColor(
                         round(cold.red() + t * (hot.red() - cold.red())),
                         round(cold.green() + t * (hot.green() - cold.green())),
@@ -168,21 +254,60 @@ class Map2DDialog(QDialog):
                         160,
                     )
                 )
-                table.setItem(row, col, item)
-        table.resizeColumnsToContents()
 
-        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
-        buttons.button(QDialogButtonBox.StandardButton.Close).setText("Fermer")
-        buttons.rejected.connect(self.reject)
-        buttons.clicked.connect(self.accept)
+    # ----------------------------------------------------------- editing ----
 
-        layout = QVBoxLayout(self)
-        layout.addWidget(header)
-        layout.addWidget(table)
-        layout.addWidget(buttons)
+    def _apply_percent(self, *, selection_only: bool) -> None:
+        factor = 1.0 + self._percent.value() / 100.0
+        max_value = self._max_value()
+        cells = (
+            [(i.row(), i.column()) for i in self._table.selectedIndexes()]
+            if selection_only
+            else [
+                (r, c)
+                for r in range(self._candidate.rows)
+                for c in range(self._candidate.cols)
+            ]
+        )
+        if not cells:
+            show_error(self, "Sélectionnez d'abord des cellules.")
+            return
+        self._table.blockSignals(True)
+        for row, col in cells:
+            new_raw = int(round(self._cell_value(row, col) * factor))
+            self._set_cell(row, col, max(0, min(max_value, new_raw)))
+        self._table.blockSignals(False)
+        self._recolor()
+
+    def _save_as_new_file(self) -> None:
+        if self._context is None:
+            return
+        from PySide6.QtWidgets import QInputDialog
+
+        parent_name = self._context.ecu_files.get(self._candidate.ecu_file_id).original_filename
+        default = parent_name.rsplit(".", 1)
+        suggested = f"{default[0]}_modifie" + (f".{default[1]}" if len(default) > 1 else "")
+        name, accepted = QInputDialog.getText(
+            self, "Enregistrer la modification", "Nom du nouveau fichier :", text=suggested
+        )
+        if not accepted:
+            return
+        try:
+            new_file = self._context.analysis.edit_map(
+                self._candidate.id, self.current_values(), output_filename=name.strip() or suggested
+            )
+        except Exception as exc:
+            show_error(self, f"Enregistrement impossible : {exc}")
+            return
+        logger.info("Map edit saved as file #%d", new_file.id)
+        self.file_created.emit(new_file)
+        self.accept()
 
 
 class EcuFileView(QWidget):
+    #: Emitted with a new EcuFileDto to ask the host to open it in a tab.
+    file_open_requested = Signal(object)
+
     def __init__(
         self, context: ApplicationContext, file: EcuFileDto, parent: QWidget | None = None
     ) -> None:
@@ -507,10 +632,18 @@ class EcuFileView(QWidget):
 
         def on_done(payload: object) -> None:
             values, definition = payload  # type: ignore[misc]
-            Map2DDialog(candidate, values, self, definition=definition).exec()
+            dialog = Map2DDialog(
+                candidate, values, self, definition=definition, context=self._context
+            )
+            dialog.file_created.connect(self._on_map_edited)
+            dialog.exec()
 
         run_in_background(
             work,
             on_done=on_done,
             on_error=lambda message: show_error(self, f"Décodage échoué : {message}"),
         )
+
+    def _on_map_edited(self, new_file: object) -> None:
+        assert isinstance(new_file, EcuFileDto)
+        self.file_open_requested.emit(new_file)

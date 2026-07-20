@@ -218,6 +218,47 @@ def test_assistant_panel_answers_and_tracks_target(qapp, context, tmp_path) -> N
         window.close()
 
 
+def test_map_editor_dialog_edits_and_saves(qapp, context, tmp_path) -> None:
+    """The 2D editor applies a percentage change and saves a new modified
+    file through analysis.edit_map, leaving the original intact."""
+    import numpy as np
+    from tests.test_mapdetect import build_synthetic_dump
+
+    from calforge.data.models import EcuFileKind, MapCandidateStatus
+    from calforge.services.dto import VehicleInput
+    from calforge.ui.views.ecu_file_view import Map2DDialog
+
+    data, offset = build_synthetic_dump()
+    path = tmp_path / "orig.bin"
+    path.write_bytes(data)
+    vehicle = context.vehicles.create(VehicleInput(make="VW", model="Golf"))
+    file = context.ecu_files.import_file(path, vehicle_id=vehicle.id, kind=EcuFileKind.ORIGINAL)
+    candidate = next(c for c in context.analysis.detect_maps(file.id) if c.offset == offset)
+    context.analysis.set_candidate_status(candidate.id, MapCandidateStatus.VALIDATED, name="Inj")
+    candidate = context.analysis.get_candidate(candidate.id)
+    values = context.analysis.read_map_values(candidate.id)
+
+    dialog = Map2DDialog(candidate, values, context=context)
+    try:
+        assert dialog._editable
+        # Apply +10% to the whole map, then confirm the grid reflects it.
+        dialog._percent.setValue(10.0)
+        dialog._apply_percent(selection_only=False)
+        edited = dialog.current_values()
+        expected = np.clip(np.rint(values * 1.10), 0, 65535).astype(np.int64)
+        assert np.array_equal(edited, expected)
+
+        # Save through the service and verify a new modified file exists while
+        # the original stays byte-for-byte intact.
+        original_bytes = context.ecu_files.read_content(file.id)
+        new_file = context.analysis.edit_map(candidate.id, edited, output_filename="tuned.bin")
+        assert new_file.kind == EcuFileKind.MODIFIED
+        assert new_file.parent_file_id == file.id
+        assert context.ecu_files.read_content(file.id) == original_bytes
+    finally:
+        dialog.close()
+
+
 def test_hex_model_highlights() -> None:
     from PySide6.QtCore import Qt
     from PySide6.QtGui import QColor

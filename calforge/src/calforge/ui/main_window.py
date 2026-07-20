@@ -341,8 +341,16 @@ class MainWindow(QMainWindow):
 
     def _open_hex_view(self, file: EcuFileDto) -> None:
         view = EcuFileView(self._context, file)
+        view.file_open_requested.connect(self._on_modified_file_created)
         index = self._tabs.addTab(view, file.original_filename)
         self._tabs.setCurrentIndex(index)
+
+    def _on_modified_file_created(self, file: EcuFileDto) -> None:
+        # A map edit produced a new modified file: refresh views and open it.
+        self._details.refresh_files()
+        self._library.refresh()
+        self.statusBar().showMessage(f"Fichier modifié créé : {file.original_filename}", 8000)
+        self._open_hex_view(file)
 
     def _close_tab(self, index: int) -> None:
         if index >= self._permanent_tabs:  # welcome/library/packs tabs stay

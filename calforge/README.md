@@ -7,7 +7,20 @@ comparaisons, historiques et documentation — avec une règle absolue : *aucune
 inventée*. Tout ce que le logiciel affiche est soit un **fait mesuré**, soit une
 **hypothèse** accompagnée de son niveau de confiance et de sa justification.
 
-## État actuel — Version 0.6 (rapports & exports)
+## État actuel — Version 0.7 (import universel & éditeur de cartographie)
+
+Nouveautés v0.7 (ADR-0011) :
+
+- **Import universel** : *tout* fichier est accepté — `.ori`, `.bin`, dumps
+  complets BDM/boot et des dizaines d'extensions ECU. Le sélecteur s'ouvre
+  sur « Tous les fichiers » ; aucun format, aucune marque, aucune année n'est
+  jamais refusé.
+- **Éditeur de cartographie 2D** : modifiez les cellules directement ou
+  appliquez un **+X %** à une sélection ou à toute la carte, puis enregistrez
+  comme **nouveau fichier**. L'original reste **intact octet par octet** —
+  une modification est toujours un fichier dérivé traçable.
+- **Export sur disque** : enregistrez n'importe quel fichier (modifié ou non)
+  sous le nom/extension de votre choix.
 
 Nouveautés v0.6 :
 
