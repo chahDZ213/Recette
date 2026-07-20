@@ -55,6 +55,28 @@ class TestVehicles:
         with pytest.raises(ValueError):
             VehicleInput(make="  ", model="Golf")
 
+    def test_duplicate_vin_raises_friendly_error(self, context: ApplicationContext) -> None:
+        from calforge.services.vehicles import DuplicateVinError
+
+        make_vehicle(context, vin="WVWZZZ1KZAM000001")
+        with pytest.raises(DuplicateVinError) as exc_info:
+            make_vehicle(context, model="Golf R", vin="wvwzzz1kzam000001")  # same VIN, normalised
+        assert "existe déjà" in str(exc_info.value)
+        # State stays consistent: only the first vehicle exists.
+        assert len(context.vehicles.list_all()) == 1
+
+    def test_duplicate_vin_on_update_raises_friendly_error(
+        self, context: ApplicationContext
+    ) -> None:
+        from calforge.services.vehicles import DuplicateVinError
+
+        make_vehicle(context, vin="VIN000000000000A1")
+        second = make_vehicle(context, model="Polo", vin="VIN000000000000B2")
+        with pytest.raises(DuplicateVinError):
+            context.vehicles.update(
+                second.id, VehicleInput(make="VW", model="Polo", vin="VIN000000000000A1")
+            )
+
 
 class TestProjects:
     def test_create_and_list_for_vehicle(self, context: ApplicationContext) -> None:

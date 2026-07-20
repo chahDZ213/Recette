@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 
 from sqlalchemy import or_, select
+from sqlalchemy.exc import IntegrityError
 
 from calforge.core.events import EventBus
 from calforge.data.database import Database
@@ -19,30 +20,52 @@ class VehicleNotFoundError(LookupError):
     pass
 
 
+class DuplicateVinError(ValueError):
+    """Raised when a VIN would collide with an existing vehicle."""
+
+    def __init__(self, vin: str) -> None:
+        super().__init__(f"Un véhicule avec le VIN « {vin} » existe déjà.")
+        self.vin = vin
+
+
+def _is_vin_conflict(error: IntegrityError) -> bool:
+    return "vin" in str(error.orig).lower()
+
+
 class VehicleService:
     def __init__(self, database: Database, bus: EventBus) -> None:
         self._db = database
         self._bus = bus
 
     def create(self, data: VehicleInput) -> VehicleDto:
-        with self._db.session() as session:
-            vehicle = Vehicle(**data.model_dump())
-            session.add(vehicle)
-            session.flush()
-            dto = VehicleDto.model_validate(vehicle)
+        try:
+            with self._db.session() as session:
+                vehicle = Vehicle(**data.model_dump())
+                session.add(vehicle)
+                session.flush()
+                dto = VehicleDto.model_validate(vehicle)
+        except IntegrityError as exc:
+            if data.vin and _is_vin_conflict(exc):
+                raise DuplicateVinError(data.vin) from exc
+            raise
         logger.info("Created vehicle #%d %s", dto.id, dto.display_name)
         self._bus.publish(VehicleCreated(vehicle=dto))
         return dto
 
     def update(self, vehicle_id: int, data: VehicleInput) -> VehicleDto:
-        with self._db.session() as session:
-            vehicle = session.get(Vehicle, vehicle_id)
-            if vehicle is None:
-                raise VehicleNotFoundError(vehicle_id)
-            for key, value in data.model_dump().items():
-                setattr(vehicle, key, value)
-            session.flush()
-            dto = VehicleDto.model_validate(vehicle)
+        try:
+            with self._db.session() as session:
+                vehicle = session.get(Vehicle, vehicle_id)
+                if vehicle is None:
+                    raise VehicleNotFoundError(vehicle_id)
+                for key, value in data.model_dump().items():
+                    setattr(vehicle, key, value)
+                session.flush()
+                dto = VehicleDto.model_validate(vehicle)
+        except IntegrityError as exc:
+            if data.vin and _is_vin_conflict(exc):
+                raise DuplicateVinError(data.vin) from exc
+            raise
         self._bus.publish(VehicleUpdated(vehicle=dto))
         return dto
 

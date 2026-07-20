@@ -68,3 +68,25 @@ def test_config_roundtrip(tmp_path) -> None:
     loaded = AppConfig.load(config_path)
     assert loaded.data_dir == config.data_dir
     assert loaded.backup.keep_last == config.backup.keep_last
+
+
+def test_corrupt_config_falls_back_to_defaults(tmp_path) -> None:
+    # A malformed TOML file must never crash startup; it is set aside and
+    # defaults are used (regression: load() had no error handling).
+    config_path = tmp_path / "calforge.toml"
+    config_path.write_text("this is = not valid = toml [[[", encoding="utf-8")
+
+    loaded = AppConfig.load(config_path)
+
+    assert loaded.backup.keep_last == 20  # default
+    assert config_path.is_file()  # a fresh default was written
+    assert list(tmp_path.glob("calforge.toml.corrupt-*"))  # bad file preserved
+
+
+def test_invalid_schema_config_falls_back(tmp_path) -> None:
+    config_path = tmp_path / "calforge.toml"
+    config_path.write_text('[backup]\nkeep_last = "not a number"\n', encoding="utf-8")
+
+    loaded = AppConfig.load(config_path)
+
+    assert loaded.backup.keep_last == 20  # default after ValidationError

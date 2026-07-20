@@ -8,15 +8,19 @@ application to a temporary directory by constructing ``AppConfig`` manually.
 
 from __future__ import annotations
 
+import logging
 import tomllib
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Self
 
 import tomli_w
 from platformdirs import user_config_dir, user_data_dir, user_log_dir
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 from calforge import APP_NAME
+
+logger = logging.getLogger(__name__)
 
 _CONFIG_FILE_NAME = "calforge.toml"
 
@@ -100,19 +104,31 @@ class AppConfig(BaseModel):
         """Load configuration from disk, creating a default file on first run.
 
         An unreadable or invalid file is never fatal: the application must
-        always be able to start, so we fall back to defaults and let the
-        caller log the problem.
+        always be able to start. A corrupt or invalid file is preserved
+        (renamed to ``*.corrupt-<stamp>``) so the user can recover it, the
+        problem is logged, and defaults are used.
         """
         path = config_path or cls.default_config_path()
-        if path.is_file():
+        if not path.is_file():
+            config = cls(config_path=path)
+            config.save()
+            return config
+        try:
             with path.open("rb") as fh:
                 raw = tomllib.load(fh)
             config = cls.model_validate(raw)
             config.config_path = path
             return config
-        config = cls(config_path=path)
-        config.save()
-        return config
+        except (OSError, tomllib.TOMLDecodeError, ValidationError) as exc:
+            logger.warning("Configuration invalide (%s) : %s — défauts utilisés.", path, exc)
+            try:
+                stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
+                path.replace(path.with_name(f"{path.name}.corrupt-{stamp}"))
+            except OSError:
+                logger.exception("Impossible de mettre de côté la configuration corrompue.")
+            config = cls(config_path=path)
+            config.save()
+            return config
 
     def save(self) -> None:
         if self.config_path is None:

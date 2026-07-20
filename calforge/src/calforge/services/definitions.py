@@ -244,6 +244,7 @@ class DefinitionService:
         untouched, and nothing may overlap a decided region.
         """
         matches = self.match_sources_for_file(file_id)
+        file_size = self._files.get(file_id).size_bytes
         with self._db.session() as session:
             decided = session.scalars(
                 select(MapCandidateRecord).where(
@@ -271,6 +272,16 @@ class DefinitionService:
                 ):
                     start = definition.offset
                     end = start + definition.rows * definition.cols * definition.element_size
+                    if end > file_size:
+                        # A definition that runs past EOF can never be decoded
+                        # (the pack does not fit this file). Skip it instead of
+                        # creating a broken candidate.
+                        logger.warning(
+                            "Définition « %s » (0x%X..0x%X) hors limites du fichier "
+                            "#%d (%d o) — ignorée.",
+                            definition.name, start, end, file_id, file_size,
+                        )
+                        continue
                     if any(not (end <= s or start >= e) for s, e in decided_ranges):
                         continue
                     session.add(

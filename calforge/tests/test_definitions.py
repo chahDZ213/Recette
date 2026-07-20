@@ -212,3 +212,26 @@ class TestApplication:
         context.definitions.import_pack(tmp_path / "p.calpack.json")
         candidates = context.definitions.apply_definitions(imported_dump.id)
         assert [c for c in candidates if c.definition_id is not None] == []
+
+    def test_out_of_bounds_definition_is_skipped(
+        self, context: ApplicationContext, tmp_path: Path, imported_dump
+    ) -> None:
+        # A definition whose region runs past EOF must not create a candidate
+        # (it could never be decoded — regression guard).
+        huge = [
+            {
+                "name": "Carte hors limites", "category": "x",
+                "offset": "0x400", "rows": 256, "cols": 256, "element_size": 2,
+                "endianness": "le", "factor": 1.0, "value_offset": 0.0, "unit": "",
+            }
+        ]
+        write_pack(
+            tmp_path / "big.calpack.json",
+            name="Pack débordant",
+            matchers=[{"kind": "sha256", "sha256": imported_dump.sha256}],
+            maps=huge,
+        )
+        context.definitions.import_pack(tmp_path / "big.calpack.json")
+        candidates = context.definitions.apply_definitions(imported_dump.id)
+
+        assert [c for c in candidates if c.definition_id is not None] == []
