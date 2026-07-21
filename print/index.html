@@ -357,6 +357,10 @@
         <label>Livraison gratuite dès (€)</label>
         <input type="number" id="s-freeship" step="1" min="0" />
       </div>
+      <div class="field">
+        <label>Forfait livraison (€)</label>
+        <input type="number" id="s-shipfee" step="0.5" min="0" />
+      </div>
     </div>
     <p class="muted" style="margin-top:0;font-size:12px">Prix au gramme = coût matière. €/min = coût machine + électricité + usure. Densité en g/cm³. Vitesse en mm/s (sert à l'estimation du temps).</p>
     <table class="cat">
@@ -402,7 +406,7 @@ const DEFAULT_CATALOG = [
     flexible:false, foodSafe:false, res:{uv:1, humidity:0, heat:3, strength:3}, note:'Séchage du filament obligatoire (très hygroscopique).' },
 ];
 
-const SETTINGS_DEFAULT = { margin: 2.5, freeShip: 40 };
+const SETTINGS_DEFAULT = { margin: 2.5, freeShip: 40, shipFee: 4.9 };
 
 const STORE_KEY = 'empreinte_catalog_v1';
 const SET_KEY = 'empreinte_settings_v1';
@@ -884,6 +888,7 @@ const dlg = $('#settings-dlg');
 function renderCatalogEditor() {
   $('#s-margin').value = SETTINGS.margin;
   $('#s-freeship').value = SETTINGS.freeShip;
+  $('#s-shipfee').value = SETTINGS.shipFee;
   $('#cat-body').innerHTML = CATALOG.map(f => `
     <tr data-id="${f.id}">
       <td><b>${f.name}</b></td>
@@ -908,6 +913,7 @@ $('#settings-save').addEventListener('click', () => {
   });
   SETTINGS.margin = parseFloat($('#s-margin').value) || 0;
   SETTINGS.freeShip = parseFloat($('#s-freeship').value) || 0;
+  SETTINGS.shipFee = parseFloat($('#s-shipfee').value) || 0;
   localStorage.setItem(STORE_KEY, JSON.stringify(CATALOG));
   localStorage.setItem(SET_KEY, JSON.stringify(SETTINGS));
   dlg.close(); renderAll(); toast('Réglages enregistrés ✓');
@@ -920,12 +926,74 @@ $('#settings-reset').addEventListener('click', () => {
 });
 
 /* ============================================================
-   9. Commande (placeholder — Stripe branché à l'étape suivante)
+   9. Commande → Stripe Checkout (montant dynamique + livraison)
    ============================================================ */
-$('#order-btn').addEventListener('click', () => {
-  if (!state.quote) return;
-  toast('Paiement Stripe & livraison : prochaine étape 🚚');
-});
+const API_BASE = '/api/pay';
+
+// Upload du STL vers le stockage (endpoint à activer côté Supabase). Optionnel :
+// si indisponible, la commande part quand même (le créateur reçoit tout sauf le
+// fichier auto-attaché) et on le signale.
+async function uploadStl() {
+  if (!state.stlBuffer) return '';
+  try {
+    const r = await fetch('/api/print-upload', {
+      method: 'POST',
+      headers: { 'content-type': 'application/octet-stream', 'x-filename': state.fileName || 'piece.stl' },
+      body: state.stlBuffer.slice(0),
+    });
+    if (!r.ok) return '';
+    const d = await r.json();
+    return d.url || '';
+  } catch { return ''; }  // stockage pas encore branché → on continue sans fichier
+}
+
+async function startCheckout() {
+  const q = state.quote;
+  if (!q) return;
+  const btn = $('#order-btn'); const old = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Redirection vers le paiement…';
+  try {
+    const fileUrl = await uploadStl();
+    const payload = {
+      amount: Math.round(q.total * 100),
+      currency: 'eur',
+      returnUrl: location.origin + location.pathname,
+      shipFeeCents: Math.round((Number(SETTINGS.shipFee) || 0) * 100),
+      freeThresholdCents: Math.round((Number(SETTINGS.freeShip) || 0) * 100),
+      order: {
+        fileName: state.fileName || 'piece.stl',
+        fileUrl,
+        filament: q.filament, filamentId: q.filamentId,
+        grams: Math.round(q.grams), minutes: Math.round(q.minutes), infill: Math.round(q.infill * 100),
+        dims: state.geometry ? state.geometry.dims.map(d => Math.round(d)).join('×') : '',
+        nozzle: q.params.nozzle, bed: q.params.bed, walls: q.params.walls, exact: q.exact,
+        priceBreakdown: `matière ${fmtEUR(q.cMaterial)} · impression ${fmtEUR(q.cTime)} · marge ${fmtEUR(q.cMargin)}`,
+      },
+    };
+    const r = await fetch(API_BASE + '/print-order', {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok || !data.url) throw new Error(data.error || 'Paiement indisponible pour le moment.');
+    location.href = data.url;   // page Stripe hébergée
+  } catch (e) {
+    console.error('checkout', e);
+    toast(e.message || 'Paiement indisponible.');
+    btn.disabled = false; btn.textContent = old;
+  }
+}
+$('#order-btn').addEventListener('click', startCheckout);
+
+// Retour depuis Stripe (?pay=success|cancel) : confirmation puis nettoyage de l'URL.
+function handlePayReturn() {
+  const p = new URLSearchParams(location.search);
+  const pay = p.get('pay');
+  if (!pay) return;
+  if (pay === 'success') toast('✅ Paiement reçu — ta commande est confirmée, merci !');
+  else if (pay === 'cancel') toast('Paiement annulé — ta configuration est conservée.');
+  const clean = location.origin + location.pathname;
+  history.replaceState({}, '', clean);
+}
 
 /* ----- petit toast ----- */
 let toastTimer;
@@ -939,5 +1007,6 @@ function toast(msg) {
    ============================================================ */
 initThree();
 renderAll();
+handlePayReturn();
 window.__empreinte = { state, CATALOG, SETTINGS, estimatePrint, recommendFilament }; // debug
 </script>
