@@ -434,6 +434,9 @@ const state = {
   constraints: { humidity:'low', uv:'no', heat:'ambient', strength:'standard', flex:'rigid', food:'no' },
   geometry: null,      // { volumeCm3, surfaceCm2, dims:[x,y,z], triangles }
   chosenFilamentId: null, // null = suivre la reco
+  stlBuffer: null,     // ArrayBuffer du STL, réutilisé par le slicer
+  realQuote: null,     // { sig, grams, minutes } issu du slicing exact
+  slicing: false,      // slicing en cours
 };
 
 /* ============================================================
@@ -516,6 +519,90 @@ function estimatePrint(geom, filament, opts) {
   const minutes = seconds / 60 + 3;                   // + amorçage plateau
 
   return { grams, minutes, materialCm3 };
+}
+
+/* ============================================================
+   4b. Slicing réel (CuraEngine compilé en WebAssembly) — EXACT
+   ------------------------------------------------------------
+   Chargé à la demande (les modules pèsent ~5 Mo, on ne les charge pas
+   au démarrage). CuraEngine tourne dans un worker embarqué. On lit les
+   commentaires d'en-tête du G-code produit (source fiable) :
+     ;TIME:<secondes>   et   ;Filament used: <mètres>m [<grammes>g]
+   ============================================================ */
+const SLICER_PRINTER = 'creality_ender3'; // profil machine générique (bed 220×220×250)
+let _CuraWASM = null, _resolveDefinition = null;
+async function loadSlicerModules() {
+  if (!_CuraWASM) {
+    const [a, b] = await Promise.all([
+      import('./vendor/cura-wasm.js'),
+      import('./vendor/cura-definitions.js'),
+    ]);
+    _CuraWASM = a.CuraWASM; _resolveDefinition = b.resolveDefinition;
+  }
+  return { CuraWASM: _CuraWASM, resolveDefinition: _resolveDefinition };
+}
+
+async function sliceReal(buffer, filament, opts) {
+  const { CuraWASM, resolveDefinition } = await loadSlicerModules();
+  const infillPct = Math.round(opts.infill * 100);
+  const slicer = new CuraWASM({
+    definition: resolveDefinition(SLICER_PRINTER),
+    overrides: [
+      { key:'layer_height',               value: String(opts.layerHeight || 0.2) },
+      { key:'infill_sparse_density',      value: String(infillPct) },
+      { key:'wall_line_count',            value: '3' },
+      { key:'top_bottom_thickness',       value: '0.8' },
+      { key:'material_print_temperature', value: String(filament.nozzle) },
+      { key:'material_bed_temperature',   value: String(filament.bed) },
+      { key:'material_diameter',          value: '1.75' },
+      { key:'material_density',           value: String(filament.density) },
+      { key:'speed_print',                value: String(filament.speed) },
+    ],
+    transfer: false,
+    verbose: false,
+  });
+  try {
+    // Les vraies valeurs sont dans `metadata` (l'en-tête du G-code ne porte que des
+    // placeholders non patchés). filamentUsage = volume de filament en mm³, printTime en s.
+    const { metadata } = await slicer.slice(buffer.slice(0), 'stl');
+    const mm3 = (metadata && (metadata.filamentUsage || metadata.material1Usage)) || 0;
+    const grams = (mm3 / 1000) * filament.density;                 // mm³ → cm³ × densité (g/cm³)
+    const minutes = (metadata && metadata.printTime ? metadata.printTime : 0) / 60;
+    return { grams, minutes, mm3 };
+  } finally {
+    try { await slicer.destroy(); } catch {}
+  }
+}
+
+/* Planification du slicing : débounce + jeton pour ignorer les résultats périmés */
+function currentInfill() { return infillForStrength(state.constraints.strength); }
+function sliceSig(f, infill) { return f.id + '|' + infill + '|0.2'; }
+let _sliceTimer = null, _sliceToken = 0;
+
+function scheduleSlice() {
+  const rec = activeFilament();
+  if (!rec || !state.geometry || !state.stlBuffer) return;
+  const sig = sliceSig(rec.filament, currentInfill());
+  if (state.realQuote && state.realQuote.sig === sig) return; // déjà exact pour cette config
+  clearTimeout(_sliceTimer);
+  _sliceTimer = setTimeout(runSlice, 500);
+}
+
+async function runSlice() {
+  const rec = activeFilament();
+  if (!rec || !state.geometry || !state.stlBuffer) return;
+  const f = rec.filament, infill = currentInfill(), sig = sliceSig(f, infill);
+  const token = ++_sliceToken;
+  state.slicing = true; renderPrice();
+  try {
+    const r = await sliceReal(state.stlBuffer, f, { infill, layerHeight: 0.2 });
+    if (token !== _sliceToken) return;                 // un slice plus récent a pris la main
+    if (r && r.grams > 0 && r.minutes > 0) state.realQuote = { sig, grams: r.grams, minutes: r.minutes };
+    state.slicing = false; renderPrice();
+  } catch (e) {
+    console.error('slice error', e);
+    if (token === _sliceToken) { state.slicing = false; renderPrice(); toast('Slicing indisponible — estimation utilisée.'); }
+  }
 }
 
 /* ============================================================
@@ -603,28 +690,38 @@ function renderPrice() {
     return;
   }
   const f = rec.filament;
-  const infill = infillForStrength(state.constraints.strength);
-  const est = estimatePrint(g, f, { infill });
+  const infill = currentInfill();
+  const sig = sliceSig(f, infill);
 
-  const cMaterial = est.grams * f.pricePerG;
-  const cTime = est.minutes * f.pricePerMin;
+  // devis exact (slicing) si disponible pour cette config, sinon estimation instantanée
+  const useReal = state.realQuote && state.realQuote.sig === sig;
+  const src = useReal ? state.realQuote : estimatePrint(g, f, { infill });
+  const grams = src.grams, minutes = src.minutes;
+
+  const cMaterial = grams * f.pricePerG;
+  const cTime = minutes * f.pricePerMin;
   const cMargin = Number(SETTINGS.margin) || 0;
   const total = cMaterial + cTime + cMargin;
 
-  $('#pl-grams').textContent = `· ${est.grams.toFixed(0)} g`;
-  $('#pl-time').textContent = `· ${Math.round(est.minutes)} min`;
+  $('#pl-grams').textContent = `· ${grams.toFixed(0)} g`;
+  $('#pl-time').textContent = `· ${Math.round(minutes)} min`;
   $('#pv-material').textContent = fmtEUR(cMaterial);
   $('#pv-time').textContent = fmtEUR(cTime);
   $('#pv-margin').textContent = fmtEUR(cMargin);
   $('#pv-total').textContent = fmtEUR(total);
   $('#order-btn').disabled = false;
 
-  state.quote = { filament: f.name, filamentId: f.id, grams: est.grams, minutes: est.minutes,
+  const flag = $('#est-flag');
+  if (useReal)         flag.textContent = '✓ Grammes et temps exacts (slicing CuraEngine).';
+  else if (state.slicing) flag.textContent = '⏳ Slicing exact en cours…';
+  else                 flag.textContent = '≈ Estimation géométrique — le slicing exact se lance…';
+
+  state.quote = { filament: f.name, filamentId: f.id, grams, minutes, exact: useReal,
                   infill, params: { nozzle:f.nozzle, bed:f.bed, walls:3 },
                   cMaterial, cTime, cMargin, total };
 }
 
-function renderAll() { renderReco(); renderPrice(); }
+function renderAll() { renderReco(); renderPrice(); scheduleSlice(); }
 
 /* ============================================================
    6. Contraintes (segments) + sélecteur filament
@@ -749,6 +846,8 @@ function handleFile(file) {
   const reader = new FileReader();
   reader.onload = () => {
     try {
+      state.stlBuffer = reader.result.slice(0); // conservé pour le slicing
+      state.realQuote = null;                    // nouveau modèle → devis exact à recalculer
       const geo = new STLLoader().parse(reader.result);
       loadGeometry(geo);
       toast(`« ${file.name} » chargé ✓`);
