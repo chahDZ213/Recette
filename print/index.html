@@ -80,9 +80,15 @@
 
   main {
     display: grid; grid-template-columns: 1fr 420px; gap: 18px;
+    align-items: start;               /* chaque colonne prend sa hauteur propre (pas de vide) */
     max-width: 1280px; margin: 0 auto; padding: 18px 20px 60px;
   }
   @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+  @media (min-width: 901px) {
+    /* l'aperçu reste visible pendant qu'on fait défiler la configuration */
+    main > section:first-child { position: sticky; top: 82px; }
+    .viewer-wrap { min-height: 560px; }
+  }
 
   .card {
     background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
@@ -821,6 +827,13 @@ function handleFile(file) {
 
 /* ----- Drag & drop + input ----- */
 const dz = $('#dropzone');
+// Sur ORDINATEUR (souris = pointeur fin), on filtre le sélecteur aux .stl : les autres
+// fichiers apparaissent grisés. Sur MOBILE/TABLETTE (pointeur grossier), on ne met AUCUN
+// filtre — iOS/Android ne connaissent pas le type MIME des STL et griseraient tout.
+// L'extension .stl est de toute façon validée en JS (handleFile) dans les deux cas.
+if (!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches)) {
+  $('#file-input').setAttribute('accept', '.stl');
+}
 $('#pick-btn').addEventListener('click', e => { e.stopPropagation(); $('#file-input').click(); });
 dz.addEventListener('click', () => $('#file-input').click());
 $('#file-input').addEventListener('change', e => handleFile(e.target.files[0]));
