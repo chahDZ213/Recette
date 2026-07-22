@@ -23,6 +23,26 @@ function clampCents(v) {
   return Math.max(MIN_CENTS, Math.min(MAX_CENTS, n));
 }
 
+// Barème créateur — doit rester aligné avec le catalogue de print/index.html.
+// Le prix est recalculé ici pour ne pas dépendre du montant envoyé par le client.
+const SERVER_TARIFS = {
+  pla:  { pricePerG: 0.030, pricePerMin: 0.020 },
+  petg: { pricePerG: 0.035, pricePerMin: 0.022 },
+  asa:  { pricePerG: 0.045, pricePerMin: 0.024 },
+  abs:  { pricePerG: 0.030, pricePerMin: 0.024 },
+  tpu:  { pricePerG: 0.060, pricePerMin: 0.040 },
+  pa:   { pricePerG: 0.070, pricePerMin: 0.030 },
+};
+const SERVER_MARGIN = 2.5; // € — préparation & marge
+
+function recomputeAmount(order) {
+  const t = SERVER_TARIFS[order && order.filamentId];
+  const g = Number(order && order.grams), m = Number(order && order.minutes);
+  if (!t || !Number.isFinite(g) || !Number.isFinite(m) || g <= 0 || m <= 0) return null;
+  const euros = g * t.pricePerG + m * t.pricePerMin + SERVER_MARGIN;
+  return clampCents(euros * 100);
+}
+
 // N'garde que des chaînes courtes pour les métadonnées Stripe (max 500 car/clé).
 function meta(v, max = 480) {
   if (v == null) return "";
@@ -37,11 +57,15 @@ export default async function handler(req, res) {
   if (!stripe) return res.status(500).json({ error: "Paiement non configuré (STRIPE_SECRET_KEY manquante)" });
 
   const body = req.body || {};
-  const amount = clampCents(body.amount);           // prix de la pièce, en centimes
-  if (amount == null) return res.status(400).json({ error: "Montant invalide" });
-
   const currency = (typeof body.currency === "string" && body.currency.length === 3) ? body.currency.toLowerCase() : "eur";
   const order = (body.order && typeof body.order === "object") ? body.order : {};
+
+  // Prix facturé recalculé côté serveur à partir du barème créateur + des grammes/minutes
+  // de la pièce ; on ne fait pas confiance au montant envoyé par le client. Si le filament
+  // est inconnu, repli borné sur le montant client.
+  const serverAmount = recomputeAmount(order);
+  const amount = serverAmount != null ? serverAmount : clampCents(body.amount);
+  if (amount == null) return res.status(400).json({ error: "Montant invalide" });
 
   // Frais de port : gratuits si la pièce atteint le seuil, sinon forfait.
   const shipFeeCents = clampCentsShip(body.shipFeeCents);        // forfait (centimes)

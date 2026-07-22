@@ -220,9 +220,7 @@
     <span class="logo">◈</span>
     <div>Empreinte <small>Impression 3D à la demande</small></div>
   </div>
-  <div class="top-actions">
-    <button class="ghost" id="btn-settings">⚙︎ Réglages</button>
-  </div>
+  <div class="top-actions"></div>
 </header>
 
 <main>
@@ -329,57 +327,18 @@
         <div class="note hidden" id="reco-note"></div>
       </div>
 
-      <!-- Prix -->
+      <!-- Prix (le détail des coûts et la marge ne sont PAS montrés à l'acheteur) -->
       <div class="price-box">
-        <div class="price-row"><span class="lbl">Matière <span id="pl-grams" class="muted"></span></span><span class="val" id="pv-material">—</span></div>
-        <div class="price-row"><span class="lbl">Impression <span id="pl-time" class="muted"></span></span><span class="val" id="pv-time">—</span></div>
-        <div class="price-row"><span class="lbl">Préparation & marge</span><span class="val" id="pv-margin">—</span></div>
+        <div class="price-row"><span class="lbl">Matière</span><span class="val" id="pv-material">—</span></div>
+        <div class="price-row"><span class="lbl">Temps d'impression</span><span class="val" id="pv-time">—</span></div>
         <div class="price-row price-total"><span class="lbl">Prix de la pièce</span><span class="val" id="pv-total">—</span></div>
-        <div class="est-flag" id="est-flag">≈ estimation géométrique — le slicing exact arrive.</div>
+        <div class="est-flag" id="est-flag">Livraison calculée à l'étape suivante.</div>
       </div>
 
       <button class="cta" id="order-btn" disabled>Commander ma pièce</button>
     </div>
   </section>
 </main>
-
-<!-- Réglages : catalogue filaments + tarifs -->
-<dialog id="settings-dlg">
-  <div class="dlg-hd">
-    <h3>⚙︎ Réglages — catalogue & tarifs</h3>
-    <button class="ghost" id="settings-close">Fermer</button>
-  </div>
-  <div class="dlg-bd">
-    <div class="settings-grid">
-      <div class="field">
-        <label>Marge & préparation (€)</label>
-        <input type="number" id="s-margin" step="0.5" min="0" />
-      </div>
-      <div class="field">
-        <label>Livraison gratuite dès (€)</label>
-        <input type="number" id="s-freeship" step="1" min="0" />
-      </div>
-      <div class="field">
-        <label>Forfait livraison (€)</label>
-        <input type="number" id="s-shipfee" step="0.5" min="0" />
-      </div>
-    </div>
-    <p class="muted" style="margin-top:0;font-size:12px">Prix au gramme = coût matière. €/min = coût machine + électricité + usure. Densité en g/cm³. Vitesse en mm/s (sert à l'estimation du temps).</p>
-    <table class="cat">
-      <thead>
-        <tr><th>Filament</th><th>Densité</th><th>€/g</th><th>€/min</th><th>Vitesse</th><th>Buse</th><th>Plateau</th></tr>
-      </thead>
-      <tbody id="cat-body"></tbody>
-    </table>
-  </div>
-  <div class="dlg-ft">
-    <div style="display:flex;gap:10px;align-items:center">
-      <button class="ghost" id="settings-reset">Réinitialiser</button>
-      <a href="./commandes.html" style="font-size:13px;color:var(--accent-2)">Espace créateur →</a>
-    </div>
-    <button class="btn-primary" id="settings-save">Enregistrer</button>
-  </div>
-</dialog>
 
 <div class="toast" id="toast"></div>
 
@@ -411,30 +370,12 @@ const DEFAULT_CATALOG = [
     flexible:false, foodSafe:false, res:{uv:1, humidity:0, heat:3, strength:3}, note:'Séchage du filament obligatoire (très hygroscopique).' },
 ];
 
-const SETTINGS_DEFAULT = { margin: 2.5, freeShip: 40, shipFee: 4.9 };
-
-const STORE_KEY = 'empreinte_catalog_v1';
-const SET_KEY = 'empreinte_settings_v1';
-
-function loadCatalog() {
-  try {
-    const raw = JSON.parse(localStorage.getItem(STORE_KEY));
-    if (Array.isArray(raw) && raw.length) {
-      // fusion douce : on garde les propriétés de reco par défaut, on écrase les tarifs édités
-      return DEFAULT_CATALOG.map(def => {
-        const saved = raw.find(r => r.id === def.id);
-        return saved ? { ...def, ...saved, res: def.res, flexible: def.flexible, foodSafe: def.foodSafe } : def;
-      });
-    }
-  } catch {}
-  return DEFAULT_CATALOG.map(f => ({ ...f }));
-}
-function loadSettings() {
-  try { return { ...SETTINGS_DEFAULT, ...(JSON.parse(localStorage.getItem(SET_KEY)) || {}) }; }
-  catch { return { ...SETTINGS_DEFAULT }; }
-}
-let CATALOG = loadCatalog();
-let SETTINGS = loadSettings();
+// Tarifs et catalogue = source unique, côté code, contrôlés par le CRÉATEUR seul.
+// Volontairement NON éditables et NON stockés côté client : un acheteur ne doit ni voir
+// ni modifier les prix/marges. Le prix facturé est en plus revérifié côté serveur
+// (api/pay/print-order.js recalcule le montant à partir de ce même barème).
+const SETTINGS = { margin: 2.5, freeShip: 40, shipFee: 4.9 };
+const CATALOG = DEFAULT_CATALOG.map(f => ({ ...f }));
 
 /* ============================================================
    2. État courant (contraintes + géométrie)
@@ -693,8 +634,7 @@ function renderPrice() {
   const rec = activeFilament();
   const g = state.geometry;
   if (!rec || !g) {
-    ['pv-material','pv-time','pv-margin','pv-total'].forEach(id => $('#'+id).textContent = '—');
-    $('#pl-grams').textContent = ''; $('#pl-time').textContent = '';
+    ['pv-material','pv-time','pv-total'].forEach(id => $('#'+id).textContent = '—');
     $('#order-btn').disabled = true;
     return;
   }
@@ -712,11 +652,9 @@ function renderPrice() {
   const cMargin = Number(SETTINGS.margin) || 0;
   const total = cMaterial + cTime + cMargin;
 
-  $('#pl-grams').textContent = `· ${grams.toFixed(0)} g`;
-  $('#pl-time').textContent = `· ${Math.round(minutes)} min`;
-  $('#pv-material').textContent = fmtEUR(cMaterial);
-  $('#pv-time').textContent = fmtEUR(cTime);
-  $('#pv-margin').textContent = fmtEUR(cMargin);
+  // L'acheteur voit les QUANTITÉS (g, min) et le PRIX final — jamais le €/g, €/min ni la marge.
+  $('#pv-material').textContent = `${grams.toFixed(0)} g`;
+  $('#pv-time').textContent = `${Math.round(minutes)} min`;
   $('#pv-total').textContent = fmtEUR(total);
   $('#order-btn').disabled = false;
 
@@ -887,48 +825,9 @@ $('#tool-reset').addEventListener('click', () => { if (state.geometry) fitView(n
 $('#tool-replace').addEventListener('click', () => $('#file-input').click());
 
 /* ============================================================
-   8. Réglages (catalogue + tarifs)
+   8. (Réglages tarifs retirés de l'app acheteur — voir SETTINGS/CATALOG en tête :
+       les prix sont contrôlés par le créateur, côté code, et revérifiés serveur.)
    ============================================================ */
-const dlg = $('#settings-dlg');
-function renderCatalogEditor() {
-  $('#s-margin').value = SETTINGS.margin;
-  $('#s-freeship').value = SETTINGS.freeShip;
-  $('#s-shipfee').value = SETTINGS.shipFee;
-  $('#cat-body').innerHTML = CATALOG.map(f => `
-    <tr data-id="${f.id}">
-      <td><b>${f.name}</b></td>
-      <td><input class="num" data-k="density" type="number" step="0.01" value="${f.density}"></td>
-      <td><input class="num" data-k="pricePerG" type="number" step="0.005" value="${f.pricePerG}"></td>
-      <td><input class="num" data-k="pricePerMin" type="number" step="0.005" value="${f.pricePerMin}"></td>
-      <td><input class="num" data-k="speed" type="number" step="1" value="${f.speed}"></td>
-      <td><input class="num" data-k="nozzle" type="number" step="1" value="${f.nozzle}"></td>
-      <td><input class="num" data-k="bed" type="number" step="1" value="${f.bed}"></td>
-    </tr>`).join('');
-}
-$('#btn-settings').addEventListener('click', () => { renderCatalogEditor(); dlg.showModal(); });
-$('#settings-close').addEventListener('click', () => dlg.close());
-$('#settings-save').addEventListener('click', () => {
-  CATALOG.forEach(f => {
-    const row = $(`#cat-body tr[data-id="${f.id}"]`);
-    if (!row) return;
-    row.querySelectorAll('input[data-k]').forEach(inp => {
-      const v = parseFloat(inp.value);
-      if (!isNaN(v)) f[inp.dataset.k] = v;
-    });
-  });
-  SETTINGS.margin = parseFloat($('#s-margin').value) || 0;
-  SETTINGS.freeShip = parseFloat($('#s-freeship').value) || 0;
-  SETTINGS.shipFee = parseFloat($('#s-shipfee').value) || 0;
-  localStorage.setItem(STORE_KEY, JSON.stringify(CATALOG));
-  localStorage.setItem(SET_KEY, JSON.stringify(SETTINGS));
-  dlg.close(); renderAll(); toast('Réglages enregistrés ✓');
-});
-$('#settings-reset').addEventListener('click', () => {
-  if (!confirm('Réinitialiser le catalogue et les tarifs par défaut ?')) return;
-  localStorage.removeItem(STORE_KEY); localStorage.removeItem(SET_KEY);
-  CATALOG = loadCatalog(); SETTINGS = loadSettings();
-  renderCatalogEditor(); renderAll(); toast('Catalogue réinitialisé.');
-});
 
 /* ============================================================
    9. Commande → Stripe Checkout (montant dynamique + livraison)
