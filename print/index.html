@@ -238,7 +238,9 @@
           <p>Glisse un <b>.stl</b> ici, ou choisis-le.</p>
           <p class="muted">Le modèle reste sur ton appareil pour l'aperçu et le calcul.</p>
           <button class="dz-btn" id="pick-btn">Choisir un fichier</button>
-          <input type="file" id="file-input" accept=".stl,model/stl,application/sla" class="hidden" />
+          <!-- Pas d'attribut accept : iOS/Android ne connaissent pas le MIME des STL et
+               griseraient tous les fichiers. On valide l'extension .stl en JS après coup. -->
+          <input type="file" id="file-input" class="hidden" />
         </div>
       </div>
 
