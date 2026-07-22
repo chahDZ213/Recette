@@ -387,6 +387,7 @@ const state = {
   stlBuffer: null,     // ArrayBuffer du STL, réutilisé par le slicer
   realQuote: null,     // { sig, grams, minutes } issu du slicing exact
   slicing: false,      // slicing en cours
+  sliceError: false,   // le dernier slicing a échoué
 };
 
 /* ============================================================
@@ -543,15 +544,20 @@ async function runSlice() {
   if (!rec || !state.geometry || !state.stlBuffer) return;
   const f = rec.filament, infill = currentInfill(), sig = sliceSig(f, infill);
   const token = ++_sliceToken;
-  state.slicing = true; renderPrice();
+  state.slicing = true; state.sliceError = false; renderPrice();
   try {
     const r = await sliceReal(state.stlBuffer, f, { infill, layerHeight: 0.2 });
     if (token !== _sliceToken) return;                 // un slice plus récent a pris la main
-    if (r && r.grams > 0 && r.minutes > 0) state.realQuote = { sig, grams: r.grams, minutes: r.minutes };
+    if (r && r.grams > 0 && r.minutes > 0) {
+      state.realQuote = { sig, grams: r.grams, minutes: r.minutes };
+      state.sliceError = false;
+    } else {
+      state.sliceError = true;                          // slice vide / invalide
+    }
     state.slicing = false; renderPrice();
   } catch (e) {
     console.error('slice error', e);
-    if (token === _sliceToken) { state.slicing = false; renderPrice(); toast('Slicing indisponible — estimation utilisée.'); }
+    if (token === _sliceToken) { state.slicing = false; state.sliceError = true; renderPrice(); toast('Slicing indisponible — recharge le fichier.'); }
   }
 }
 
@@ -633,20 +639,31 @@ function fmtEUR(n) { return n.toLocaleString('fr-FR', { style:'currency', curren
 function renderPrice() {
   const rec = activeFilament();
   const g = state.geometry;
-  if (!rec || !g) {
+  const flag = $('#est-flag');
+
+  const reset = (msg) => {
     ['pv-material','pv-time','pv-total'].forEach(id => $('#'+id).textContent = '—');
+    flag.textContent = msg;
     $('#order-btn').disabled = true;
-    return;
-  }
+    state.quote = null;
+  };
+
+  if (!rec || !g) { reset('Importe un fichier 3D pour obtenir le prix.'); return; }
+
   const f = rec.filament;
   const infill = currentInfill();
   const sig = sliceSig(f, infill);
-
-  // devis exact (slicing) si disponible pour cette config, sinon estimation instantanée
   const useReal = state.realQuote && state.realQuote.sig === sig;
-  const src = useReal ? state.realQuote : estimatePrint(g, f, { infill });
-  const grams = src.grams, minutes = src.minutes;
 
+  // On n'affiche AUCUN prix tant que CuraEngine n'a pas produit le devis officiel.
+  if (!useReal) {
+    reset(state.sliceError
+      ? '⚠︎ Calcul du prix impossible — recharge le fichier pour réessayer.'
+      : '⏳ Slicing en cours — calcul du prix exact…');
+    return;
+  }
+
+  const grams = state.realQuote.grams, minutes = state.realQuote.minutes;
   const cMaterial = grams * f.pricePerG;
   const cTime = minutes * f.pricePerMin;
   const cMargin = Number(SETTINGS.margin) || 0;
@@ -656,14 +673,10 @@ function renderPrice() {
   $('#pv-material').textContent = `${grams.toFixed(0)} g`;
   $('#pv-time').textContent = `${Math.round(minutes)} min`;
   $('#pv-total').textContent = fmtEUR(total);
+  flag.textContent = '✓ Prix calculé par slicing (CuraEngine).';
   $('#order-btn').disabled = false;
 
-  const flag = $('#est-flag');
-  if (useReal)         flag.textContent = '✓ Grammes et temps exacts (slicing CuraEngine).';
-  else if (state.slicing) flag.textContent = '⏳ Slicing exact en cours…';
-  else                 flag.textContent = '≈ Estimation géométrique — le slicing exact se lance…';
-
-  state.quote = { filament: f.name, filamentId: f.id, grams, minutes, exact: useReal,
+  state.quote = { filament: f.name, filamentId: f.id, grams, minutes, exact: true,
                   infill, params: { nozzle:f.nozzle, bed:f.bed, walls:3 },
                   cMaterial, cTime, cMargin, total };
 }
