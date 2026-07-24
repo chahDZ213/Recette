@@ -196,6 +196,7 @@ function renderOrders(){
         <div class="block">
           <h4>Fabrication</h4>
           <div class="kv"><span class="k">Filament</span><span class="v">${esc(m.filament||'—')}</span></div>
+          <div class="kv"><span class="k">Couleur</span><span class="v">${esc(m.color||'—')}</span></div>
           <div class="kv"><span class="k">Buse / Plateau</span><span class="v">${esc(m.nozzle||'?')}°C / ${esc(m.bed||'?')}°C</span></div>
           <div class="kv"><span class="k">Remplissage / Parois</span><span class="v">${esc(m.infill||'?')}% / ${esc(m.walls||'3')}</span></div>
           <div class="kv"><span class="k">Matière / Temps</span><span class="v">${esc(m.grams||'?')} g · ${esc(m.minutes||'?')} min</span></div>
@@ -229,6 +230,7 @@ function printOrder(i){
         <h3>Fabrication</h3>
         <div class="row"><span class="k">Fichier</span><span class="v">${esc(m.fileName||'—')}</span></div>
         <div class="row"><span class="k">Filament</span><span class="v">${esc(m.filament||'—')}</span></div>
+        <div class="row"><span class="k">Couleur</span><span class="v">${esc(m.color||'—')}</span></div>
         <div class="row"><span class="k">Température buse</span><span class="v">${esc(m.nozzle||'?')} °C</span></div>
         <div class="row"><span class="k">Température plateau</span><span class="v">${esc(m.bed||'?')} °C</span></div>
         <div class="row"><span class="k">Remplissage</span><span class="v">${esc(m.infill||'?')} %</span></div>

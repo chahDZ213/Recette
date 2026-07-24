@@ -167,6 +167,21 @@
   .param .v { font-weight: 600; font-variant-numeric: tabular-nums; }
   .note { font-size: 12px; color: var(--warn); margin-top: 8px; display: flex; gap: 6px; align-items: flex-start; }
 
+  .swatches { display: flex; flex-wrap: wrap; gap: 9px; }
+  .swatch {
+    width: 34px; height: 34px; border-radius: 10px; cursor: pointer; position: relative;
+    border: 2px solid var(--line-2); transition: transform .1s, box-shadow .12s;
+  }
+  .swatch:hover { transform: translateY(-1px); }
+  .swatch[aria-pressed="true"] { border-color: #fff; box-shadow: 0 0 0 2px var(--accent); }
+  .swatch .plus {
+    position: absolute; bottom: -7px; right: -6px; font-size: 9px; line-height: 1;
+    background: var(--panel); border: 1px solid var(--line-2); border-radius: 6px;
+    padding: 2px 3px; color: var(--muted); font-weight: 600;
+  }
+  .swatch-name { font-size: 13px; color: var(--text); margin-top: 10px; }
+  .swatch-name .sup { color: var(--accent-2); }
+
   select, input[type="text"], input[type="number"] {
     width: 100%; background: var(--panel-2); border: 1px solid var(--line); color: var(--text);
     border-radius: 10px; padding: 9px 11px; font: inherit;
@@ -334,10 +349,18 @@
         <div class="note hidden" id="reco-note"></div>
       </div>
 
+      <!-- Couleur -->
+      <div class="field">
+        <label>Choisis ta couleur <span class="qhint">(certaines teintes sont en supplément)</span></label>
+        <div class="swatches" id="swatches"></div>
+        <div class="swatch-name" id="swatch-name"></div>
+      </div>
+
       <!-- Prix (le détail des coûts et la marge ne sont PAS montrés à l'acheteur) -->
       <div class="price-box">
         <div class="price-row"><span class="lbl">Matière</span><span class="val" id="pv-material">—</span></div>
         <div class="price-row"><span class="lbl">Temps d'impression</span><span class="val" id="pv-time">—</span></div>
+        <div class="price-row"><span class="lbl">Couleur</span><span class="val" id="pv-color">—</span></div>
         <div class="price-row price-total"><span class="lbl">Prix de la pièce</span><span class="val" id="pv-total">—</span></div>
         <div class="est-flag" id="est-flag">Livraison calculée à l'étape suivante.</div>
       </div>
@@ -384,6 +407,27 @@ const DEFAULT_CATALOG = [
 const SETTINGS = { margin: 2.5, freeShip: 40, shipFee: 4.9 };
 const CATALOG = DEFAULT_CATALOG.map(f => ({ ...f }));
 
+// Couleurs proposées à l'acheteur — contrôlées par le créateur (comme les tarifs).
+// surcharge en € (0 = incluse). metal = rendu métallisé dans l'aperçu.
+// Le supplément est aussi recalculé côté serveur (api/pay/print-order.js).
+const COLORS = [
+  { id:'black',       name:'Noir',           hex:'#1f2937', surcharge:0 },
+  { id:'white',       name:'Blanc',          hex:'#e5e7eb', surcharge:0 },
+  { id:'grey',        name:'Gris',           hex:'#9ca3af', surcharge:0 },
+  { id:'red',         name:'Rouge',          hex:'#ef4444', surcharge:1.5 },
+  { id:'orange',      name:'Orange',         hex:'#f97316', surcharge:1.5 },
+  { id:'yellow',      name:'Jaune',          hex:'#eab308', surcharge:1.5 },
+  { id:'green',       name:'Vert',           hex:'#22c55e', surcharge:1.5 },
+  { id:'blue',        name:'Bleu',           hex:'#3b82f6', surcharge:1.5 },
+  { id:'purple',      name:'Violet',         hex:'#a855f7', surcharge:1.5 },
+  { id:'pink',        name:'Rose',           hex:'#ec4899', surcharge:1.5 },
+  { id:'gold',        name:'Or métallisé',   hex:'#d4af37', surcharge:3, metal:true },
+  { id:'silver',      name:'Argent métallisé', hex:'#cbd5e1', surcharge:3, metal:true },
+  { id:'transparent', name:'Transparent',    hex:'#cfe8ff', surcharge:3 },
+  { id:'glow',        name:'Phosphorescent', hex:'#a3e635', surcharge:4 },
+];
+function currentColor() { return COLORS.find(c => c.id === state.colorId) || COLORS[0]; }
+
 /* ============================================================
    2. État courant (contraintes + géométrie)
    ============================================================ */
@@ -391,6 +435,7 @@ const state = {
   constraints: { humidity:'low', uv:'no', heat:'ambient', strength:'standard', flex:'rigid', food:'no' },
   geometry: null,      // { volumeCm3, surfaceCm2, dims:[x,y,z], triangles }
   chosenFilamentId: null, // null = suivre la reco
+  colorId: 'black',    // couleur choisie par l'acheteur
   stlBuffer: null,     // ArrayBuffer du STL, réutilisé par le slicer
   realQuote: null,     // { sig, grams, minutes } issu du slicing exact
   slicing: false,      // slicing en cours
@@ -650,6 +695,7 @@ function renderPrice() {
 
   const reset = (msg) => {
     ['pv-material','pv-time','pv-total'].forEach(id => $('#'+id).textContent = '—');
+    $('#pv-color').textContent = colorPriceLabel();
     flag.textContent = msg;
     $('#order-btn').disabled = true;
     state.quote = null;
@@ -671,21 +717,57 @@ function renderPrice() {
   }
 
   const grams = state.realQuote.grams, minutes = state.realQuote.minutes;
+  const color = currentColor();
+  const cColor = color.surcharge || 0;
   const cMaterial = grams * f.pricePerG;
   const cTime = minutes * f.pricePerMin;
   const cMargin = Number(SETTINGS.margin) || 0;
-  const total = cMaterial + cTime + cMargin;
+  const total = cMaterial + cTime + cMargin + cColor;
 
   // L'acheteur voit les QUANTITÉS (g, min) et le PRIX final — jamais le €/g, €/min ni la marge.
   $('#pv-material').textContent = `${grams.toFixed(0)} g`;
   $('#pv-time').textContent = `${Math.round(minutes)} min`;
+  $('#pv-color').textContent = colorPriceLabel();
   $('#pv-total').textContent = fmtEUR(total);
   flag.textContent = '✓ Prix calculé par slicing (CuraEngine).';
   $('#order-btn').disabled = false;
 
   state.quote = { filament: f.name, filamentId: f.id, grams, minutes, exact: true,
+                  color: color.name, colorId: color.id, colorSurcharge: cColor,
                   infill, params: { nozzle:f.nozzle, bed:f.bed, walls:3 },
                   cMaterial, cTime, cMargin, total };
+}
+
+/* ----- Couleurs (pastilles + recoloration de l'aperçu 3D) ----- */
+function colorPriceLabel() {
+  const c = currentColor();
+  return c.surcharge ? `${c.name} (+${fmtEUR(c.surcharge)})` : `${c.name} (incluse)`;
+}
+function renderSwatches() {
+  $('#swatches').innerHTML = COLORS.map(c =>
+    `<div class="swatch" role="button" tabindex="0" data-color="${c.id}" aria-pressed="${c.id === state.colorId}"
+       title="${c.name}${c.surcharge ? ' (+' + fmtEUR(c.surcharge) + ')' : ''}" style="background:${c.hex}">${
+       c.surcharge ? `<span class="plus">+${c.surcharge}€</span>` : ''}</div>`).join('');
+  const c = currentColor();
+  $('#swatch-name').innerHTML = c.surcharge
+    ? `${c.name} <span class="sup">— supplément ${fmtEUR(c.surcharge)}</span>`
+    : `${c.name} — incluse`;
+}
+function applyModelColor() {
+  if (!mesh) return;
+  const c = currentColor();
+  mesh.material.color.set(c.hex);
+  mesh.material.metalness = c.metal ? 0.75 : 0.12;
+  mesh.material.roughness = c.metal ? 0.35 : 0.62;
+  mesh.material.transparent = c.id === 'transparent';
+  mesh.material.opacity = c.id === 'transparent' ? 0.55 : 1;
+}
+function selectColor(id) {
+  if (!COLORS.some(c => c.id === id)) return;
+  state.colorId = id;
+  applyModelColor();
+  renderSwatches();
+  renderPrice();
 }
 
 function renderAll() { renderReco(); renderPrice(); scheduleSlice(); }
@@ -708,6 +790,14 @@ document.querySelectorAll('.seg[data-constraint]').forEach(seg => {
 $('#filament-select').addEventListener('change', e => {
   state.chosenFilamentId = e.target.value || null;
   renderAll();
+});
+// pastilles de couleur
+$('#swatches').addEventListener('click', e => {
+  const el = e.target.closest('.swatch'); if (el) selectColor(el.dataset.color);
+});
+$('#swatches').addEventListener('keydown', e => {
+  const el = e.target.closest('.swatch');
+  if (el && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); selectColor(el.dataset.color); }
 });
 
 /* ============================================================
@@ -779,6 +869,7 @@ function loadGeometry(geo) {
   mesh.position.sub(center);                 // centrer sur l'origine
   mesh.position.y += size.y / 2;             // poser sur le plateau
   scene.add(mesh);
+  applyModelColor();                          // appliquer la couleur choisie
 
   grid.position.y = 0;
   fitView(size);
@@ -895,10 +986,12 @@ async function startCheckout() {
         fileName: state.fileName || 'piece.stl',
         fileUrl,
         filament: q.filament, filamentId: q.filamentId,
+        color: q.color, colorId: q.colorId,
         grams: Math.round(q.grams), minutes: Math.round(q.minutes), infill: Math.round(q.infill * 100),
         dims: state.geometry ? state.geometry.dims.map(d => Math.round(d)).join('×') : '',
         nozzle: q.params.nozzle, bed: q.params.bed, walls: q.params.walls, exact: q.exact,
-        priceBreakdown: `matière ${fmtEUR(q.cMaterial)} · impression ${fmtEUR(q.cTime)} · marge ${fmtEUR(q.cMargin)}`,
+        priceBreakdown: `matière ${fmtEUR(q.cMaterial)} · impression ${fmtEUR(q.cTime)} · marge ${fmtEUR(q.cMargin)}`
+          + (q.colorSurcharge ? ` · couleur ${fmtEUR(q.colorSurcharge)}` : ''),
       },
     };
     const r = await fetch(API_BASE + '/print-order', {
@@ -937,6 +1030,7 @@ function toast(msg) {
    Démarrage
    ============================================================ */
 initThree();
+renderSwatches();
 renderAll();
 handlePayReturn();
 window.__empreinte = { state, CATALOG, SETTINGS, estimatePrint, recommendFilament }; // debug

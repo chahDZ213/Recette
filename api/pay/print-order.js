@@ -35,11 +35,19 @@ const SERVER_TARIFS = {
 };
 const SERVER_MARGIN = 2.5; // € — préparation & marge
 
+// Suppléments couleur (€) — doivent rester alignés avec COLORS dans print/index.html.
+const SERVER_COLORS = {
+  black:0, white:0, grey:0,
+  red:1.5, orange:1.5, yellow:1.5, green:1.5, blue:1.5, purple:1.5, pink:1.5,
+  gold:3, silver:3, transparent:3, glow:4,
+};
+
 function recomputeAmount(order) {
   const t = SERVER_TARIFS[order && order.filamentId];
   const g = Number(order && order.grams), m = Number(order && order.minutes);
   if (!t || !Number.isFinite(g) || !Number.isFinite(m) || g <= 0 || m <= 0) return null;
-  const euros = g * t.pricePerG + m * t.pricePerMin + SERVER_MARGIN;
+  const colorSurcharge = SERVER_COLORS[order && order.colorId] || 0;
+  const euros = g * t.pricePerG + m * t.pricePerMin + SERVER_MARGIN + colorSurcharge;
   return clampCents(euros * 100);
 }
 
@@ -84,6 +92,7 @@ export default async function handler(req, res) {
     fileUrl: meta(order.fileUrl),
     filament: meta(order.filament),
     filamentId: meta(order.filamentId),
+    color: meta(order.color),
     grams: meta(order.grams),
     minutes: meta(order.minutes),
     infill: meta(order.infill),
