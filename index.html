@@ -1823,19 +1823,43 @@ function initShopNote(){
     if(s){ s.style.opacity="1"; clearTimeout(shopNoteTimer); shopNoteTimer=setTimeout(()=>{ s.style.opacity="0"; }, 1200); }
   });
 }
+// Denrées qu'on achète au paquet/à la bouteille : dans la liste on ne met
+// pas de mini-quantité (ex : "1 c.à.c de sel" → juste "sel").
+const SHOP_STAPLES=["sel","poivre","épice","epice","herbe","vanille","extrait de","levure","bicarbonate",
+  "cannelle","muscade","cumin","paprika","curry","curcuma","piment","gingembre en poudre","gingembre moulu",
+  "moutarde","vinaigre","huile","maïzena","maizena","fécule","fecule","arôme","arome","colorant"];
+function isShopStaple(name){ const n=(name||"").toLowerCase(); return SHOP_STAPLES.some(k=>n.includes(k)); }
+// Fusionne les doublons (même nom) et retire les quantités des denrées de fond de placard.
+function dedupeShopping(list){
+  const out=[], idx={};
+  (list||[]).forEach(it=>{
+    const name=(it.name||"").trim(); if(!name) return;
+    const key=name.toLowerCase();
+    const staple=isShopStaple(name);
+    const amt = it.amount==null ? null : it.amount;
+    const unit = it.unit||null;
+    let cur=idx[key];
+    if(cur==null){
+      cur={ name:it.name, amount: staple?null:amt, unit: staple?null:unit, category:normCat(it.category), checked:!!it.checked };
+      idx[key]=cur; out.push(cur);
+    } else {
+      if(staple){ cur.amount=null; cur.unit=null; }
+      else if(cur.amount!=null && amt!=null && (cur.unit||null)===unit){ cur.amount+=amt; }
+      else { cur.amount=null; cur.unit=null; }   // unités différentes ou quantité manquante → nom seul
+      cur.checked = cur.checked && !!it.checked;  // reste à cocher tant qu'un ajout ne l'est pas
+    }
+  });
+  return out;
+}
 function addIngredientsToShopping(r, ratio){
   if(!r || !r.ingredients) return;
   ratio = ratio==null ? 1 : ratio;
   const list=getShopping();
   r.ingredients.forEach(ing=>{
     const amt = ing.amount==null ? null : (ing.amount*ratio);
-    const key=(ing.name||"").trim().toLowerCase();
-    const unit=ing.unit||null;
-    const ex=list.find(x=>(x.name||"").trim().toLowerCase()===key && (x.unit||null)===unit);
-    if(ex && ex.amount!=null && amt!=null){ ex.amount+=amt; ex.checked=false; }
-    else if(!ex){ list.push({ name:ing.name, amount:amt, unit:unit, category:normCat(ing.category), checked:false }); }
+    list.push({ name:ing.name, amount:amt, unit:ing.unit||null, category:normCat(ing.category), checked:false });
   });
-  setShopping(list);
+  setShopping(dedupeShopping(list));
 }
 function addRecipeToShopping(){
   if(!recipe) return;
@@ -1844,7 +1868,8 @@ function addRecipeToShopping(){
 function renderShopping(){
   initShopNote();
   const box=$("shoppingList"), empty=$("shoppingEmpty"), recLbl=$("shopRecipesLbl");
-  const list=getShopping();
+  const list=dedupeShopping(getShopping());
+  setShopping(list);   // nettoie les doublons déjà enregistrés
   box.innerHTML="";
   if(!list.length){ empty.classList.remove("hidden"); box.classList.add("hidden"); $("shopClear").classList.add("hidden"); if(recLbl) recLbl.classList.add("hidden"); return; }
   empty.classList.add("hidden"); box.classList.remove("hidden"); $("shopClear").classList.remove("hidden"); if(recLbl) recLbl.classList.remove("hidden");
