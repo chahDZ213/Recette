@@ -2403,7 +2403,9 @@ function renderList(){
   if(listTab==="saved"){
     let base=allCache.filter(x=>x.saved);
     if(selectedColl!=="__all__") base=base.filter(x=>x.collection===selectedColl);
-    list=base.sort((a,b)=>{ if(!!a.fav!==!!b.fav) return a.fav?-1:1; return (a.title||"").localeCompare(b.title||"","fr",{sensitivity:"base"}); });
+    // Mettre en favori ne fait plus remonter la recette en haut : elle garde
+    // sa place (ordre alphabétique), seul le cœur change.
+    list=base.sort((a,b)=>(a.title||"").localeCompare(b.title||"","fr",{sensitivity:"base"}));
   } else {
     list=[...allCache].sort((a,b)=>(b._ts||0)-(a._ts||0));
   }
