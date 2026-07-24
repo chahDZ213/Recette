@@ -135,7 +135,8 @@
 
   /* ----- Configurator ----- */
   .field { margin-bottom: 16px; }
-  .field > label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 7px; letter-spacing: .2px; }
+  .field > label { display: block; font-size: 13px; color: var(--text); margin-bottom: 7px; letter-spacing: .2px; font-weight: 500; }
+  .field > label .qhint { color: var(--muted-2); font-weight: 400; font-size: 12px; }
   .seg { display: flex; gap: 6px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 11px; padding: 4px; }
   .seg button {
     flex: 1; border: 0; background: transparent; color: var(--muted); padding: 8px 6px; border-radius: 8px;
@@ -263,52 +264,52 @@
 
   <!-- Colonne droite : configurateur -->
   <section class="card">
-    <div class="hd"><h2>Configuration de la pièce</h2></div>
+    <div class="hd"><h2>Quelques questions sur ton objet</h2></div>
     <div class="bd">
 
       <div class="field">
-        <label>Humidité subie</label>
+        <label>Il sera souvent mouillé ou dans l'humidité ? <span class="qhint">(salle de bain, dehors…)</span></label>
         <div class="seg" data-constraint="humidity">
-          <button data-val="low" aria-pressed="true">Faible</button>
-          <button data-val="high">Élevée</button>
+          <button data-val="low" aria-pressed="true">Non</button>
+          <button data-val="high">Oui</button>
         </div>
       </div>
 
       <div class="field">
-        <label>Exposition UV / extérieur</label>
+        <label>Il restera dehors, au soleil ?</label>
         <div class="seg" data-constraint="uv">
-          <button data-val="no" aria-pressed="true">Intérieur</button>
-          <button data-val="yes">Extérieur / soleil</button>
+          <button data-val="no" aria-pressed="true">Non, à l'intérieur</button>
+          <button data-val="yes">Oui, dehors</button>
         </div>
       </div>
 
       <div class="field">
-        <label>Température subie</label>
+        <label>Il peut chauffer fort ? <span class="qhint">(voiture en été, près du feu…)</span></label>
         <div class="seg" data-constraint="heat">
-          <button data-val="ambient" aria-pressed="true">Ambiante</button>
-          <button data-val="warm">Chaude (&gt; 50°C)</button>
+          <button data-val="ambient" aria-pressed="true">Non</button>
+          <button data-val="warm">Oui</button>
         </div>
       </div>
 
       <div class="field">
-        <label>Résistance mécanique</label>
+        <label>Quelle solidité il te faut ?</label>
         <div class="seg" data-constraint="strength">
-          <button data-val="low">Décorative</button>
-          <button data-val="standard" aria-pressed="true">Standard</button>
-          <button data-val="high">Élevée</button>
+          <button data-val="low">Déco</button>
+          <button data-val="standard" aria-pressed="true">Normale</button>
+          <button data-val="high">Costaud</button>
         </div>
       </div>
 
       <div class="field">
-        <label>Rigidité</label>
+        <label>Tu le veux dur ou souple ?</label>
         <div class="seg" data-constraint="flex">
-          <button data-val="rigid" aria-pressed="true">Rigide</button>
+          <button data-val="rigid" aria-pressed="true">Dur</button>
           <button data-val="flexible">Souple</button>
         </div>
       </div>
 
       <div class="field">
-        <label>Contact alimentaire</label>
+        <label>Il touchera de la nourriture ?</label>
         <div class="seg" data-constraint="food">
           <button data-val="no" aria-pressed="true">Non</button>
           <button data-val="yes">Oui</button>
