@@ -86,8 +86,7 @@ Recette/
 │   ├── cancel-push.js  ← annule un push planifié
 │   ├── _budget-core.js   ← moteur de récurrence des échéances (dupliqué à l'identique dans budget/index.html)
 │   ├── _budget-notify.js ← rédaction du texte de la notification quotidienne
-│   ├── budget-schedule.js ← crée/remplace/supprime la planification quotidienne QStash (+ envoi de test)
-│   ├── budget-push.js  ← appelé chaque jour par QStash : calcule le jour et envoie le push
+│   ├── budget.js       ← endpoint unique d'échéance. : set/clear (planification QStash), test, push
 │   └── pay/            ← backend Stripe Checkout MODE TEST, PARTAGÉ entre mise., Metria et LTVTC Topo
 │       ├── _lib.js     ← catalogue produits par app, CORS, JWT, upsert premium_users
 │       ├── checkout.js ← crée une session Checkout (mise. exige le JWT Supabase)
@@ -137,9 +136,10 @@ Recette/
   courbe de solde projeté sur 30 jours avec alerte de point bas, calendrier mensuel, liste triée par
   prochaine occurrence avec coût mensuel moyen, réglages (heure du rappel, solde, devise, décalage
   week-end, export/import JSON). Fréquences mensuelle/hebdo/trimestrielle/semestrielle/annuelle/ponctuelle,
-  bornes début-fin, pause, rappel anticipé J-1→J-7. **Notification quotidienne** : `budget-schedule.js`
-  pose une planification cron QStash (heure locale convertie en UTC, réalignée à l'ouverture de l'app)
-  qui transporte les échéances ; `budget-push.js` recalcule le jour et envoie le push. **Aucune nouvelle
+  bornes début-fin, pause, rappel anticipé J-1→J-7. **Notification quotidienne** : `api/budget.js`
+  (action `set`) pose une planification cron QStash (heure locale convertie en UTC, réalignée à
+  l'ouverture de l'app) qui transporte les échéances ; QStash rappelle chaque jour le même endpoint
+  (action `push`, protégée par `SEND_SECRET`) qui recalcule le jour et envoie le push. **Aucune nouvelle
   variable d'environnement** (réutilise VAPID/QStash/SEND_SECRET de mise.). **Pas de base de données** :
   les données restent dans le `localStorage` du téléphone. Le moteur de récurrence est volontairement
   dupliqué (`api/_budget-core.js` ↔ `budget/index.html`) faute de build côté front — parité vérifiée
@@ -160,6 +160,13 @@ Recette/
    divergent. À revoir si le front adopte un jour un bundler.
 9. **échéance. — pas de synchronisation** : données locales au téléphone, un seul appareil, sauvegarde
    par export JSON manuel. Migration possible vers Supabase (comme mise.) si le besoin apparaît.
+10. **Plafond des fonctions serverless atteint (2026-07-25)** : le plan Vercel **Hobby** limite un
+    déploiement à **12 fonctions**, et le dépôt en compte désormais exactement 12. Une 13e fait
+    échouer tout le déploiement (`exceeded_serverless_functions_per_deployment`, erreur à l'étape
+    `patchBuild` — le build réussit, c'est le déploiement qui casse). C'est pour cette raison
+    qu'échéance. tient dans un seul `api/budget.js` multi-actions. Avant d'ajouter un endpoint :
+    regrouper `schedule-push.js` + `send-push.js` + `cancel-push.js` en un seul fichier d'actions
+    (gain de 2), ou passer sur un plan Pro. Rappel : les fichiers préfixés par `_` ne comptent pas.
 
 ## 8. Prochaines améliorations recommandées
 

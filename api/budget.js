@@ -1,10 +1,15 @@
-// api/budget-schedule.js — planification (et test) du rappel quotidien des échéances.
+// api/budget.js — endpoint unique de l'app échéance. (/budget/).
 //
-// L'app n'a pas de base de données : c'est la planification QStash elle-même qui
-// transporte les échéances. Chaque modification côté app recrée la planification
-// (supprime l'ancienne, en crée une nouvelle) avec les données à jour.
+// ⚠️ Pourquoi un seul fichier pour quatre actions : le plan Vercel Hobby limite un
+// déploiement à 12 fonctions serverless, et le dépôt en compte déjà 11. Séparer la
+// planification et l'envoi ferait échouer tout le déploiement. Les fichiers préfixés
+// par « _ » ne comptent pas comme des routes, d'où _budget-core.js / _budget-notify.js.
 //
-// Actions : "set" (créer/remplacer), "clear" (supprimer), "test" (envoyer tout de suite).
+// Actions (dans le corps JSON) :
+//   set    → crée/remplace la planification quotidienne QStash        (appelée par l'app)
+//   clear  → supprime la planification                                (appelée par l'app)
+//   test   → envoie tout de suite la notification du jour             (appelée par l'app)
+//   push   → calcule le jour et envoie le push                        (appelée par QStash, exige SEND_SECRET)
 export const maxDuration = 30;
 
 import webpush from "web-push";
@@ -62,13 +67,37 @@ async function qstash(path, init = {}) {
   });
 }
 
-async function supprimer(scheduleId) {
+async function supprimerPlanification(scheduleId) {
   if (!scheduleId) return;
   try { await qstash(`/v2/schedules/${encodeURIComponent(scheduleId)}`, { method: "DELETE" }); } catch {}
 }
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Méthode non autorisée" });
+
+  const body = req.body || {};
+  const action = body.action || "set";
+
+  // ─── Appel de QStash : envoi de la notification du jour ───
+  // Traité avant le contrôle d'origine (QStash n'envoie pas d'en-tête Origin)
+  // et protégé par le secret partagé, que le navigateur ne connaît jamais.
+  if (action === "push") {
+    try {
+      if (body.secret !== SEND_SECRET) return res.status(401).json({ error: "non autorisé" });
+      if (!body.subscription) return res.status(400).json({ error: "pas d'abonnement" });
+
+      const notif = composeNotification(body, todayLocal(Number(body.tzOffset || 0)));
+      if (!notif) return res.status(200).json({ ok: true, skipped: "rien à signaler" });
+
+      await webpush.sendNotification(body.subscription, JSON.stringify({
+        title: notif.title, body: notif.body, tag: "echeance-jour", url: "/budget/",
+      }));
+      return res.status(200).json({ ok: true });
+    } catch (e) {
+      // 200 malgré l'erreur : sinon QStash retente en boucle sur un abonnement expiré.
+      return res.status(200).json({ ok: false, error: String((e && e.message) || e) });
+    }
+  }
 
   // origine autorisée (opt-in, même convention que api/extract.js)
   const allowed = (process.env.ALLOWED_ORIGINS || "").split(",").map((s) => s.trim()).filter(Boolean);
@@ -80,17 +109,17 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { action = "set", scheduleId = null, subscription = null, hour = 8, minute = 0 } = req.body || {};
-    const data = sanitize(req.body?.data);
+    const { scheduleId = null, subscription = null, hour = 8, minute = 0 } = body;
+    const data = sanitize(body.data);
 
     if (action === "clear") {
-      await supprimer(scheduleId);
+      await supprimerPlanification(scheduleId);
       return res.status(200).json({ ok: true });
     }
 
     if (!subscription) return res.status(400).json({ error: "abonnement push manquant" });
 
-    // Envoi immédiat (bouton « Tester la notification »).
+    // ─── Envoi immédiat (bouton « Tester la notification ») ───
     if (action === "test") {
       const notif = composeNotification({ ...data, quietIfEmpty: false }, todayLocal(data.tzOffset));
       await webpush.sendNotification(subscription, JSON.stringify({
@@ -99,6 +128,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, preview: notif });
     }
 
+    // ─── Planification quotidienne ───
     if (!QSTASH_URL || !QSTASH_TOKEN || !BASE_URL) {
       return res.status(500).json({ error: "QStash non configuré sur le serveur" });
     }
@@ -110,13 +140,13 @@ export default async function handler(req, res) {
     const utcMin = ((h * 60 + m + data.tzOffset) % 1440 + 1440) % 1440;
     const cron = `${utcMin % 60} ${Math.floor(utcMin / 60)} * * *`;
 
-    await supprimer(scheduleId);                       // une seule planification par appareil
+    await supprimerPlanification(scheduleId);          // une seule planification par appareil
 
-    const dest = `${BASE_URL}/api/budget-push`;
+    const dest = `${BASE_URL}/api/budget`;             // QStash rappellera ce même endpoint
     const r = await qstash(`/v2/schedules/${dest}`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Upstash-Cron": cron },
-      body: JSON.stringify({ ...data, subscription, secret: SEND_SECRET }),
+      body: JSON.stringify({ ...data, action: "push", subscription, secret: SEND_SECRET }),
     });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) return res.status(500).json({ error: "planification échouée", detail: d });

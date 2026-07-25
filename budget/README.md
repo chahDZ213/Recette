@@ -30,8 +30,15 @@ pour coller au comportement réel de la banque. Dates de début et de fin par é
 ### Backend (dossier `api/`)
 - `api/_budget-core.js` — moteur de récurrence (dates, fréquences, décalage week-end).
 - `api/_budget-notify.js` — rédaction du texte de la notification.
-- `api/budget-schedule.js` — crée / remplace / supprime la planification quotidienne, et envoi de test.
-- `api/budget-push.js` — appelé chaque jour par QStash : calcule le jour et envoie le push.
+- `api/budget.js` — endpoint unique, quatre actions : `set` / `clear` (planification quotidienne),
+  `test` (envoi immédiat) et `push` (appelée par QStash chaque jour, protégée par `SEND_SECRET`).
+
+> **Pourquoi un seul fichier** : le plan Vercel Hobby limite un déploiement à **12 fonctions
+> serverless** et le dépôt en comptait déjà 11. Séparer planification et envoi faisait échouer
+> tout le déploiement (`exceeded_serverless_functions_per_deployment`). Les fichiers préfixés
+> par `_` ne comptent pas comme des routes. **Le projet est désormais pile à 12** : ajouter une
+> fonction ailleurs cassera le déploiement tant qu'on n'aura pas regroupé d'autres endpoints
+> (les trois `*-push.js` de mise. sont les candidats évidents) ou basculé sur un plan Pro.
 
 ## Où vivent les données
 

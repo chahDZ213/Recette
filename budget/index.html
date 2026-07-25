@@ -1334,7 +1334,7 @@ async function syncNow(){
   const sub = await ensurePushSubscription();
   if (!sub) return false;
   try {
-    const r = await fetch("/api/budget-schedule", {
+    const r = await fetch("/api/budget", {
       method:"POST", headers:{ "content-type":"application/json" },
       body: JSON.stringify({
         action:"set", scheduleId:S.scheduleId, subscription:sub,
@@ -1369,7 +1369,7 @@ async function desactiverNotif(){
   S.notif = false; S.scheduleId = null; saveSet();
   if (id) {
     try {
-      await fetch("/api/budget-schedule", {
+      await fetch("/api/budget", {
         method:"POST", headers:{ "content-type":"application/json" },
         body: JSON.stringify({ action:"clear", scheduleId:id }),
       });
@@ -1383,7 +1383,7 @@ async function testerNotif(){
   const btn = $("testNotif");
   btn.disabled = true; btn.textContent = "Envoi…";
   try {
-    const r = await fetch("/api/budget-schedule", {
+    const r = await fetch("/api/budget", {
       method:"POST", headers:{ "content-type":"application/json" },
       body: JSON.stringify({ action:"test", subscription:sub, data:payload() }),
     });
