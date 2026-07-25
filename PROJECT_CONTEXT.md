@@ -2,7 +2,7 @@
 
 > **Document de référence pour les assistants IA** (Claude Code = ingénieur développeur principal, ChatGPT = architecture / produit / design / audits).
 > À maintenir à jour à chaque grosse modification du projet.
-> Dernière mise à jour : 2026-07-17.
+> Dernière mise à jour : 2026-07-25.
 
 ---
 
@@ -74,11 +74,20 @@ Recette/
 ├── icon-192.png / icon-512.png
 ├── package.json        ← seule dépendance : web-push
 ├── pay-retour.html     ← page de retour Stripe pour les apps sans site (Metria)
+├── print/              ← app sœur « Empreinte » (impression 3D à la demande) — voir print/README.md
+├── budget/             ← app sœur « échéance. » (rappel des prélèvements) — voir budget/README.md
+│   ├── index.html      ← toute l'app (vanilla, sans build)
+│   ├── sw.js           ← service worker de portée /budget/ (cache + push)
+│   └── manifest.json + icon-192/512/maskable.png
 ├── api/
 │   ├── extract.js      ← endpoint principal : extraction, vision, idées, frigo, traduction, codes premium
 │   ├── schedule-push.js ← planifie un push différé via QStash
 │   ├── send-push.js    ← appelé par QStash, envoie le push (protégé par SEND_SECRET)
 │   ├── cancel-push.js  ← annule un push planifié
+│   ├── _budget-core.js   ← moteur de récurrence des échéances (dupliqué à l'identique dans budget/index.html)
+│   ├── _budget-notify.js ← rédaction du texte de la notification quotidienne
+│   ├── budget-schedule.js ← crée/remplace/supprime la planification quotidienne QStash (+ envoi de test)
+│   ├── budget-push.js  ← appelé chaque jour par QStash : calcule le jour et envoie le push
 │   └── pay/            ← backend Stripe Checkout MODE TEST, PARTAGÉ entre mise., Metria et LTVTC Topo
 │       ├── _lib.js     ← catalogue produits par app, CORS, JWT, upsert premium_users
 │       ├── checkout.js ← crée une session Checkout (mise. exige le JWT Supabase)
@@ -122,6 +131,20 @@ Recette/
 
 - ✅ **Stripe Checkout démo (2026-07-17)** : abonnement premium 3,99 €/mois en **MODE TEST** (carte 4242 4242 4242 4242). Backend `api/pay/` **partagé avec Metria et LTVTC Topo** (catalogue par app, prix inline `price_data` — rien à créer dans le dashboard). Bouton « Passer premium » dans Réglages (JWT obligatoire), retour `?pay=success&session_id=…` vérifié côté serveur avant activation, table Supabase `premium_users` (RLS : lecture de sa propre ligne, écriture service_role uniquement), synchro à la connexion (`syncPremiumFromCloud`), webhook `checkout.session.completed` / `customer.subscription.deleted`. Le code d'accès historique reste fonctionnel. Nécessite les env vars Stripe (section 4) — voir `../STRIPE-DEMO.md`.
 
+- ✅ **échéance. (2026-07-25)** — nouvelle app sœur sous `/budget/`, indépendante de mise. :
+  rappel quotidien des prélèvements et des paiements à faire. Écrans Aujourd'hui (montant du jour,
+  séparation « à payer toi-même » / « prélevé auto » / « reçu », case « payé », 7 prochains jours),
+  courbe de solde projeté sur 30 jours avec alerte de point bas, calendrier mensuel, liste triée par
+  prochaine occurrence avec coût mensuel moyen, réglages (heure du rappel, solde, devise, décalage
+  week-end, export/import JSON). Fréquences mensuelle/hebdo/trimestrielle/semestrielle/annuelle/ponctuelle,
+  bornes début-fin, pause, rappel anticipé J-1→J-7. **Notification quotidienne** : `budget-schedule.js`
+  pose une planification cron QStash (heure locale convertie en UTC, réalignée à l'ouverture de l'app)
+  qui transporte les échéances ; `budget-push.js` recalcule le jour et envoie le push. **Aucune nouvelle
+  variable d'environnement** (réutilise VAPID/QStash/SEND_SECRET de mise.). **Pas de base de données** :
+  les données restent dans le `localStorage` du téléphone. Le moteur de récurrence est volontairement
+  dupliqué (`api/_budget-core.js` ↔ `budget/index.html`) faute de build côté front — parité vérifiée
+  sur ~520 000 combinaisons date × fréquence.
+
 ## 7. Problèmes et points faibles connus
 
 1. **Premium contournable (atténué 2026-07-17)** : le gating reste côté client (`localStorage.mise_premium`), mais le statut payé existe désormais côté serveur (`premium_users`). Reste à faire : vérifier ce statut dans `/api/extract` pour les fonctions premium avant toute monétisation réelle.
@@ -131,6 +154,12 @@ Recette/
 5. **Traduction en masse séquentielle** : ~5-10 s par recette ; un utilisateur avec 50 recettes attendra plusieurs minutes (toast de progression, mais pas d'annulation).
 6. **YouTube depuis datacenter** : certains transcripts échouent (blocage IP) → fallback « coller la description » proposé à l'utilisateur.
 7. **Pas de tests automatisés** ni de CI.
+8. **échéance. — moteur dupliqué** : `api/_budget-core.js` et la section « moteur de récurrence » de
+   `budget/index.html` doivent rester identiques (le front n'a pas de build et ne peut pas importer le
+   module). Toute correction se reporte des deux côtés, sinon la notification et l'écran du jour
+   divergent. À revoir si le front adopte un jour un bundler.
+9. **échéance. — pas de synchronisation** : données locales au téléphone, un seul appareil, sauvegarde
+   par export JSON manuel. Migration possible vers Supabase (comme mise.) si le besoin apparaît.
 
 ## 8. Prochaines améliorations recommandées
 

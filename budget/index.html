@@ -1,0 +1,1653 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#F6F6F4" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0E1014" media="(prefers-color-scheme: dark)" />
+<meta name="description" content="Chaque jour, ce qui part de ton compte et ce que tu dois payer." />
+<title>échéance. — ce qui part de ton compte</title>
+
+<link rel="manifest" href="/budget/manifest.json" />
+<link rel="apple-touch-icon" href="/budget/icon-192.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="échéance." />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗓️</text></svg>" />
+
+<!--
+  échéance. — rappel quotidien des prélèvements et des paiements à faire.
+  App sœur de mise. dans le même dépôt, servie sous /budget/.
+  Vanilla, sans build, sans compte : les données vivent dans le localStorage du téléphone.
+  Les notifications quotidiennes passent par le backend Vercel déjà en place
+  (api/budget-schedule.js → QStash → api/budget-push.js → web-push).
+-->
+
+<style>
+/* ─────────────────────────  Jetons de design  ───────────────────────── */
+:root{
+  --bg:#F6F6F4; --surface:#FFFFFF; --surface-2:#FAFAF7; --surface-3:#F0F0EC;
+  --ink:#15171C; --ink-2:#474D56; --muted:#787F89;
+  --line:#E6E6E0; --line-2:#D6D6CE;
+  --accent:#4F46E5; --accent-soft:#EEEDFC;
+  --manual:#A8480A; --manual-soft:#FDF0E4;   /* ambre : une action est attendue de toi */
+  --income:#146B36; --income-soft:#E7F5EC;   /* vert : de l'argent entre */
+  --debit:#3F4650;  --debit-soft:#EFF0F2;    /* graphite : ça part tout seul */
+  --danger:#B3261E;
+  --radius:16px; --radius-sm:10px;
+  --shadow:0 1px 2px rgba(16,18,22,.05), 0 8px 24px rgba(16,18,22,.06);
+  --tap:rgba(0,0,0,.04);
+}
+html[data-theme="dark"]{
+  --bg:#0E1014; --surface:#171A20; --surface-2:#1C1F26; --surface-3:#232830;
+  --ink:#EDEFF3; --ink-2:#B4BAC4; --muted:#89909B;
+  --line:#252A32; --line-2:#333945;
+  --accent:#9AA0FF; --accent-soft:#22243A;
+  --manual:#F5B33C; --manual-soft:#302617;
+  --income:#5BD98A; --income-soft:#12291B;
+  --debit:#B3BAC6; --debit-soft:#22262E;
+  --danger:#F4837C;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  --tap:rgba(255,255,255,.05);
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+[hidden]{display:none !important;}   /* nos règles display: doivent céder à l'attribut hidden */
+body{
+  background:var(--bg); color:var(--ink);
+  font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+  padding-bottom:calc(84px + env(safe-area-inset-bottom));
+}
+button,input,select,textarea{font:inherit; color:inherit;}
+button{cursor:pointer; background:none; border:0; padding:0;}
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:6px;}
+.num{font-variant-numeric:tabular-nums; font-feature-settings:"tnum" 1;}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
+
+/* ─────────────────────────  Ossature  ───────────────────────── */
+header.top{
+  position:sticky; top:0; z-index:30;
+  /* Fond opaque et SURTOUT pas de backdrop-filter ici : un filtre crée un bloc
+     conteneur pour les descendants en position:fixed, ce qui collerait la barre
+     d'onglets sous l'en-tête au lieu du bas de l'écran. */
+  background:var(--bg);
+  border-bottom:1px solid var(--line);
+  padding:env(safe-area-inset-top) 0 0;
+}
+.top-in{
+  max-width:680px; margin:0 auto; padding:12px 18px;
+  display:flex; align-items:center; gap:12px;
+}
+.brand{font-size:19px; font-weight:700; letter-spacing:-.02em; display:flex; align-items:baseline; gap:2px;}
+.brand i{font-style:normal; color:var(--accent);}
+.top-spacer{flex:1;}
+.icon-btn{
+  width:38px; height:38px; border-radius:11px; display:grid; place-items:center;
+  color:var(--ink-2); font-size:17px; border:1px solid transparent;
+}
+.icon-btn:hover{background:var(--surface-3); color:var(--ink);}
+.icon-btn[aria-pressed="true"]{background:var(--accent-soft); color:var(--accent);}
+
+main{max-width:680px; margin:0 auto; padding:18px 18px 40px;}
+.screen{display:none; animation:fade .18s ease;}
+.screen.on{display:block;}
+@keyframes fade{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;}}
+
+/* Navigation : barre du bas sur mobile, onglets dans l'en-tête sur grand écran */
+nav.tabs{
+  position:fixed; left:0; right:0; bottom:0; z-index:30;
+  display:flex; justify-content:space-around; gap:2px;
+  background:color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter:saturate(1.6) blur(14px);
+  border-top:1px solid var(--line);
+  padding:6px 8px calc(6px + env(safe-area-inset-bottom));
+}
+nav.tabs button{
+  flex:1; max-width:120px; display:flex; flex-direction:column; align-items:center; gap:3px;
+  padding:7px 4px 5px; border-radius:12px; color:var(--muted); font-size:11px; font-weight:600;
+}
+nav.tabs button span.ic{font-size:19px; line-height:1;}
+nav.tabs button[aria-current="page"]{color:var(--accent); background:var(--accent-soft);}
+@media (min-width:900px){
+  body{padding-bottom:40px;}
+  nav.tabs{
+    position:static; background:none; border:0; backdrop-filter:none;
+    padding:0; justify-content:flex-start; gap:4px;
+  }
+  nav.tabs{margin-left:16px;}
+  nav.tabs button{flex:0 0 auto; max-width:none; flex-direction:row; gap:7px; font-size:14px; padding:8px 13px;}
+  nav.tabs button span.ic{font-size:15px;}
+}
+
+/* ─────────────────────────  Blocs  ───────────────────────── */
+.card{
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+  box-shadow:var(--shadow); overflow:hidden;
+}
+.card + .card{margin-top:14px;}
+.card-hd{padding:15px 17px 0; display:flex; align-items:baseline; gap:10px;}
+.card-hd h2{margin:0; font-size:12.5px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--muted);}
+.card-hd .hd-extra{margin-left:auto; font-size:13px; color:var(--muted);}
+.card-bd{padding:13px 17px 16px;}
+.section-title{
+  margin:26px 0 10px; font-size:12.5px; font-weight:700; letter-spacing:.07em;
+  text-transform:uppercase; color:var(--muted); display:flex; align-items:baseline; gap:10px;
+}
+.section-title .hd-extra{margin-left:auto; text-transform:none; letter-spacing:0; font-weight:600;}
+
+/* Bandeau du jour */
+.hero{
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+  box-shadow:var(--shadow); padding:19px 19px 17px; position:relative; overflow:hidden;
+}
+.hero::after{
+  content:""; position:absolute; inset:0 0 auto 0; height:3px;
+  background:linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 30%, transparent));
+}
+/* En français seule l'initiale prend la majuscule : « samedi 25 juillet », pas « Samedi 25 Juillet ». */
+.hero .date{font-size:13px; color:var(--muted); font-weight:600;}
+.hero .date::first-letter{text-transform:uppercase;}
+.hero .big{
+  font-size:clamp(34px,9vw,46px); font-weight:750; letter-spacing:-.035em; line-height:1.08; margin:7px 0 2px;
+}
+.hero .big.zero{color:var(--income);}
+.hero .sub{font-size:14.5px; color:var(--ink-2);}
+.hero .chips{display:flex; flex-wrap:wrap; gap:7px; margin-top:13px;}
+.mini-chip{
+  font-size:12.5px; font-weight:600; padding:5px 10px; border-radius:999px;
+  background:var(--surface-3); color:var(--ink-2);
+}
+.mini-chip.manual{background:var(--manual-soft); color:var(--manual);}
+.mini-chip.income{background:var(--income-soft); color:var(--income);}
+
+/* Ligne d'échéance */
+.row{
+  display:flex; align-items:center; gap:12px; padding:12px 17px;
+  border-top:1px solid var(--line); width:100%; text-align:left; color:inherit;
+}
+.card-bd + .row, .card-hd + .rows .row:first-child{border-top:1px solid var(--line);}
+.rows .row:first-child{border-top:0;}
+.row:hover{background:var(--tap);}
+.row .av{
+  width:38px; height:38px; flex:none; border-radius:11px; display:grid; place-items:center;
+  font-size:18px; background:var(--debit-soft);
+}
+.row.k-manual .av{background:var(--manual-soft);}
+.row.k-income .av{background:var(--income-soft);}
+.row .mid{flex:1; min-width:0;}
+.row .lbl{font-weight:600; font-size:15.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.row .meta{font-size:12.5px; color:var(--muted); margin-top:1px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;}
+.row .amt{font-weight:700; font-size:15.5px; white-space:nowrap; letter-spacing:-.01em;}
+.row.k-income .amt{color:var(--income);}
+.row.k-manual .amt{color:var(--manual);}
+.row.done .lbl, .row.done .amt{text-decoration:line-through; opacity:.45;}
+.row.paused{opacity:.5;}
+.tag{
+  font-size:10.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase;
+  padding:2px 6px; border-radius:5px; background:var(--debit-soft); color:var(--debit);
+}
+.tag.manual{background:var(--manual-soft); color:var(--manual);}
+.tag.income{background:var(--income-soft); color:var(--income);}
+
+/* Case « payé » */
+.check{
+  width:28px; height:28px; flex:none; border-radius:9px; border:2px solid var(--line-2);
+  display:grid; place-items:center; color:transparent; font-size:15px; font-weight:700;
+  transition:background .12s, border-color .12s, color .12s;
+}
+.check:hover{border-color:var(--manual);}
+.check[aria-pressed="true"]{background:var(--income); border-color:var(--income); color:#fff;}
+
+/* Boutons */
+.btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  padding:11px 17px; border-radius:12px; font-weight:650; font-size:15px;
+  background:var(--accent); color:#fff; border:1px solid transparent;
+}
+html[data-theme="dark"] .btn{color:#14161c;}
+.btn:hover{filter:brightness(1.06);}
+.btn.ghost{background:var(--surface); color:var(--ink); border-color:var(--line-2);}
+.btn.ghost:hover{background:var(--surface-3); filter:none;}
+.btn.danger{background:none; color:var(--danger); border-color:transparent;}
+.btn.danger:hover{background:color-mix(in srgb, var(--danger) 10%, transparent);}
+.btn.wide{width:100%;}
+.btn:disabled{opacity:.5; cursor:not-allowed; filter:none;}
+.btn-row{display:flex; gap:10px; flex-wrap:wrap;}
+
+/* Bouton flottant d'ajout */
+.fab{
+  position:fixed; right:18px; bottom:calc(84px + env(safe-area-inset-bottom)); z-index:29;
+  width:56px; height:56px; border-radius:19px; background:var(--accent); color:#fff;
+  font-size:27px; font-weight:400; display:grid; place-items:center;
+  box-shadow:0 6px 22px color-mix(in srgb, var(--accent) 42%, transparent);
+}
+html[data-theme="dark"] .fab{color:#14161c;}
+.fab:hover{transform:translateY(-1px);}
+@media (min-width:900px){ .fab{bottom:26px; right:26px;} }
+
+/* Champs */
+.field{margin-bottom:14px;}
+.field > label{display:block; font-size:13px; font-weight:650; color:var(--ink-2); margin-bottom:6px;}
+.field .hint{font-size:12.5px; color:var(--muted); margin-top:5px;}
+input[type=text],input[type=number],input[type=date],input[type=time],select,textarea{
+  width:100%; padding:11px 13px; border-radius:11px; border:1px solid var(--line-2);
+  background:var(--surface-2); color:var(--ink);
+}
+input:focus,select:focus,textarea:focus{outline:none; border-color:var(--accent); background:var(--surface);}
+textarea{min-height:64px; resize:vertical;}
+.grid-2{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+@media (max-width:420px){ .grid-2{grid-template-columns:1fr;} }
+
+/* Segments (type d'échéance, filtres) */
+.seg{display:flex; gap:6px; background:var(--surface-3); padding:4px; border-radius:13px;}
+.seg button{
+  flex:1; padding:9px 8px; border-radius:10px; font-size:14px; font-weight:650; color:var(--muted);
+  display:flex; align-items:center; justify-content:center; gap:6px;
+}
+.seg button[aria-pressed="true"]{background:var(--surface); color:var(--ink); box-shadow:var(--shadow);}
+.seg.tone button[aria-pressed="true"][data-kind="manual"]{color:var(--manual);}
+.seg.tone button[aria-pressed="true"][data-kind="income"]{color:var(--income);}
+
+.chips-row{display:flex; gap:7px; flex-wrap:wrap;}
+.chip{
+  padding:7px 12px; border-radius:999px; border:1px solid var(--line-2); background:var(--surface);
+  font-size:13.5px; font-weight:600; color:var(--ink-2);
+}
+.chip[aria-pressed="true"]{background:var(--accent-soft); border-color:var(--accent); color:var(--accent);}
+
+/* Interrupteur */
+.switch{display:flex; align-items:center; gap:13px; padding:12px 0;}
+.switch + .switch{border-top:1px solid var(--line);}
+.switch .sw-txt{flex:1;}
+.switch .sw-txt b{display:block; font-size:15px; font-weight:650;}
+.switch .sw-txt small{color:var(--muted); font-size:12.5px; line-height:1.4; display:block; margin-top:2px;}
+.toggle{
+  width:50px; height:30px; flex:none; border-radius:999px; background:var(--line-2);
+  position:relative; transition:background .16s;
+}
+.toggle::after{
+  content:""; position:absolute; top:3px; left:3px; width:24px; height:24px; border-radius:50%;
+  background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.3); transition:transform .16s;
+}
+.toggle[aria-pressed="true"]{background:var(--accent);}
+.toggle[aria-pressed="true"]::after{transform:translateX(20px);}
+
+/* Calendrier */
+.cal-nav{display:flex; align-items:center; gap:10px; margin-bottom:12px;}
+.cal-nav .m{flex:1; text-align:center; font-weight:700; font-size:17px; text-transform:capitalize;}
+.cal-nav button{width:38px; height:38px; border-radius:11px; background:var(--surface); border:1px solid var(--line); color:var(--ink-2);}
+.cal-nav button:hover{background:var(--surface-3);}
+.cal-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:4px;}
+.cal-dow{
+  text-align:center; font-size:11px; font-weight:700; color:var(--muted);
+  text-transform:uppercase; letter-spacing:.04em; padding-bottom:4px;
+}
+.cal-day{
+  aspect-ratio:1/1.04; border-radius:11px; border:1px solid transparent; background:var(--surface);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+  font-size:14px; color:var(--ink); padding:2px; position:relative;
+}
+.cal-day.out{opacity:.32;}
+.cal-day.today{border-color:var(--accent); font-weight:750;}
+.cal-day[aria-pressed="true"]{background:var(--accent); color:#fff;}
+html[data-theme="dark"] .cal-day[aria-pressed="true"]{color:#14161c;}
+.cal-day[aria-pressed="true"] .cal-amt{color:inherit; opacity:.85;}
+.cal-amt{font-size:9.5px; font-weight:700; color:var(--muted); line-height:1;}
+.cal-dots{display:flex; gap:2.5px; height:5px; align-items:center;}
+.cal-dots i{width:5px; height:5px; border-radius:50%; display:block;}
+.cal-dots i.d-debit{background:var(--debit);}
+.cal-dots i.d-manual{background:var(--manual);}
+.cal-dots i.d-income{background:var(--income);}
+.cal-day[aria-pressed="true"] .cal-dots i{background:currentColor;}
+
+/* Projection de solde */
+.chart-wrap{position:relative;}
+.chart-wrap svg{display:block; width:100%; height:132px; overflow:visible;}
+.chart-tip{
+  position:absolute; pointer-events:none; opacity:0; transition:opacity .1s;
+  background:var(--ink); color:var(--bg); font-size:12px; font-weight:600; line-height:1.35;
+  padding:6px 9px; border-radius:8px; white-space:nowrap; transform:translate(-50%,-100%); z-index:5;
+}
+.chart-tip.on{opacity:1;}
+.chart-legend{display:flex; justify-content:space-between; font-size:12px; color:var(--muted); margin-top:6px;}
+
+/* Feuille modale */
+.sheet-bg{
+  position:fixed; inset:0; z-index:60; background:rgba(12,14,18,.5);
+  display:none; align-items:flex-end; justify-content:center; backdrop-filter:blur(2px);
+}
+.sheet-bg.on{display:flex;}
+.sheet{
+  background:var(--surface); width:100%; max-width:560px; max-height:92vh; overflow:auto;
+  border-radius:22px 22px 0 0; padding:8px 18px calc(22px + env(safe-area-inset-bottom));
+  animation:up .22s cubic-bezier(.2,.8,.3,1);
+}
+@keyframes up{from{transform:translateY(22px); opacity:.6;} to{transform:none; opacity:1;}}
+@media (min-width:600px){
+  .sheet-bg{align-items:center;}
+  .sheet{border-radius:20px; max-height:88vh;}
+}
+.sheet .grab{width:38px; height:4px; border-radius:3px; background:var(--line-2); margin:6px auto 12px;}
+.sheet h3{margin:0 0 16px; font-size:20px; font-weight:700; letter-spacing:-.02em;}
+.sheet-foot{display:flex; gap:10px; margin-top:20px; position:sticky; bottom:0; background:var(--surface); padding:12px 0 0;}
+.sheet-foot .btn{flex:1;}
+
+/* Divers */
+.empty{text-align:center; padding:34px 20px; color:var(--muted);}
+.empty .em{font-size:38px; margin-bottom:10px;}
+.empty p{margin:0 0 16px; font-size:14.5px; line-height:1.55;}
+.toast{
+  position:fixed; left:50%; transform:translateX(-50%); bottom:calc(102px + env(safe-area-inset-bottom));
+  background:var(--ink); color:var(--bg); padding:11px 17px; border-radius:12px; font-size:14px;
+  font-weight:600; z-index:80; opacity:0; pointer-events:none; transition:opacity .18s, transform .18s;
+  max-width:90vw; text-align:center;
+}
+.toast.on{opacity:1; transform:translateX(-50%) translateY(-6px);}
+.note{
+  background:var(--accent-soft); color:var(--ink-2); border-radius:12px; padding:12px 14px;
+  font-size:13.5px; line-height:1.5;
+}
+.note b{color:var(--ink);}
+.totals{display:grid; grid-template-columns:repeat(3,1fr); gap:1px; background:var(--line); border-radius:12px; overflow:hidden;}
+.totals div{background:var(--surface); padding:12px 10px; text-align:center;}
+.totals span{display:block; font-size:11.5px; color:var(--muted); font-weight:650; text-transform:uppercase; letter-spacing:.04em;}
+.totals b{display:block; font-size:17px; font-weight:750; letter-spacing:-.02em; margin-top:3px;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-in">
+    <div class="brand">échéance<i>.</i></div>
+    <nav class="tabs" id="tabs" aria-label="Navigation principale">
+      <button data-screen="today"    aria-current="page"><span class="ic">☀️</span>Aujourd'hui</button>
+      <button data-screen="calendar"><span class="ic">🗓️</span>Calendrier</button>
+      <button data-screen="list"><span class="ic">📋</span>Échéances</button>
+      <button data-screen="settings"><span class="ic">⚙️</span>Réglages</button>
+    </nav>
+    <div class="top-spacer"></div>
+    <button class="icon-btn" id="themeBtn" title="Thème clair / sombre" aria-label="Changer de thème">◐</button>
+  </div>
+</header>
+
+<main>
+  <!-- ══════════ Aujourd'hui ══════════ -->
+  <section class="screen on" id="sc-today">
+    <div class="hero">
+      <div class="date" id="heroDate"></div>
+      <div class="big num" id="heroAmount">—</div>
+      <div class="sub" id="heroSub"></div>
+      <div class="chips" id="heroChips"></div>
+    </div>
+    <div id="todayBlocks"></div>
+    <div id="soldeBlock"></div>
+    <div class="section-title">Les 7 prochains jours <span class="hd-extra num" id="weekTotal"></span></div>
+    <div id="upcoming"></div>
+  </section>
+
+  <!-- ══════════ Calendrier ══════════ -->
+  <section class="screen" id="sc-calendar">
+    <div class="cal-nav">
+      <button id="calPrev" aria-label="Mois précédent">‹</button>
+      <div class="m" id="calMonth"></div>
+      <button id="calNext" aria-label="Mois suivant">›</button>
+    </div>
+    <div class="totals" id="calTotals"></div>
+    <div class="cal-grid" id="calGrid" style="margin-top:14px"></div>
+    <div id="calDetail"></div>
+  </section>
+
+  <!-- ══════════ Échéances ══════════ -->
+  <section class="screen" id="sc-list">
+    <div class="seg" id="listFilter" style="margin-bottom:14px">
+      <button data-f="all" aria-pressed="true">Tout</button>
+      <button data-f="manual">À payer</button>
+      <button data-f="debit">Prélevé</button>
+      <button data-f="income">Revenus</button>
+    </div>
+    <div class="totals" id="listTotals"></div>
+    <div id="listBody" style="margin-top:14px"></div>
+  </section>
+
+  <!-- ══════════ Réglages ══════════ -->
+  <section class="screen" id="sc-settings">
+    <div class="card">
+      <div class="card-hd"><h2>Rappel quotidien</h2></div>
+      <div class="card-bd">
+        <div class="switch">
+          <div class="sw-txt">
+            <b>Notification chaque jour</b>
+            <small>Reçois le récapitulatif du jour même si l'app est fermée.</small>
+          </div>
+          <button class="toggle" id="notifToggle" role="switch" aria-checked="false" aria-pressed="false" aria-label="Activer la notification quotidienne"></button>
+        </div>
+        <div id="notifDetail" hidden>
+          <div class="field" style="margin-top:14px">
+            <label for="notifHour">Heure du rappel</label>
+            <input type="time" id="notifHour" value="08:00" />
+          </div>
+          <div class="switch">
+            <div class="sw-txt">
+              <b>Me prévenir même les jours vides</b>
+              <small>Sinon, pas de notification quand rien n'est prévu.</small>
+            </div>
+            <button class="toggle" id="chattyToggle" role="switch" aria-checked="false" aria-pressed="false" aria-label="Prévenir même les jours vides"></button>
+          </div>
+          <div class="btn-row" style="margin-top:14px">
+            <button class="btn ghost" id="testNotif">Tester la notification</button>
+          </div>
+        </div>
+        <div class="note" id="notifNote" style="margin-top:14px" hidden></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-hd"><h2>Mon compte</h2></div>
+      <div class="card-bd">
+        <div class="grid-2">
+          <div class="field">
+            <label for="soldeInput">Solde actuel</label>
+            <input type="number" id="soldeInput" inputmode="decimal" step="0.01" placeholder="ex. 1240" />
+          </div>
+          <div class="field">
+            <label for="soldeDate">Constaté le</label>
+            <input type="date" id="soldeDate" />
+          </div>
+        </div>
+        <div class="hint" style="font-size:12.5px;color:var(--muted);margin-top:-6px">
+          Sert à projeter ce qu'il te restera après les échéances à venir. Facultatif.
+        </div>
+        <div class="field" style="margin-top:14px">
+          <label for="currencySel">Devise</label>
+          <select id="currencySel">
+            <option value="EUR">Euro (€)</option>
+            <option value="CHF">Franc suisse (CHF)</option>
+            <option value="DZD">Dinar algérien (DA)</option>
+            <option value="MAD">Dirham marocain (MAD)</option>
+            <option value="USD">Dollar ($)</option>
+            <option value="GBP">Livre sterling (£)</option>
+            <option value="CAD">Dollar canadien (CA$)</option>
+          </select>
+        </div>
+        <div class="switch">
+          <div class="sw-txt">
+            <b>Décaler les week-ends</b>
+            <small>Une échéance qui tombe un samedi ou un dimanche est comptée le lundi, comme le fait la banque.</small>
+          </div>
+          <button class="toggle" id="weekendToggle" role="switch" aria-checked="false" aria-pressed="false" aria-label="Décaler les échéances du week-end"></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-hd"><h2>Mes données</h2></div>
+      <div class="card-bd">
+        <div class="note" style="margin-bottom:14px">
+          Tout est stocké <b>sur ton téléphone</b>, sans compte ni serveur.
+          Pense à exporter une sauvegarde de temps en temps.
+        </div>
+        <div class="btn-row">
+          <button class="btn ghost" id="exportBtn">Exporter</button>
+          <button class="btn ghost" id="importBtn">Importer</button>
+          <button class="btn danger" id="wipeBtn">Tout effacer</button>
+        </div>
+        <input type="file" id="importFile" accept="application/json,.json" class="sr" />
+        <div class="hint" style="font-size:12.5px;color:var(--muted);margin-top:12px" id="storeInfo"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<button class="fab" id="addBtn" aria-label="Ajouter une échéance">＋</button>
+
+<!-- ══════════ Feuille d'ajout / édition ══════════ -->
+<div class="sheet-bg" id="sheetBg" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+  <div class="sheet" id="sheet">
+    <div class="grab"></div>
+    <h3 id="sheetTitle">Nouvelle échéance</h3>
+
+    <div class="field">
+      <label>Type</label>
+      <div class="seg tone" id="fKind">
+        <button data-kind="manual">💳 À payer</button>
+        <button data-kind="debit" aria-pressed="true">🏦 Prélevé</button>
+        <button data-kind="income">💰 Revenu</button>
+      </div>
+      <div class="hint" id="kindHint"></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="field">
+        <label for="fLabel">Libellé</label>
+        <input type="text" id="fLabel" maxlength="60" placeholder="Loyer, Netflix, EDF…" />
+      </div>
+      <div class="field">
+        <label for="fAmount">Montant</label>
+        <input type="number" id="fAmount" inputmode="decimal" step="0.01" min="0" placeholder="0,00" />
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Catégorie</label>
+      <div class="chips-row" id="fCat"></div>
+    </div>
+
+    <div class="field">
+      <label for="fFreq">Fréquence</label>
+      <select id="fFreq">
+        <option value="monthly">Tous les mois</option>
+        <option value="weekly">Toutes les semaines</option>
+        <option value="quarterly">Tous les 3 mois</option>
+        <option value="semiannual">Tous les 6 mois</option>
+        <option value="yearly">Tous les ans</option>
+        <option value="once">Une seule fois</option>
+      </select>
+    </div>
+
+    <div class="grid-2" id="fWhenWrap">
+      <div class="field" id="wDay">
+        <label for="fDay">Jour du mois</label>
+        <select id="fDay"></select>
+      </div>
+      <div class="field" id="wMonth" hidden>
+        <label for="fMonth">Mois</label>
+        <select id="fMonth"></select>
+      </div>
+      <div class="field" id="wWeekday" hidden>
+        <label for="fWeekday">Jour de la semaine</label>
+        <select id="fWeekday"></select>
+      </div>
+      <div class="field" id="wDate" hidden>
+        <label for="fDate">Date</label>
+        <input type="date" id="fDate" />
+      </div>
+      <div class="field" id="wNotify">
+        <label for="fNotify">Me prévenir</label>
+        <select id="fNotify">
+          <option value="0">Le jour même</option>
+          <option value="1">1 jour avant</option>
+          <option value="2">2 jours avant</option>
+          <option value="3">3 jours avant</option>
+          <option value="5">5 jours avant</option>
+          <option value="7">1 semaine avant</option>
+        </select>
+      </div>
+    </div>
+
+    <details id="fMore">
+      <summary style="cursor:pointer; color:var(--muted); font-size:13.5px; font-weight:650; margin-bottom:12px">
+        Plus d'options
+      </summary>
+      <div class="grid-2">
+        <div class="field">
+          <label for="fStart">Commence le</label>
+          <input type="date" id="fStart" />
+        </div>
+        <div class="field">
+          <label for="fEnd">Se termine le</label>
+          <input type="date" id="fEnd" />
+        </div>
+      </div>
+      <div class="field">
+        <label for="fNote">Note</label>
+        <textarea id="fNote" maxlength="200" placeholder="Compte, référence, à surveiller…"></textarea>
+      </div>
+      <div class="switch">
+        <div class="sw-txt"><b>En pause</b><small>Conservée mais ignorée dans les calculs et les rappels.</small></div>
+        <button class="toggle" id="fPaused" role="switch" aria-checked="false" aria-pressed="false" aria-label="Mettre en pause"></button>
+      </div>
+    </details>
+
+    <div class="sheet-foot">
+      <button class="btn ghost" id="sheetCancel">Annuler</button>
+      <button class="btn danger" id="sheetDelete" hidden>Supprimer</button>
+      <button class="btn" id="sheetSave">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+"use strict";
+
+/* ═══════════════════════════════════════════════════════════════════
+   1 · Moteur de récurrence
+   ⚠️ COPIE CONFORME de api/_budget-core.js — le serveur rédige la
+   notification quotidienne avec exactement les mêmes règles. Toute
+   correction ici doit être reportée là-bas (et inversement).
+   ═══════════════════════════════════════════════════════════════════ */
+const pad2 = (n) => String(n).padStart(2, "0");
+const ymd = (d) => `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
+function parseYmd(s){ const [y,m,d]=String(s).split("-").map(Number); return new Date(Date.UTC(y,(m||1)-1,d||1)); }
+function addDays(s,n){ const d=parseYmd(s); d.setUTCDate(d.getUTCDate()+n); return ymd(d); }
+const daysInMonth = (y,m) => new Date(Date.UTC(y, m+1, 0)).getUTCDate();
+
+// Jour civil « ici et maintenant » (le fuseau du navigateur).
+function today(){
+  const n = new Date();
+  return `${n.getFullYear()}-${pad2(n.getMonth()+1)}-${pad2(n.getDate())}`;
+}
+
+function shiftToWorkday(dateStr){
+  const wd = parseYmd(dateStr).getUTCDay();
+  if (wd === 6) return addDays(dateStr, 2);
+  if (wd === 0) return addDays(dateStr, 1);
+  return dateStr;
+}
+const domClamped = (y,m,wanted) => Math.min(Math.max(1, wanted||1), daysInMonth(y,m));
+
+function occursOnRaw(item, dateStr){
+  if (!item || item.paused) return false;
+  if (item.start && dateStr < item.start) return false;
+  if (item.end && dateStr > item.end) return false;
+  const d = parseYmd(dateStr), y = d.getUTCFullYear(), m = d.getUTCMonth(), dom = d.getUTCDate();
+  switch (item.freq) {
+    case "once":       return item.date === dateStr;
+    case "weekly":     return d.getUTCDay() === Number(item.weekday ?? 1);
+    case "monthly":    return dom === domClamped(y, m, item.day);
+    case "quarterly":  return ((m - Number(item.anchorMonth||0)) % 3 + 3) % 3 === 0 && dom === domClamped(y, m, item.day);
+    case "semiannual": return ((m - Number(item.anchorMonth||0)) % 6 + 6) % 6 === 0 && dom === domClamped(y, m, item.day);
+    case "yearly":     return m === Number(item.anchorMonth||0) && dom === domClamped(y, m, item.day);
+    default:           return false;
+  }
+}
+
+function occursOn(item, dateStr, shiftWeekend){
+  if (!shiftWeekend) return occursOnRaw(item, dateStr);
+  const wd = parseYmd(dateStr).getUTCDay();
+  if (wd === 0 || wd === 6) return false;
+  for (let back = 0; back <= 2; back++) {
+    const src = addDays(dateStr, -back);
+    if (back > 0) { const swd = parseYmd(src).getUTCDay(); if (swd !== 0 && swd !== 6) continue; }
+    if (occursOnRaw(item, src) && shiftToWorkday(src) === dateStr) return true;
+  }
+  return false;
+}
+
+const KIND_ORDER = { manual:0, debit:1, income:2 };
+function itemsOn(list, dateStr){
+  return (list||[])
+    .filter((it) => occursOn(it, dateStr, S.shiftWeekend))
+    .sort((a,b) => (KIND_ORDER[a.kind]??1)-(KIND_ORDER[b.kind]??1) || Number(b.amount||0)-Number(a.amount||0));
+}
+const paidKey = (id, dateStr) => `${id}:${dateStr}`;
+
+/* ═══════════════════════════════════════════════════════════════════
+   2 · Données et stockage
+   ═══════════════════════════════════════════════════════════════════ */
+const K_ITEMS = "ech_items", K_SET = "ech_settings", K_PAID = "ech_paid", K_THEME = "ech_theme";
+
+const DEFAULTS = {
+  notif:false, hour:8, minute:0, quietIfEmpty:true, scheduleId:null, tzOffset:null,
+  currency:"EUR", shiftWeekend:false, solde:null, soldeDate:null,
+};
+
+let items = [];
+let S = { ...DEFAULTS };
+let paid = new Set();
+
+function load(){
+  try { items = JSON.parse(localStorage.getItem(K_ITEMS) || "[]"); } catch { items = []; }
+  try { S = { ...DEFAULTS, ...JSON.parse(localStorage.getItem(K_SET) || "{}") }; } catch { S = { ...DEFAULTS }; }
+  try { paid = new Set(JSON.parse(localStorage.getItem(K_PAID) || "[]")); } catch { paid = new Set(); }
+  prunePaid();
+}
+// On ne garde les paiements cochés que 120 jours : au-delà, ils n'intéressent plus personne.
+function prunePaid(){
+  const limite = addDays(today(), -120);
+  let bouge = false;
+  for (const k of paid) { const d = k.split(":")[1]; if (d && d < limite) { paid.delete(k); bouge = true; } }
+  if (bouge) savePaid();
+}
+const saveItems = () => localStorage.setItem(K_ITEMS, JSON.stringify(items));
+const saveSet   = () => localStorage.setItem(K_SET, JSON.stringify(S));
+const savePaid  = () => localStorage.setItem(K_PAID, JSON.stringify([...paid]));
+
+// Toute modification des données doit renvoyer la planification au serveur.
+function persist({ resync = true } = {}){
+  saveItems(); saveSet(); savePaid();
+  if (resync) planifierSync();
+  renderAll();
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   3 · Formats et petits utilitaires
+   ═══════════════════════════════════════════════════════════════════ */
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+const $ = (id) => document.getElementById(id);
+
+function money(amount, opts = {}){
+  const n = Number(amount || 0);
+  try {
+    return new Intl.NumberFormat("fr-FR", {
+      style:"currency", currency:S.currency,
+      minimumFractionDigits: (opts.round || Number.isInteger(n)) ? 0 : 2,
+      maximumFractionDigits: opts.round ? 0 : 2,
+    }).format(n);
+  } catch { return `${n.toFixed(2)} ${S.currency}`; }
+}
+const fmtDate = (s, o) => parseYmd(s).toLocaleDateString("fr-FR", { timeZone:"UTC", ...o });
+const somme = (list) => list.reduce((t, it) => t + Number(it.amount || 0), 0);
+
+const CATS = [
+  { id:"logement",  ic:"🏠", nom:"Logement" },
+  { id:"energie",   ic:"⚡", nom:"Énergie" },
+  { id:"telecom",   ic:"📱", nom:"Télécom" },
+  { id:"transport", ic:"🚗", nom:"Transport" },
+  { id:"assurance", ic:"🛡️", nom:"Assurance" },
+  { id:"credit",    ic:"🏦", nom:"Crédit" },
+  { id:"abo",       ic:"📺", nom:"Abonnement" },
+  { id:"impots",    ic:"🧾", nom:"Impôts" },
+  { id:"sante",     ic:"💊", nom:"Santé" },
+  { id:"courses",   ic:"🛒", nom:"Courses" },
+  { id:"epargne",   ic:"🐖", nom:"Épargne" },
+  { id:"salaire",   ic:"💼", nom:"Revenu" },
+  { id:"autre",     ic:"💸", nom:"Autre" },
+];
+const catOf = (id) => CATS.find((c) => c.id === id) || CATS[CATS.length - 1];
+
+const MOIS = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+const JOURS_SEM = ["dimanche","lundi","mardi","mercredi","jeudi","vendredi","samedi"];
+
+// « le 5 de chaque mois », « tous les 3 mois le 15 », « chaque mardi »…
+function freqLabel(it){
+  switch (it.freq) {
+    case "once":       return it.date ? `le ${fmtDate(it.date, { day:"numeric", month:"long", year:"numeric" })}` : "une seule fois";
+    case "weekly":     return `chaque ${JOURS_SEM[Number(it.weekday ?? 1)]}`;
+    case "monthly":    return `le ${it.day} de chaque mois`;
+    case "quarterly":  return `tous les 3 mois, le ${it.day} (à partir de ${MOIS[Number(it.anchorMonth||0)]})`;
+    case "semiannual": return `tous les 6 mois, le ${it.day} (à partir de ${MOIS[Number(it.anchorMonth||0)]})`;
+    case "yearly":     return `chaque ${it.day} ${MOIS[Number(it.anchorMonth||0)]}`;
+    default:           return "";
+  }
+}
+
+// Coût ramené au mois — permet de comparer un abonnement mensuel et une assurance annuelle.
+function monthlyEquivalent(it){
+  const a = Number(it.amount || 0);
+  switch (it.freq) {
+    case "weekly":     return a * 52 / 12;
+    case "monthly":    return a;
+    case "quarterly":  return a / 3;
+    case "semiannual": return a / 6;
+    case "yearly":     return a / 12;
+    default:           return 0;   // les échéances ponctuelles ne sont pas récurrentes
+  }
+}
+
+// Prochaine occurrence à partir d'aujourd'hui (400 jours de recherche : couvre l'annuel).
+function nextDate(it, from = today()){
+  for (let i = 0; i < 400; i++) { const d = addDays(from, i); if (occursOn(it, d, S.shiftWeekend)) return d; }
+  return null;
+}
+function relatif(dateStr){
+  const diff = Math.round((parseYmd(dateStr) - parseYmd(today())) / 86400000);
+  if (diff < 0)  return `il y a ${-diff} j`;
+  if (diff === 0) return "aujourd'hui";
+  if (diff === 1) return "demain";
+  if (diff <= 6)  return JOURS_SEM[parseYmd(dateStr).getUTCDay()];
+  return `dans ${diff} j`;
+}
+// Sans le nom du jour : à utiliser quand le titre affiche déjà « lundi 27 juil. ».
+function relatifCourt(dateStr){
+  const diff = Math.round((parseYmd(dateStr) - parseYmd(today())) / 86400000);
+  if (diff === 0) return "aujourd'hui";
+  if (diff === 1) return "demain";
+  return `dans ${diff} j`;
+}
+
+const estRegle = (it, date) => it.kind === "manual" && paid.has(paidKey(it.id, date));
+
+let toastTimer;
+function toast(msg){
+  const t = $("toast");
+  t.textContent = msg; t.classList.add("on");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("on"), 2600);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   4 · Écran « Aujourd'hui »
+   ═══════════════════════════════════════════════════════════════════ */
+function ligneHTML(it, date, { showCheck = true } = {}){
+  const cat = catOf(it.category);
+  const regle = estRegle(it, date);
+  const classes = ["row", "k-" + it.kind, regle ? "done" : "", it.paused ? "paused" : ""].filter(Boolean).join(" ");
+  const signe = it.kind === "income" ? "+" : "−";
+  const check = (showCheck && it.kind === "manual")
+    ? `<button class="check" data-pay="${esc(it.id)}" data-date="${date}" aria-pressed="${regle}"
+              aria-label="${regle ? "Marquer comme non payé" : "Marquer comme payé"} : ${esc(it.label)}">✓</button>`
+    : "";
+  return `<div class="${classes}">
+    <div class="av">${cat.ic}</div>
+    <button class="mid" data-edit="${esc(it.id)}" style="text-align:left">
+      <div class="lbl">${esc(it.label)}</div>
+      <div class="meta">${it.kind === "manual" ? '<span class="tag manual">à payer</span>' : ""}${
+        it.kind === "income" ? '<span class="tag income">revenu</span>' : ""}${
+        it.kind === "debit" ? '<span class="tag">auto</span>' : ""}<span>${esc(cat.nom)}</span></div>
+    </button>
+    <div class="amt num">${signe}${esc(money(it.amount))}</div>
+    ${check}
+  </div>`;
+}
+
+function renderToday(){
+  const d = today();
+  const jour = itemsOn(items, d);
+  const aPayer  = jour.filter((it) => it.kind === "manual" && !estRegle(it, d));
+  const regles  = jour.filter((it) => it.kind === "manual" && estRegle(it, d));
+  const debits  = jour.filter((it) => it.kind === "debit");
+  const revenus = jour.filter((it) => it.kind === "income");
+  const sortant = somme(debits) + somme(aPayer);
+
+  $("heroDate").textContent = fmtDate(d, { weekday:"long", day:"numeric", month:"long" });
+  const big = $("heroAmount");
+  big.textContent = jour.length ? money(sortant) : "Rien aujourd'hui";
+  big.classList.toggle("zero", !jour.length || sortant === 0);
+  big.style.fontSize = jour.length ? "" : "clamp(26px,7vw,34px)";
+
+  $("heroSub").textContent = !jour.length
+    ? "Aucune échéance prévue aujourd'hui."
+    : sortant > 0 ? "quittent ton compte aujourd'hui" : "aucune sortie aujourd'hui";
+
+  const chips = [];
+  if (aPayer.length)  chips.push(`<span class="mini-chip manual">${aPayer.length} à payer toi-même</span>`);
+  if (debits.length)  chips.push(`<span class="mini-chip">${debits.length} prélèvement${debits.length > 1 ? "s" : ""}</span>`);
+  if (revenus.length) chips.push(`<span class="mini-chip income">+${money(somme(revenus))} reçus</span>`);
+  if (regles.length)  chips.push(`<span class="mini-chip">${regles.length} déjà réglé${regles.length > 1 ? "s" : ""}</span>`);
+  $("heroChips").innerHTML = chips.join("");
+
+  // Blocs du jour
+  const blocs = [];
+  const bloc = (titre, extra, list) => `<div class="card">
+      <div class="card-hd"><h2>${titre}</h2><span class="hd-extra num">${extra}</span></div>
+      <div class="rows" style="margin-top:11px">${list.map((it) => ligneHTML(it, d)).join("")}</div>
+    </div>`;
+  if (aPayer.length || regles.length) {
+    blocs.push(bloc("À payer aujourd'hui", money(somme(aPayer)), [...aPayer, ...regles]));
+  }
+  if (debits.length)  blocs.push(bloc("Prélevé automatiquement", money(somme(debits)), debits));
+  if (revenus.length) blocs.push(bloc("Reçu aujourd'hui", "+" + money(somme(revenus)), revenus));
+
+  if (!items.length) {
+    blocs.push(`<div class="card"><div class="empty">
+      <div class="em">🗓️</div>
+      <p>Ajoute tes prélèvements et tes paiements récurrents.<br>
+         Chaque matin, tu sauras exactement ce qui part de ton compte.</p>
+      <button class="btn" data-add>Ajouter ma première échéance</button>
+    </div></div>`);
+  }
+  $("todayBlocks").innerHTML = blocs.join("");
+
+  renderSolde();
+  renderUpcoming();
+}
+
+// Les 7 prochains jours, regroupés par date.
+function renderUpcoming(){
+  const from = addDays(today(), 1);
+  const groupes = [];
+  let total = 0;
+  for (let i = 0; i < 7; i++) {
+    const date = addDays(from, i);
+    const list = itemsOn(items, date);
+    if (!list.length) continue;
+    total += somme(list.filter((it) => it.kind !== "income"));
+    groupes.push(`<div class="card">
+      <div class="card-hd">
+        <h2>${esc(fmtDate(date, { weekday:"long", day:"numeric", month:"short" }))}</h2>
+        <span class="hd-extra">${esc(relatifCourt(date))}</span>
+      </div>
+      <div class="rows" style="margin-top:11px">${list.map((it) => ligneHTML(it, date)).join("")}</div>
+    </div>`);
+  }
+  $("weekTotal").textContent = total > 0 ? "−" + money(total) : "";
+  $("upcoming").innerHTML = groupes.length
+    ? groupes.join("")
+    : `<div class="card"><div class="empty"><p>Rien de prévu dans les 7 prochains jours. 🌤️</p></div></div>`;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   5 · Projection de solde (courbe 30 jours, série unique)
+   ═══════════════════════════════════════════════════════════════════ */
+function projection(days = 30){
+  const from = today();
+  // Le solde saisi vaut à sa date : on rejoue les échéances entre cette date et aujourd'hui.
+  let solde = Number(S.solde);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(S.soldeDate || "") && S.soldeDate < from) {
+    // garde-fou : on ne rejoue pas plus d'un an, et jamais en boucle infinie
+    let d = S.soldeDate;
+    for (let n = 0; d < from && n < 400; n++, d = addDays(d, 1)) {
+      for (const it of itemsOn(items, d)) {
+        if (it.kind === "income") solde += Number(it.amount || 0);
+        else solde -= Number(it.amount || 0);
+      }
+    }
+  }
+  const pts = [{ date:from, solde }];
+  for (let i = 0; i < days; i++) {
+    const date = addDays(from, i);
+    for (const it of itemsOn(items, date)) {
+      if (it.kind === "income") solde += Number(it.amount || 0);
+      else solde -= Number(it.amount || 0);
+    }
+    pts.push({ date, solde });
+  }
+  return pts;
+}
+
+function renderSolde(){
+  const host = $("soldeBlock");
+  if (S.solde === null || S.solde === "" || isNaN(Number(S.solde))) {
+    host.innerHTML = items.length ? `<div class="card"><div class="card-bd">
+      <div class="note">Indique ton <b>solde actuel</b> dans les réglages : l'app te dira ce qu'il te
+      restera après chaque échéance des 30 prochains jours.</div>
+      <button class="btn ghost wide" style="margin-top:12px" data-goto="settings">Ouvrir les réglages</button>
+    </div></div>` : "";
+    return;
+  }
+
+  const pts = projection(30);
+  const fin = pts[pts.length - 1];
+  const bas = pts.reduce((m, p) => (p.solde < m.solde ? p : m), pts[0]);
+  const values = pts.map((p) => p.solde);
+  const max = Math.max(...values, 0), min = Math.min(...values, 0);
+  const span = (max - min) || 1;
+
+  // Géométrie : viewBox 0..300 × 0..100, tracé en 2px, axes discrets.
+  const W = 300, H = 100;
+  const x = (i) => (i / (pts.length - 1)) * W;
+  const y = (v) => H - ((v - min) / span) * H;
+  const ligne = pts.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(2)},${y(p.solde).toFixed(2)}`).join("");
+  const aire = `${ligne}L${W},${y(min).toFixed(2)}L0,${y(min).toFixed(2)}Z`;
+  const negatif = min < 0;
+  const yZero = y(0).toFixed(2);
+  const couleur = fin.solde < 0 ? "var(--danger)" : "var(--accent)";
+
+  host.innerHTML = `<div class="card">
+    <div class="card-hd">
+      <h2>Solde projeté sur 30 jours</h2>
+      <span class="hd-extra num">${esc(money(fin.solde, { round:true }))}</span>
+    </div>
+    <div class="card-bd">
+      <div class="chart-wrap" id="chartWrap">
+        <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img"
+             aria-label="Évolution du solde sur 30 jours, de ${esc(money(pts[0].solde))} à ${esc(money(fin.solde))}">
+          <defs>
+            <linearGradient id="gradSolde" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%"   stop-color="${couleur}" stop-opacity=".22"/>
+              <stop offset="100%" stop-color="${couleur}" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          ${negatif ? `<line x1="0" y1="${yZero}" x2="${W}" y2="${yZero}" stroke="var(--danger)"
+                             stroke-width="1" stroke-dasharray="4 4" vector-effect="non-scaling-stroke" opacity=".7"/>` : ""}
+          <path d="${aire}" fill="url(#gradSolde)"/>
+          <path d="${ligne}" fill="none" stroke="${couleur}" stroke-width="2"
+                stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+          <circle id="chartDot" r="4" fill="${couleur}" stroke="var(--surface)" stroke-width="2"
+                  cx="${x(pts.length-1)}" cy="${y(fin.solde)}" vector-effect="non-scaling-stroke"/>
+        </svg>
+        <div class="chart-tip" id="chartTip"></div>
+      </div>
+      <div class="chart-legend">
+        <span>aujourd'hui · ${esc(money(pts[0].solde, { round:true }))}</span>
+        <span>${esc(fmtDate(fin.date, { day:"numeric", month:"short" }))} · ${esc(money(fin.solde, { round:true }))}</span>
+      </div>
+      ${negatif ? `<div class="note" style="margin-top:12px; background:color-mix(in srgb, var(--danger) 12%, transparent)">
+          ⚠️ Au plus bas le <b>${esc(fmtDate(bas.date, { day:"numeric", month:"long" }))}</b> :
+          ${esc(money(bas.solde))}. Prévois de quoi couvrir.
+        </div>` : ""}
+    </div>
+  </div>`;
+
+  brancherCourbe(pts, x, y);
+}
+
+// Survol : repère + infobulle (une courbe interactive doit répondre au doigt).
+function brancherCourbe(pts, x, y){
+  const wrap = $("chartWrap"), tip = $("chartTip"), dot = $("chartDot");
+  if (!wrap) return;
+  const bouge = (ev) => {
+    const r = wrap.getBoundingClientRect();
+    const cx = (ev.touches ? ev.touches[0].clientX : ev.clientX) - r.left;
+    const i = Math.max(0, Math.min(pts.length - 1, Math.round((cx / r.width) * (pts.length - 1))));
+    const p = pts[i];
+    dot.setAttribute("cx", x(i)); dot.setAttribute("cy", y(p.solde));
+    tip.innerHTML = `${esc(fmtDate(p.date, { day:"numeric", month:"short" }))}<br>${esc(money(p.solde, { round:true }))}`;
+    tip.style.left = Math.max(42, Math.min(r.width - 42, (i / (pts.length - 1)) * r.width)) + "px";
+    tip.style.top = ((y(p.solde) / 100) * r.height - 8) + "px";
+    tip.classList.add("on");
+  };
+  const sortie = () => {
+    tip.classList.remove("on");
+    dot.setAttribute("cx", x(pts.length - 1)); dot.setAttribute("cy", y(pts[pts.length - 1].solde));
+  };
+  wrap.addEventListener("pointermove", bouge);
+  wrap.addEventListener("pointerleave", sortie);
+  wrap.addEventListener("touchmove", (e) => { bouge(e); e.preventDefault(); }, { passive:false });
+  wrap.addEventListener("touchend", sortie);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   6 · Calendrier
+   ═══════════════════════════════════════════════════════════════════ */
+let calCursor = null;   // "YYYY-MM"
+let calPicked = null;   // jour sélectionné
+
+function renderCalendar(){
+  if (!calCursor) calCursor = today().slice(0, 7);
+  const [Y, M] = calCursor.split("-").map(Number);
+  const year = Y, month = M - 1;
+
+  $("calMonth").textContent = `${MOIS[month]} ${year}`;
+
+  // Totaux du mois
+  let tDebit = 0, tManual = 0, tIncome = 0;
+  const nb = daysInMonth(year, month);
+  for (let d = 1; d <= nb; d++) {
+    const date = `${year}-${pad2(month + 1)}-${pad2(d)}`;
+    for (const it of itemsOn(items, date)) {
+      if (it.kind === "income") tIncome += Number(it.amount || 0);
+      else if (it.kind === "manual") tManual += Number(it.amount || 0);
+      else tDebit += Number(it.amount || 0);
+    }
+  }
+  $("calTotals").innerHTML = `
+    <div><span>Prélevé</span><b class="num">${esc(money(tDebit, { round:true }))}</b></div>
+    <div><span>À payer</span><b class="num" style="color:var(--manual)">${esc(money(tManual, { round:true }))}</b></div>
+    <div><span>Reçu</span><b class="num" style="color:var(--income)">${esc(money(tIncome, { round:true }))}</b></div>`;
+
+  // Grille lundi → dimanche
+  const premier = new Date(Date.UTC(year, month, 1));
+  const decalage = (premier.getUTCDay() + 6) % 7;
+  const cells = ["L","M","M","J","V","S","D"].map((j) => `<div class="cal-dow">${j}</div>`);
+  const d0 = today();
+
+  for (let i = 0; i < 42; i++) {
+    const dd = new Date(Date.UTC(year, month, 1 - decalage + i));
+    const date = ymd(dd);
+    const dehors = dd.getUTCMonth() !== month;
+    if (i >= 35 && dehors) continue;                       // 6e ligne inutile
+    const list = itemsOn(items, date);
+    const sortie = somme(list.filter((it) => it.kind !== "income"));
+    const kinds = [...new Set(list.map((it) => it.kind))];
+    const dots = kinds.map((k) => `<i class="d-${k}"></i>`).join("");
+    cells.push(`<button class="cal-day${dehors ? " out" : ""}${date === d0 ? " today" : ""}"
+      data-day="${date}" aria-pressed="${calPicked === date}"
+      aria-label="${esc(fmtDate(date, { day:"numeric", month:"long" }))}${list.length ? `, ${list.length} échéance${list.length>1?"s":""}` : ", rien"}">
+      <span>${dd.getUTCDate()}</span>
+      <span class="cal-dots">${dots}</span>
+      <span class="cal-amt num">${sortie > 0 ? esc(money(sortie, { round:true })) : ""}</span>
+    </button>`);
+  }
+  $("calGrid").innerHTML = cells.join("");
+
+  // Détail du jour sélectionné
+  const det = $("calDetail");
+  if (!calPicked) {
+    det.innerHTML = `<div class="section-title" style="margin-top:22px">Détail</div>
+      <div class="card"><div class="empty"><p>Touche un jour pour voir le détail.</p></div></div>`;
+    return;
+  }
+  const list = itemsOn(items, calPicked);
+  det.innerHTML = `<div class="section-title" style="margin-top:22px">
+      ${esc(fmtDate(calPicked, { weekday:"long", day:"numeric", month:"long" }))}
+      <span class="hd-extra num">${list.length ? "−" + esc(money(somme(list.filter((i2) => i2.kind !== "income")))) : ""}</span>
+    </div>
+    <div class="card">${list.length
+      ? `<div class="rows">${list.map((it) => ligneHTML(it, calPicked)).join("")}</div>`
+      : `<div class="empty"><p>Aucune échéance ce jour-là.</p></div>`}</div>`;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   7 · Liste des échéances
+   ═══════════════════════════════════════════════════════════════════ */
+let listFilter = "all";
+
+function renderList(){
+  const visibles = items.filter((it) => listFilter === "all" || it.kind === listFilter);
+
+  const mensuelSortie = items.filter((it) => it.kind !== "income").reduce((t, it) => t + monthlyEquivalent(it), 0);
+  const mensuelEntree = items.filter((it) => it.kind === "income").reduce((t, it) => t + monthlyEquivalent(it), 0);
+  $("listTotals").innerHTML = `
+    <div><span>Sorties / mois</span><b class="num">${esc(money(mensuelSortie, { round:true }))}</b></div>
+    <div><span>Entrées / mois</span><b class="num" style="color:var(--income)">${esc(money(mensuelEntree, { round:true }))}</b></div>
+    <div><span>Reste</span><b class="num" style="color:${mensuelEntree - mensuelSortie < 0 ? "var(--danger)" : "var(--income)"}">
+      ${esc(money(mensuelEntree - mensuelSortie, { round:true }))}</b></div>`;
+
+  if (!visibles.length) {
+    $("listBody").innerHTML = `<div class="card"><div class="empty">
+      <div class="em">📋</div>
+      <p>${items.length ? "Rien dans cette catégorie." : "Aucune échéance enregistrée pour l'instant."}</p>
+      <button class="btn" data-add>Ajouter une échéance</button>
+    </div></div>`;
+    return;
+  }
+
+  // Triées par prochaine échéance : ce qui arrive en premier est en haut.
+  const avecDate = visibles.map((it) => ({ it, next: nextDate(it) }))
+    .sort((a, b) => (a.next || "9999").localeCompare(b.next || "9999"));
+
+  $("listBody").innerHTML = `<div class="card"><div class="rows">${avecDate.map(({ it, next }) => {
+    const cat = catOf(it.category);
+    const signe = it.kind === "income" ? "+" : "−";
+    return `<div class="row k-${it.kind}${it.paused ? " paused" : ""}">
+      <div class="av">${cat.ic}</div>
+      <button class="mid" data-edit="${esc(it.id)}" style="text-align:left">
+        <div class="lbl">${esc(it.label)}${it.paused ? " · en pause" : ""}</div>
+        <div class="meta">
+          ${it.kind === "manual" ? '<span class="tag manual">à payer</span>' : ""}
+          ${it.kind === "income" ? '<span class="tag income">revenu</span>' : ""}
+          ${it.kind === "debit"  ? '<span class="tag">auto</span>' : ""}
+          <span>${esc(freqLabel(it))}</span>
+          ${next && !it.paused ? `<span>· ${esc(relatif(next))}</span>` : ""}
+        </div>
+      </button>
+      <div class="amt num">${signe}${esc(money(it.amount))}</div>
+    </div>`;
+  }).join("")}</div></div>
+  <p style="font-size:12.5px;color:var(--muted);margin:12px 4px 0">
+    Les totaux ramènent chaque échéance à un coût mensuel moyen (une assurance annuelle compte pour 1/12).
+    Les échéances ponctuelles n'y figurent pas.
+  </p>`;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   8 · Feuille d'ajout / édition
+   ═══════════════════════════════════════════════════════════════════ */
+let editId = null;
+let form = {};
+let lastFocus = null;
+
+const KIND_HINTS = {
+  manual: "Tu dois faire le paiement toi-même (virement, carte, espèces).",
+  debit:  "Prélevé automatiquement : l'app te prévient, tu n'as rien à faire.",
+  income: "De l'argent qui arrive sur le compte (salaire, aide, remboursement).",
+};
+
+function remplirSelects(){
+  $("fDay").innerHTML = Array.from({ length:31 }, (_, i) =>
+    `<option value="${i+1}">${i+1}${i === 0 ? "er" : ""}</option>`).join("");
+  $("fMonth").innerHTML = MOIS.map((m, i) => `<option value="${i}">${m}</option>`).join("");
+  $("fWeekday").innerHTML = [1,2,3,4,5,6,0].map((w) =>
+    `<option value="${w}">${JOURS_SEM[w]}</option>`).join("");
+  $("fCat").innerHTML = CATS.map((c) =>
+    `<button type="button" class="chip" data-cat="${c.id}" aria-pressed="false">${c.ic} ${c.nom}</button>`).join("");
+}
+
+function ouvrirSheet(id = null){
+  lastFocus = document.activeElement;
+  editId = id;
+  const it = id ? items.find((x) => x.id === id) : null;
+  form = it ? { ...it } : {
+    kind:"debit", label:"", amount:"", category:"autre", freq:"monthly",
+    day:Number(today().slice(8,10)), weekday:1, anchorMonth:new Date().getMonth(),
+    date:today(), start:"", end:"", note:"", paused:false, notifyDaysBefore:0,
+  };
+
+  $("sheetTitle").textContent = it ? "Modifier l'échéance" : "Nouvelle échéance";
+  $("sheetDelete").hidden = !it;
+  $("fLabel").value = form.label || "";
+  $("fAmount").value = form.amount === "" || form.amount == null ? "" : form.amount;
+  $("fFreq").value = form.freq;
+  $("fDay").value = form.day || 1;
+  $("fMonth").value = form.anchorMonth || 0;
+  $("fWeekday").value = form.weekday ?? 1;
+  $("fDate").value = form.date || today();
+  $("fNotify").value = String(form.notifyDaysBefore || 0);
+  $("fStart").value = form.start || "";
+  $("fEnd").value = form.end || "";
+  $("fNote").value = form.note || "";
+  $("fMore").open = false;
+  majToggle($("fPaused"), !!form.paused);
+  majKind(); majCat(); majFreqFields();
+
+  $("sheetBg").classList.add("on");
+  document.body.style.overflow = "hidden";
+  setTimeout(() => $("fLabel").focus(), 60);
+}
+
+function fermerSheet(){
+  $("sheetBg").classList.remove("on");
+  document.body.style.overflow = "";
+  editId = null;
+  if (lastFocus && lastFocus.focus) lastFocus.focus();
+}
+
+function majKind(){
+  document.querySelectorAll("#fKind button").forEach((b) =>
+    b.setAttribute("aria-pressed", String(b.dataset.kind === form.kind)));
+  $("kindHint").textContent = KIND_HINTS[form.kind];
+}
+function majCat(){
+  document.querySelectorAll("#fCat .chip").forEach((b) =>
+    b.setAttribute("aria-pressed", String(b.dataset.cat === form.category)));
+}
+// Chaque fréquence a besoin de champs différents : on n'affiche que ceux qui servent.
+function majFreqFields(){
+  const f = $("fFreq").value;
+  $("wDay").hidden     = !["monthly","quarterly","semiannual","yearly"].includes(f);
+  $("wMonth").hidden   = !["quarterly","semiannual","yearly"].includes(f);
+  $("wWeekday").hidden = f !== "weekly";
+  $("wDate").hidden    = f !== "once";
+  const lbl = $("wMonth").querySelector("label");
+  lbl.textContent = f === "yearly" ? "Mois" : "Premier mois";
+}
+
+function lireForm(){
+  return {
+    id: editId || ("e" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)),
+    kind: form.kind,
+    label: $("fLabel").value.trim().slice(0, 60),
+    amount: Math.abs(Number($("fAmount").value) || 0),
+    category: form.category,
+    freq: $("fFreq").value,
+    day: Number($("fDay").value) || 1,
+    weekday: Number($("fWeekday").value) || 0,
+    anchorMonth: Number($("fMonth").value) || 0,
+    date: $("fDate").value || today(),
+    start: $("fStart").value || "",
+    end: $("fEnd").value || "",
+    note: $("fNote").value.trim().slice(0, 200),
+    paused: $("fPaused").getAttribute("aria-pressed") === "true",
+    notifyDaysBefore: Number($("fNotify").value) || 0,
+  };
+}
+
+function enregistrer(){
+  const it = lireForm();
+  if (!it.label) { toast("Donne un libellé à cette échéance."); $("fLabel").focus(); return; }
+  if (!it.amount) { toast("Indique un montant."); $("fAmount").focus(); return; }
+  if (it.start && it.end && it.end < it.start) { toast("La date de fin précède la date de début."); return; }
+
+  const i = items.findIndex((x) => x.id === it.id);
+  if (i >= 0) items[i] = it; else items.push(it);
+  persist();
+  fermerSheet();
+  toast(i >= 0 ? "Échéance mise à jour." : "Échéance ajoutée.");
+}
+
+function supprimer(){
+  const it = items.find((x) => x.id === editId);
+  if (!it || !confirm(`Supprimer « ${it.label} » ?`)) return;
+  items = items.filter((x) => x.id !== editId);
+  for (const k of [...paid]) if (k.startsWith(editId + ":")) paid.delete(k);
+  persist();
+  fermerSheet();
+  toast("Échéance supprimée.");
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   9 · Notifications (abonnement push + planification quotidienne)
+   ═══════════════════════════════════════════════════════════════════ */
+const VAPID_PUBLIC = "BMUXblAD9S3NEVQcpSTYfO4BDC2La13Bnv5Nv34Q6WrZ0HRjV9EfOF99NsBThUxKINb6Tx-rfxMCVuU1KPwCn4g";
+
+function urlB64ToUint8(base64){
+  const pad = "=".repeat((4 - base64.length % 4) % 4);
+  const b64 = (base64 + pad).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(b64), arr = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+  return arr;
+}
+
+const estIOS = /iP(hone|ad|od)/.test(navigator.userAgent);
+const estInstallee = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+
+async function ensurePushSubscription(){
+  try {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return null;
+    if (Notification.permission !== "granted") return null;
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey:urlB64ToUint8(VAPID_PUBLIC) });
+    return sub;
+  } catch { return null; }
+}
+
+// Les données envoyées au serveur : juste ce qu'il faut pour rédiger la notification.
+function payload(){
+  return {
+    items: items.map(({ id, label, amount, kind, freq, day, weekday, anchorMonth, date, start, end, paused, notifyDaysBefore }) =>
+      ({ id, label, amount, kind, freq, day, weekday, anchorMonth, date, start, end, paused, notifyDaysBefore })),
+    paid: [...paid],
+    currency: S.currency,
+    locale: "fr-FR",
+    shiftWeekend: S.shiftWeekend,
+    aheadDays: 7,
+    quietIfEmpty: S.quietIfEmpty,
+    tzOffset: new Date().getTimezoneOffset(),
+  };
+}
+
+let syncTimer = null;
+// Toute modification recrée la planification — mais pas 15 fois de suite pendant qu'on tape.
+function planifierSync(){
+  if (!S.notif) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(syncNow, 1500);
+}
+
+async function syncNow(){
+  if (!S.notif) return false;
+  const sub = await ensurePushSubscription();
+  if (!sub) return false;
+  try {
+    const r = await fetch("/api/budget-schedule", {
+      method:"POST", headers:{ "content-type":"application/json" },
+      body: JSON.stringify({
+        action:"set", scheduleId:S.scheduleId, subscription:sub,
+        hour:S.hour, minute:S.minute, data:payload(),
+      }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { majNotifNote(d.error || "La planification a échoué."); return false; }
+    S.scheduleId = d.scheduleId || null;
+    S.tzOffset = new Date().getTimezoneOffset();
+    saveSet(); majNotifNote();
+    return true;
+  } catch { majNotifNote("Serveur injoignable — la planification sera retentée."); return false; }
+}
+
+async function activerNotif(){
+  if (!("Notification" in window)) { majNotifNote("Ce navigateur ne gère pas les notifications."); return false; }
+  if (estIOS && !estInstallee) {
+    majNotifNote("Sur iPhone, les notifications exigent que l'app soit ajoutée à l'écran d'accueil (Partager → « Sur l'écran d'accueil »), puis rouverte depuis l'icône.");
+    return false;
+  }
+  const perm = await Notification.requestPermission();
+  if (perm !== "granted") { majNotifNote("Notifications refusées. Autorise-les dans les réglages du navigateur."); return false; }
+  S.notif = true; saveSet();
+  const ok = await syncNow();
+  if (!ok) { S.notif = false; saveSet(); }
+  return ok;
+}
+
+async function desactiverNotif(){
+  const id = S.scheduleId;
+  S.notif = false; S.scheduleId = null; saveSet();
+  if (id) {
+    try {
+      await fetch("/api/budget-schedule", {
+        method:"POST", headers:{ "content-type":"application/json" },
+        body: JSON.stringify({ action:"clear", scheduleId:id }),
+      });
+    } catch {}
+  }
+}
+
+async function testerNotif(){
+  const sub = await ensurePushSubscription();
+  if (!sub) { toast("Active d'abord les notifications."); return; }
+  const btn = $("testNotif");
+  btn.disabled = true; btn.textContent = "Envoi…";
+  try {
+    const r = await fetch("/api/budget-schedule", {
+      method:"POST", headers:{ "content-type":"application/json" },
+      body: JSON.stringify({ action:"test", subscription:sub, data:payload() }),
+    });
+    toast(r.ok ? "Notification envoyée 🔔" : "Échec de l'envoi.");
+  } catch { toast("Serveur injoignable."); }
+  btn.disabled = false; btn.textContent = "Tester la notification";
+}
+
+function majNotifNote(erreur){
+  const el = $("notifNote");
+  if (erreur) { el.hidden = false; el.innerHTML = `⚠️ ${esc(erreur)}`; return; }
+  if (!S.notif) {
+    if (estIOS && !estInstallee) {
+      el.hidden = false;
+      el.innerHTML = "📲 <b>Sur iPhone</b> : ajoute d'abord l'app à l'écran d'accueil (Partager → « Sur l'écran d'accueil »), sinon les notifications sont impossibles.";
+    } else el.hidden = true;
+    return;
+  }
+  el.hidden = false;
+  const h = `${pad2(S.hour)}:${pad2(S.minute)}`;
+  el.innerHTML = S.scheduleId
+    ? `✅ Rappel actif tous les jours à <b>${h}</b>. Le récapitulatif est recalculé au moment de l'envoi.`
+    : `⏳ Planification en cours…`;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   10 · Réglages
+   ═══════════════════════════════════════════════════════════════════ */
+function majToggle(btn, on){
+  btn.setAttribute("aria-pressed", String(on));
+  btn.setAttribute("aria-checked", String(on));
+}
+
+function renderSettings(){
+  majToggle($("notifToggle"), S.notif);
+  majToggle($("chattyToggle"), !S.quietIfEmpty);
+  majToggle($("weekendToggle"), S.shiftWeekend);
+  $("notifDetail").hidden = !S.notif;
+  $("notifHour").value = `${pad2(S.hour)}:${pad2(S.minute)}`;
+  $("soldeInput").value = S.solde ?? "";
+  $("soldeDate").value = S.soldeDate || today();
+  $("currencySel").value = S.currency;
+  majNotifNote();
+  $("storeInfo").textContent =
+    `${items.length} échéance${items.length > 1 ? "s" : ""} enregistrée${items.length > 1 ? "s" : ""} sur cet appareil.`;
+}
+
+function exporter(){
+  const data = { app:"echeance", version:1, exported:new Date().toISOString(), items, settings:S, paid:[...paid] };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type:"application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `echeance-${today()}.json`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  toast("Sauvegarde exportée.");
+}
+
+function importer(file){
+  const fr = new FileReader();
+  fr.onload = () => {
+    try {
+      const d = JSON.parse(fr.result);
+      if (!d || !Array.isArray(d.items)) throw new Error("format");
+      if (!confirm(`Importer ${d.items.length} échéance(s) ? Les données actuelles seront remplacées.`)) return;
+      items = d.items;
+      // On garde la planification en cours : elle sera simplement remise à jour.
+      S = { ...DEFAULTS, ...(d.settings || {}), scheduleId:S.scheduleId, notif:S.notif };
+      paid = new Set(Array.isArray(d.paid) ? d.paid : []);
+      persist();
+      renderSettings();
+      toast("Sauvegarde importée.");
+    } catch { toast("Fichier illisible."); }
+  };
+  fr.readAsText(file);
+}
+
+async function toutEffacer(){
+  if (!confirm("Effacer toutes les échéances et les réglages ? C'est définitif.")) return;
+  await desactiverNotif();
+  localStorage.removeItem(K_ITEMS); localStorage.removeItem(K_SET); localStorage.removeItem(K_PAID);
+  items = []; S = { ...DEFAULTS }; paid = new Set();
+  renderAll(); renderSettings();
+  toast("Tout a été effacé.");
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   11 · Navigation, thème, écouteurs
+   ═══════════════════════════════════════════════════════════════════ */
+let screen = "today";
+
+function goto(name){
+  screen = name;
+  document.querySelectorAll(".screen").forEach((s) => s.classList.toggle("on", s.id === "sc-" + name));
+  document.querySelectorAll("#tabs button").forEach((b) =>
+    b.setAttribute("aria-current", b.dataset.screen === name ? "page" : "false"));
+  $("addBtn").hidden = name === "settings";
+  window.scrollTo({ top:0, behavior:"instant" });
+  if (name === "settings") renderSettings();
+  if (name === "calendar") renderCalendar();
+  if (name === "list") renderList();
+}
+
+function renderAll(){
+  renderToday();
+  if (screen === "calendar") renderCalendar();
+  if (screen === "list") renderList();
+}
+
+function appliquerTheme(mode){
+  const auto = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const eff = mode === "auto" ? (auto ? "dark" : "light") : mode;
+  document.documentElement.setAttribute("data-theme", eff);
+}
+
+function brancherEcouteurs(){
+  $("tabs").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-screen]");
+    if (b) goto(b.dataset.screen);
+  });
+
+  $("themeBtn").addEventListener("click", () => {
+    const ordre = ["auto","light","dark"];
+    const cur = localStorage.getItem(K_THEME) || "auto";
+    const next = ordre[(ordre.indexOf(cur) + 1) % 3];
+    localStorage.setItem(K_THEME, next);
+    appliquerTheme(next);
+    toast(next === "auto" ? "Thème : automatique" : next === "light" ? "Thème : clair" : "Thème : sombre");
+  });
+
+  $("addBtn").addEventListener("click", () => ouvrirSheet());
+
+  // Délégation globale : cases « payé », édition, boutons d'ajout, navigation contextuelle.
+  document.addEventListener("click", (e) => {
+    const pay = e.target.closest("[data-pay]");
+    if (pay) {
+      const k = paidKey(pay.dataset.pay, pay.dataset.date);
+      if (paid.has(k)) paid.delete(k); else { paid.add(k); toast("Marqué comme payé ✓"); }
+      persist();
+      return;
+    }
+    const ed = e.target.closest("[data-edit]");
+    if (ed) { ouvrirSheet(ed.dataset.edit); return; }
+    if (e.target.closest("[data-add]")) { ouvrirSheet(); return; }
+    const g = e.target.closest("[data-goto]");
+    if (g) { goto(g.dataset.goto); return; }
+    const day = e.target.closest("[data-day]");
+    if (day) { calPicked = calPicked === day.dataset.day ? null : day.dataset.day; renderCalendar(); return; }
+  });
+
+  // ── Calendrier
+  $("calPrev").addEventListener("click", () => { calCursor = decalerMois(calCursor, -1); calPicked = null; renderCalendar(); });
+  $("calNext").addEventListener("click", () => { calCursor = decalerMois(calCursor, +1); calPicked = null; renderCalendar(); });
+
+  // ── Filtres de la liste
+  $("listFilter").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-f]");
+    if (!b) return;
+    listFilter = b.dataset.f;
+    document.querySelectorAll("#listFilter button").forEach((x) =>
+      x.setAttribute("aria-pressed", String(x.dataset.f === listFilter)));
+    renderList();
+  });
+
+  // ── Feuille
+  $("fKind").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-kind]");
+    if (!b) return;
+    form.kind = b.dataset.kind;
+    if (form.kind === "income" && form.category === "autre") form.category = "salaire";
+    majKind(); majCat();
+  });
+  $("fCat").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-cat]");
+    if (!b) return;
+    form.category = b.dataset.cat; majCat();
+  });
+  $("fFreq").addEventListener("change", majFreqFields);
+  $("fPaused").addEventListener("click", (e) =>
+    majToggle(e.currentTarget, e.currentTarget.getAttribute("aria-pressed") !== "true"));
+  $("sheetSave").addEventListener("click", enregistrer);
+  $("sheetDelete").addEventListener("click", supprimer);
+  $("sheetCancel").addEventListener("click", fermerSheet);
+  $("sheetBg").addEventListener("click", (e) => { if (e.target === $("sheetBg")) fermerSheet(); });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && $("sheetBg").classList.contains("on")) fermerSheet();
+  });
+
+  // ── Réglages
+  $("notifToggle").addEventListener("click", async () => {
+    const btn = $("notifToggle");
+    if (S.notif) { await desactiverNotif(); toast("Rappel quotidien désactivé."); }
+    else {
+      majNotifNote(); btn.disabled = true;
+      const ok = await activerNotif();
+      btn.disabled = false;
+      if (ok) toast("Rappel quotidien activé 🔔");
+    }
+    renderSettings();
+  });
+  $("notifHour").addEventListener("change", (e) => {
+    const [h, m] = e.target.value.split(":").map(Number);
+    S.hour = h || 0; S.minute = m || 0; saveSet();
+    if (S.notif) syncNow().then(majNotifNote);
+    majNotifNote();
+  });
+  $("chattyToggle").addEventListener("click", (e) => {
+    S.quietIfEmpty = e.currentTarget.getAttribute("aria-pressed") === "true";
+    majToggle(e.currentTarget, !S.quietIfEmpty);
+    saveSet(); planifierSync();
+  });
+  $("weekendToggle").addEventListener("click", (e) => {
+    S.shiftWeekend = e.currentTarget.getAttribute("aria-pressed") !== "true";
+    majToggle(e.currentTarget, S.shiftWeekend);
+    persist();
+  });
+  $("soldeInput").addEventListener("change", (e) => {
+    S.solde = e.target.value === "" ? null : Number(e.target.value);
+    if (!S.soldeDate) S.soldeDate = today();
+    saveSet(); renderToday();
+  });
+  $("soldeDate").addEventListener("change", (e) => { S.soldeDate = e.target.value || today(); saveSet(); renderToday(); });
+  $("currencySel").addEventListener("change", (e) => { S.currency = e.target.value; persist(); });
+  $("testNotif").addEventListener("click", testerNotif);
+  $("exportBtn").addEventListener("click", exporter);
+  $("importBtn").addEventListener("click", () => $("importFile").click());
+  $("importFile").addEventListener("change", (e) => { if (e.target.files[0]) importer(e.target.files[0]); e.target.value = ""; });
+  $("wipeBtn").addEventListener("click", toutEffacer);
+
+  // Retour au premier plan : la date a pu changer, et le fuseau aussi (voyage, heure d'été).
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible") return;
+    renderAll();
+    if (S.notif && S.tzOffset !== new Date().getTimezoneOffset()) syncNow();
+  });
+}
+
+function decalerMois(cursor, delta){
+  const [y, m] = cursor.split("-").map(Number);
+  const d = new Date(Date.UTC(y, m - 1 + delta, 1));
+  return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}`;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   12 · Démarrage
+   ═══════════════════════════════════════════════════════════════════ */
+appliquerTheme(localStorage.getItem(K_THEME) || "auto");
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+  if ((localStorage.getItem(K_THEME) || "auto") === "auto") appliquerTheme("auto");
+});
+
+load();
+remplirSelects();
+brancherEcouteurs();
+goto("today");
+renderAll();
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/budget/sw.js", { scope:"/budget/" }).catch(() => {});
+}
+
+// Si les notifications sont actives, on remet la planification à jour au démarrage :
+// c'est ce qui rattrape un changement de fuseau ou une planification perdue.
+if (S.notif) setTimeout(syncNow, 1200);
+</script>
+</body>
+</html>
