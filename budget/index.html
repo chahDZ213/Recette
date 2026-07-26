@@ -382,13 +382,21 @@ textarea{min-height:64px; resize:vertical;}
 .simu-solde b{font-size:19px; font-weight:750; letter-spacing:-.02em;}
 .simu-delta{margin-left:auto; font-size:13px; color:var(--muted); text-align:right;}
 .simu-delta s{opacity:.75;}
-/* Bascule « je garde » / « résilié » — un libellé vaut mieux qu'une case ambiguë */
+/* Le bouton porte toujours un VERBE D'ACTION (« Résilier » / « Remettre »).
+   Afficher l'état sur le bouton (« Je garde ») se lisait comme une action et
+   inversait le sens perçu : on lit l'état sur la ligne, jamais sur le bouton. */
 .simu-btn{
-  flex:none; padding:7px 12px; border-radius:999px; font-size:12.5px; font-weight:700;
-  border:1px solid var(--line-2); background:var(--surface); color:var(--muted); white-space:nowrap;
+  flex:none; padding:8px 13px; border-radius:999px; font-size:12.5px; font-weight:700;
+  border:1px solid var(--line-2); background:var(--surface); color:var(--ink-2); white-space:nowrap;
 }
-.simu-btn:hover{border-color:var(--income); color:var(--income);}
-.simu-btn[aria-pressed="true"]{background:var(--income); border-color:var(--income); color:var(--on-accent);}
+.simu-btn:hover{border-color:var(--accent); color:var(--accent);}
+.simu-btn.back{background:var(--income-soft); border-color:transparent; color:var(--income);}
+/* Ligne « résiliée dans la simulation » : barrée, mais le gain reste bien lisible */
+.row.off .lbl{text-decoration:line-through; opacity:.5;}
+.row.off .amt{text-decoration:line-through; opacity:.4;}
+.gain-tag{color:var(--income); font-weight:700;}
+.simu-empty b{display:block; font-size:15.5px; font-weight:650;}
+.simu-empty small{display:block; color:var(--muted); font-size:13px; line-height:1.5; margin-top:4px;}
 
 /* ── Argumentaire du Bouclier ── */
 .pitch{text-align:center; padding:22px 10px 4px;}
@@ -1583,33 +1591,47 @@ function renderSavings(){
         <div class="teaser-go">›</div>
       </button>`}
 
-    <div class="section-title">Et si j'arrêtais ? <span class="hd-extra">décoche pour simuler</span></div>
+    <div class="section-title">Et si j'arrêtais ?
+      <span class="hd-extra">${gagne > 0 ? "touche Remettre pour annuler" : "touche Résilier pour simuler"}</span>
+    </div>
     <div class="card">
       <div class="card-bd" style="padding-bottom:6px">
-        <div class="simu-head">
-          <div>
-            <small>Tu économiserais</small>
-            <b class="num${gagne > 0 ? " gain" : ""}">${esc(money(gagne * 12, { round:true }))}<span> / an</span></b>
+        ${gagne > 0 ? `
+          <div class="simu-head">
+            <div>
+              <small>Tu récupérerais</small>
+              <b class="num gain">${esc(money(gagne * 12, { round:true }))}<span> / an</span></b>
+            </div>
+            <button class="btn ghost" id="simuReset" style="padding:8px 13px;font-size:13.5px">Tout remettre</button>
           </div>
-          ${gagne > 0 ? `<button class="btn ghost" id="simuReset" style="padding:8px 13px;font-size:13.5px">Tout remettre</button>` : ""}
-        </div>
-        ${gagne > 0 ? `<div class="simu-mois num">soit ${esc(money(gagne, { round:true }))} de plus chaque mois</div>` : ""}
-        ${effetSolde}
+          <div class="simu-mois num">soit ${esc(money(gagne, { round:true }))} de plus chaque mois</div>
+          ${effetSolde}
+        ` : `
+          <div class="simu-empty">
+            <b>Touche « Résilier » sur une ligne</b>
+            <small>Rien n'est modifié : tu vois juste ce que tu récupérerais par mois, par an,
+            et ce qu'il te resterait sur ton compte.</small>
+          </div>
+        `}
       </div>
       <div class="rows">
         ${[...abos].sort((a, b) => monthlyEquivalent(b) - monthlyEquivalent(a)).map((it) => {
           const off = simuOff.has(it.id);
           const mois = monthlyEquivalent(it);
-          return `<div class="row${off ? " done" : ""}">
+          // Le bouton porte l'ACTION à faire ; l'état se lit sur la ligne (barrée + gain en vert).
+          return `<div class="row${off ? " off" : ""}">
             <div class="av">${catOf(it.category).ic}</div>
             <div class="mid">
               <div class="lbl">${esc(it.label)}</div>
-              <div class="meta"><span>${esc(money(mois * 12, { round:true }))} par an</span></div>
+              <div class="meta">${off
+                ? `<span class="gain-tag">+${esc(money(mois * 12, { round:true }))} par an récupérés</span>`
+                : `<span>${esc(money(mois * 12, { round:true }))} par an</span>`}</div>
             </div>
             <div class="amt num">${esc(money(it.amount))}</div>
-            <button class="simu-btn" data-simu="${esc(it.id)}" aria-pressed="${off}"
-                    aria-label="${off ? "Reprendre" : "Résilier"} ${esc(it.label)} dans la simulation"
-              >${off ? "Résilié" : "Je garde"}</button>
+            <button class="simu-btn${off ? " back" : ""}" data-simu="${esc(it.id)}"
+                    aria-label="${off ? `Remettre ${esc(it.label)} dans la simulation`
+                                      : `Simuler la résiliation de ${esc(it.label)}`}"
+              >${off ? "Remettre" : "Résilier"}</button>
           </div>`;
         }).join("")}
       </div>
