@@ -29,6 +29,7 @@
   --ink:#15171C; --ink-2:#474D56; --muted:#787F89;
   --line:#E6E6E0; --line-2:#D6D6CE;
   --accent:#4F46E5; --accent-soft:#EEEDFC;
+  --on-accent:#FFFFFF;   /* couleur du texte POSÉ SUR l'accent — jamais appliquée globalement */
   --manual:#A8480A; --manual-soft:#FDF0E4;   /* ambre : une action est attendue de toi */
   --income:#146B36; --income-soft:#E7F5EC;   /* vert : de l'argent entre */
   --debit:#3F4650;  --debit-soft:#EFF0F2;    /* graphite : ça part tout seul */
@@ -41,7 +42,7 @@ html[data-theme="dark"]{
   --bg:#0E1014; --surface:#171A20; --surface-2:#1C1F26; --surface-3:#232830;
   --ink:#EDEFF3; --ink-2:#B4BAC4; --muted:#89909B;
   --line:#252A32; --line-2:#333945;
-  --accent:#9AA0FF; --accent-soft:#22243A;
+  --accent:#9AA0FF; --accent-soft:#22243A; --on-accent:#14161C;
   --manual:#F5B33C; --manual-soft:#302617;
   --income:#5BD98A; --income-soft:#12291B;
   --debit:#B3BAC6; --debit-soft:#22262E;
@@ -105,9 +106,11 @@ nav.tabs{
 }
 nav.tabs button{
   flex:1; max-width:120px; display:flex; flex-direction:column; align-items:center; gap:3px;
-  padding:7px 4px 5px; border-radius:12px; color:var(--muted); font-size:11px; font-weight:600;
+  padding:7px 2px 5px; border-radius:12px; color:var(--muted); font-size:10px; font-weight:650;
+  letter-spacing:-.01em; white-space:nowrap;
 }
-nav.tabs button span.ic{font-size:19px; line-height:1;}
+nav.tabs button span.ic{font-size:18px; line-height:1;}
+@media (min-width:380px){ nav.tabs button{font-size:10.5px;} }
 nav.tabs button[aria-current="page"]{color:var(--accent); background:var(--accent-soft);}
 @media (min-width:900px){
   body{padding-bottom:40px;}
@@ -161,6 +164,48 @@ nav.tabs button[aria-current="page"]{color:var(--accent); background:var(--accen
 .mini-chip.manual{background:var(--manual-soft); color:var(--manual);}
 .mini-chip.income{background:var(--income-soft); color:var(--income);}
 
+/* ── Alerte de découvert (le Bouclier) ── */
+.card.alerte{border-color:color-mix(in srgb, var(--danger) 45%, var(--line));}
+.card.ok{border-color:color-mix(in srgb, var(--income) 35%, var(--line));}
+.alerte-hd{
+  display:flex; align-items:center; gap:10px; padding:12px 17px;
+  background:color-mix(in srgb, var(--danger) 12%, transparent);
+  border-bottom:1px solid color-mix(in srgb, var(--danger) 25%, var(--line));
+}
+.alerte-pill{font-size:12.5px; font-weight:750; color:var(--danger); letter-spacing:.01em;}
+.alerte-when{margin-left:auto; font-size:12.5px; font-weight:650; color:var(--danger);}
+.alerte-big{font-size:clamp(30px,8vw,40px); font-weight:750; letter-spacing:-.03em; color:var(--danger); line-height:1.1;}
+.alerte-sub{font-size:14px; color:var(--ink-2); margin-top:1px;}
+.alerte-manque{
+  margin-top:13px; padding:11px 13px; border-radius:11px; font-size:14.5px;
+  background:color-mix(in srgb, var(--danger) 10%, transparent); color:var(--ink);
+}
+.alerte-pistes{margin-top:14px; border-top:1px solid var(--line); padding-top:13px;}
+.alerte-pistes-t{
+  font-size:11.5px; font-weight:750; letter-spacing:.07em; text-transform:uppercase;
+  color:var(--muted); margin-bottom:9px;
+}
+.piste{display:flex; gap:11px; align-items:flex-start; font-size:14.5px; padding:5px 0;}
+.piste span{font-size:19px; line-height:1.3;}
+.piste small{display:block; color:var(--muted); font-size:12.5px; margin-top:1px;}
+.alerte-note{font-size:12.5px; color:var(--income); font-weight:650; margin-top:8px;}
+
+/* Aperçu cliquable d'une fonction premium */
+.teaser{
+  display:flex; align-items:center; gap:13px; width:100%; text-align:left;
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+  box-shadow:var(--shadow); padding:14px 16px; margin-top:14px; color:inherit;
+}
+.teaser:hover{border-color:var(--accent);}
+.teaser-ic{
+  width:40px; height:40px; flex:none; border-radius:12px; display:grid; place-items:center;
+  font-size:20px; background:var(--accent-soft);
+}
+.teaser-txt{flex:1; min-width:0;}
+.teaser-txt b{display:block; font-size:14.5px; font-weight:650;}
+.teaser-txt small{display:block; color:var(--muted); font-size:12.5px; line-height:1.45; margin-top:2px;}
+.teaser-go{color:var(--accent); font-size:22px; font-weight:600;}
+
 /* Ligne d'échéance */
 .row{
   display:flex; align-items:center; gap:12px; padding:12px 17px;
@@ -197,15 +242,19 @@ nav.tabs button[aria-current="page"]{color:var(--accent); background:var(--accen
   transition:background .12s, border-color .12s, color .12s;
 }
 .check:hover{border-color:var(--manual);}
-.check[aria-pressed="true"]{background:var(--income); border-color:var(--income); color:#fff;}
+/* --on-accent convient aussi ici : blanc sur le vert foncé du thème clair,
+   encre sombre sur le vert clair du thème sombre. */
+.check[aria-pressed="true"]{background:var(--income); border-color:var(--income); color:var(--on-accent);}
 
 /* Boutons */
+/* La couleur du texte passe par --on-accent et JAMAIS par une règle de thème.
+   Un `html[data-theme="dark"] .btn{color:…}` battrait `.btn.ghost` en spécificité
+   et écrirait les boutons secondaires en quasi-noir sur fond sombre. */
 .btn{
   display:inline-flex; align-items:center; justify-content:center; gap:8px;
   padding:11px 17px; border-radius:12px; font-weight:650; font-size:15px;
-  background:var(--accent); color:#fff; border:1px solid transparent;
+  background:var(--accent); color:var(--on-accent); border:1px solid transparent;
 }
-html[data-theme="dark"] .btn{color:#14161c;}
 .btn:hover{filter:brightness(1.06);}
 .btn.ghost{background:var(--surface); color:var(--ink); border-color:var(--line-2);}
 .btn.ghost:hover{background:var(--surface-3); filter:none;}
@@ -218,11 +267,10 @@ html[data-theme="dark"] .btn{color:#14161c;}
 /* Bouton flottant d'ajout */
 .fab{
   position:fixed; right:18px; bottom:calc(84px + env(safe-area-inset-bottom)); z-index:29;
-  width:56px; height:56px; border-radius:19px; background:var(--accent); color:#fff;
+  width:56px; height:56px; border-radius:19px; background:var(--accent); color:var(--on-accent);
   font-size:27px; font-weight:400; display:grid; place-items:center;
   box-shadow:0 6px 22px color-mix(in srgb, var(--accent) 42%, transparent);
 }
-html[data-theme="dark"] .fab{color:#14161c;}
 .fab:hover{transform:translateY(-1px);}
 @media (min-width:900px){ .fab{bottom:26px; right:26px;} }
 
@@ -235,6 +283,12 @@ input[type=text],input[type=number],input[type=date],input[type=time],select,tex
   background:var(--surface-2); color:var(--ink);
 }
 input:focus,select:focus,textarea:focus{outline:none; border-color:var(--accent); background:var(--surface);}
+/* iOS centre/aligne à droite la valeur des champs date et heure, et les fait
+   grandir : on les remet au même gabarit et au même alignement que les autres. */
+input[type=date],input[type=time]{-webkit-appearance:none; appearance:none; min-height:46px;}
+input[type=date]::-webkit-date-and-time-value,
+input[type=time]::-webkit-date-and-time-value{text-align:left; margin:0;}
+input[type=date]::-webkit-calendar-picker-indicator{margin-left:auto;}
 textarea{min-height:64px; resize:vertical;}
 .grid-2{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
 @media (max-width:420px){ .grid-2{grid-template-columns:1fr;} }
@@ -290,8 +344,7 @@ textarea{min-height:64px; resize:vertical;}
 }
 .cal-day.out{opacity:.32;}
 .cal-day.today{border-color:var(--accent); font-weight:750;}
-.cal-day[aria-pressed="true"]{background:var(--accent); color:#fff;}
-html[data-theme="dark"] .cal-day[aria-pressed="true"]{color:#14161c;}
+.cal-day[aria-pressed="true"]{background:var(--accent); color:var(--on-accent);}
 .cal-day[aria-pressed="true"] .cal-amt{color:inherit; opacity:.85;}
 .cal-amt{font-size:9.5px; font-weight:700; color:var(--muted); line-height:1;}
 .cal-dots{display:flex; gap:2.5px; height:5px; align-items:center;}
@@ -311,6 +364,66 @@ html[data-theme="dark"] .cal-day[aria-pressed="true"]{color:#14161c;}
 }
 .chart-tip.on{opacity:1;}
 .chart-legend{display:flex; justify-content:space-between; font-size:12px; color:var(--muted); margin-top:6px;}
+
+/* ── Simulateur d'économies ── */
+.simu-head{display:flex; align-items:flex-end; gap:12px;}
+.simu-head small{display:block; font-size:12.5px; color:var(--muted); font-weight:650;}
+.simu-head b{font-size:clamp(26px,7vw,34px); font-weight:750; letter-spacing:-.03em; line-height:1.1;}
+.simu-head b.gain{color:var(--income);}
+.simu-head b span{font-size:15px; font-weight:650; letter-spacing:0; color:var(--muted);}
+.simu-head #simuReset{margin-left:auto; flex:none;}
+.simu-mois{font-size:14px; color:var(--income); font-weight:650; margin-top:3px;}
+.simu-solde{
+  display:flex; align-items:center; gap:12px; margin-top:13px; padding:11px 13px;
+  border-radius:11px; background:var(--surface-3);
+}
+.simu-solde.on{background:var(--income-soft);}
+.simu-solde small{display:block; font-size:12px; color:var(--muted); font-weight:650;}
+.simu-solde b{font-size:19px; font-weight:750; letter-spacing:-.02em;}
+.simu-delta{margin-left:auto; font-size:13px; color:var(--muted); text-align:right;}
+.simu-delta s{opacity:.75;}
+/* Bascule « je garde » / « résilié » — un libellé vaut mieux qu'une case ambiguë */
+.simu-btn{
+  flex:none; padding:7px 12px; border-radius:999px; font-size:12.5px; font-weight:700;
+  border:1px solid var(--line-2); background:var(--surface); color:var(--muted); white-space:nowrap;
+}
+.simu-btn:hover{border-color:var(--income); color:var(--income);}
+.simu-btn[aria-pressed="true"]{background:var(--income); border-color:var(--income); color:var(--on-accent);}
+
+/* ── Argumentaire du Bouclier ── */
+.pitch{text-align:center; padding:22px 10px 4px;}
+.pitch-ic{font-size:52px; line-height:1;}
+.pitch h1{margin:12px 0 8px; font-size:clamp(27px,8vw,34px); font-weight:750; letter-spacing:-.035em;}
+.pitch-lead{margin:0; color:var(--ink-2); font-size:16px; line-height:1.5; max-width:30ch; margin-inline:auto;}
+.promesse{
+  margin-top:18px; border-radius:var(--radius); padding:18px 18px 15px;
+  background:var(--accent-soft); border:1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+}
+.promesse-t{
+  font-size:11.5px; font-weight:750; letter-spacing:.09em; text-transform:uppercase;
+  color:var(--accent); margin-bottom:8px;
+}
+.promesse p{margin:0; font-size:16px; line-height:1.55; color:var(--ink);}
+.promesse b{font-weight:750;}
+.promesse small{display:block; margin-top:10px; font-size:12px; color:var(--muted); line-height:1.5;}
+.plans{display:grid; grid-template-columns:1fr 1fr; gap:11px;}
+@media (max-width:400px){ .plans{grid-template-columns:1fr;} }
+.plan{
+  position:relative; display:flex; flex-direction:column; gap:3px; text-align:left;
+  background:var(--surface); border:1.5px solid var(--line-2); border-radius:var(--radius);
+  padding:16px 15px; color:inherit; box-shadow:var(--shadow);
+}
+.plan:hover{border-color:var(--accent);}
+.plan.best{border-color:var(--accent);}
+.plan-tag{
+  position:absolute; top:-9px; right:12px; background:var(--accent); color:var(--on-accent);
+  font-size:10.5px; font-weight:750; padding:3px 8px; border-radius:999px; letter-spacing:.02em;
+}
+.plan-n{font-size:12.5px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.06em;}
+.plan-p{font-size:25px; font-weight:750; letter-spacing:-.03em;}
+.plan-p small{font-size:13px; font-weight:650; color:var(--muted); letter-spacing:0;}
+.plan-d{font-size:12.5px; color:var(--muted);}
+.pitch-foot{font-size:12.5px; color:var(--muted); line-height:1.55; margin:14px 4px 0;}
 
 /* Feuille modale */
 .sheet-bg{
@@ -364,6 +477,7 @@ html[data-theme="dark"] .cal-day[aria-pressed="true"]{color:#14161c;}
       <button data-screen="today"    aria-current="page"><span class="ic">☀️</span>Aujourd'hui</button>
       <button data-screen="calendar"><span class="ic">🗓️</span>Calendrier</button>
       <button data-screen="list"><span class="ic">📋</span>Échéances</button>
+      <button data-screen="savings"><span class="ic">💡</span>Économies</button>
       <button data-screen="settings"><span class="ic">⚙️</span>Réglages</button>
     </nav>
     <div class="top-spacer"></div>
@@ -380,6 +494,7 @@ html[data-theme="dark"] .cal-day[aria-pressed="true"]{color:#14161c;}
       <div class="sub" id="heroSub"></div>
       <div class="chips" id="heroChips"></div>
     </div>
+    <div id="alerteBlock"></div>
     <div id="todayBlocks"></div>
     <div id="soldeBlock"></div>
     <div class="section-title">Les 7 prochains jours <span class="hd-extra num" id="weekTotal"></span></div>
@@ -400,6 +515,15 @@ html[data-theme="dark"] .cal-day[aria-pressed="true"]{color:#14161c;}
 
   <!-- ══════════ Échéances ══════════ -->
   <section class="screen" id="sc-list">
+    <button class="teaser" id="scanBtn" style="margin:0 0 14px">
+      <div class="teaser-ic">📸</div>
+      <div class="teaser-txt">
+        <b>Scanner mes abonnements</b>
+        <small>Photographie l'écran Abonnements de ton téléphone ou un relevé — je remplis tout.</small>
+      </div>
+      <div class="teaser-go">›</div>
+    </button>
+    <input type="file" id="scanFile" accept="image/*" class="sr" />
     <div class="seg" id="listFilter" style="margin-bottom:14px">
       <button data-f="all" aria-pressed="true">Tout</button>
       <button data-f="manual">À payer</button>
@@ -408,6 +532,16 @@ html[data-theme="dark"] .cal-day[aria-pressed="true"]{color:#14161c;}
     </div>
     <div class="totals" id="listTotals"></div>
     <div id="listBody" style="margin-top:14px"></div>
+  </section>
+
+  <!-- ══════════ Économies ══════════ -->
+  <section class="screen" id="sc-savings">
+    <div id="savingsBody"></div>
+  </section>
+
+  <!-- ══════════ Le Bouclier (argumentaire premium) ══════════ -->
+  <section class="screen" id="sc-premium">
+    <div id="premiumBody"></div>
   </section>
 
   <!-- ══════════ Réglages ══════════ -->
@@ -439,6 +573,35 @@ html[data-theme="dark"] .cal-day[aria-pressed="true"]{color:#14161c;}
           </div>
         </div>
         <div class="note" id="notifNote" style="margin-top:14px" hidden></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-hd"><h2>Le Bouclier</h2></div>
+      <div class="card-bd" id="boucliewrap">
+        <div id="boucliePitch"></div>
+        <div id="bouclieReglages" hidden>
+          <div class="grid-2">
+            <div class="field">
+              <label for="seuilInput">Préviens-moi sous</label>
+              <input type="number" id="seuilInput" inputmode="numeric" step="10" placeholder="0" />
+            </div>
+            <div class="field">
+              <label for="alerteJoursSel">Combien de jours avant</label>
+              <select id="alerteJoursSel">
+                <option value="1">1 jour avant</option>
+                <option value="2">2 jours avant</option>
+                <option value="3">3 jours avant</option>
+                <option value="5">5 jours avant</option>
+                <option value="7">1 semaine avant</option>
+                <option value="14">2 semaines avant</option>
+              </select>
+            </div>
+          </div>
+          <div class="hint" style="font-size:12.5px;color:var(--muted);margin-top:-6px">
+            Mets un seuil au-dessus de zéro si tu veux garder un matelas de sécurité.
+          </div>
+        </div>
       </div>
     </div>
 
@@ -607,6 +770,19 @@ html[data-theme="dark"] .cal-day[aria-pressed="true"]{color:#14161c;}
   </div>
 </div>
 
+<!-- ══════════ Résultat du scan : à valider avant d'ajouter ══════════ -->
+<div class="sheet-bg" id="scanBg" role="dialog" aria-modal="true" aria-labelledby="scanTitle">
+  <div class="sheet">
+    <div class="grab"></div>
+    <h3 id="scanTitle">Ce que j'ai lu</h3>
+    <div id="scanBody"></div>
+    <div class="sheet-foot">
+      <button class="btn ghost" id="scanCancel">Annuler</button>
+      <button class="btn" id="scanConfirm">Ajouter</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -667,12 +843,57 @@ function occursOn(item, dateStr, shiftWeekend){
 }
 
 const KIND_ORDER = { manual:0, debit:1, income:2 };
-function itemsOn(list, dateStr){
+// Version explicite (identique au serveur), et raccourci qui prend le réglage courant.
+function itemsOnWith(list, dateStr, shiftWeekend){
   return (list||[])
-    .filter((it) => occursOn(it, dateStr, S.shiftWeekend))
+    .filter((it) => occursOn(it, dateStr, shiftWeekend))
     .sort((a,b) => (KIND_ORDER[a.kind]??1)-(KIND_ORDER[b.kind]??1) || Number(b.amount||0)-Number(a.amount||0));
 }
+const itemsOn = (list, dateStr) => itemsOnWith(list, dateStr, S.shiftWeekend);
 const paidKey = (id, dateStr) => `${id}:${dateStr}`;
+
+// Rejoue les échéances jour par jour depuis le solde constaté.
+// `ignore` sert au simulateur « et si j'arrête cet abonnement ? ».
+function projectBalance(list, opts, from, days){
+  const { solde, soldeDate, shiftWeekend = false, ignore = [] } = opts || {};
+  const exclus = new Set(ignore);
+  const actifs = (list || []).filter((it) => !exclus.has(it.id));
+  let courant = Number(solde);
+  if (!Number.isFinite(courant)) return [];
+
+  const mouvements = (date) => {
+    for (const it of itemsOnWith(actifs, date, shiftWeekend)) {
+      if (it.kind === "income") courant += Number(it.amount || 0);
+      else courant -= Number(it.amount || 0);
+    }
+  };
+  if (/^\d{4}-\d{2}-\d{2}$/.test(soldeDate || "") && soldeDate < from) {
+    let d = soldeDate;
+    for (let n = 0; d < from && n < 400; n++, d = addDays(d, 1)) mouvements(d);
+  }
+  const pts = [{ date: from, solde: courant }];
+  for (let i = 0; i < days; i++) {
+    const date = addDays(from, i);
+    mouvements(date);
+    pts.push({ date, solde: courant });
+  }
+  return pts;
+}
+
+// Premier jour où le solde projeté passe sous le seuil de sécurité.
+function findOverdraft(list, opts, from, days = 60){
+  const pts = projectBalance(list, opts, from, days);
+  if (!pts.length) return null;
+  const seuil = Number(opts && opts.seuil) || 0;
+  const franchi = pts.find((p, i) => i > 0 && p.solde < seuil);
+  if (!franchi) return null;
+  const bas = pts.reduce((m, p) => (p.solde < m.solde ? p : m), pts[0]);
+  return {
+    date: franchi.date, solde: franchi.solde, manque: seuil - franchi.solde,
+    joursRestants: Math.round((parseYmd(franchi.date) - parseYmd(from)) / 86400000),
+    bas, seuil,
+  };
+}
 
 /* ═══════════════════════════════════════════════════════════════════
    2 · Données et stockage
@@ -682,6 +903,10 @@ const K_ITEMS = "ech_items", K_SET = "ech_settings", K_PAID = "ech_paid", K_THEM
 const DEFAULTS = {
   notif:false, hour:8, minute:0, quietIfEmpty:true, scheduleId:null, tzOffset:null,
   currency:"EUR", shiftWeekend:false, solde:null, soldeDate:null,
+  // Le Bouclier
+  premium:false, premiumPlan:null,
+  seuil:0,          // on alerte dès que le solde projeté passe sous ce montant
+  alerteJours:3,    // combien de jours avant le découvert on prévient
 };
 
 let items = [];
@@ -881,8 +1106,92 @@ function renderToday(){
   }
   $("todayBlocks").innerHTML = blocs.join("");
 
+  renderAlerte();
   renderSolde();
   renderUpcoming();
+}
+
+/* ── Le Bouclier : l'alerte de découvert ──────────────────────────────────
+   La fonction qui justifie l'abonnement. Elle ne se contente pas d'annoncer
+   le problème : elle chiffre le manque et propose quoi décaler pour l'éviter. */
+function renderAlerte(){
+  const host = $("alerteBlock");
+
+  // Sans solde renseigné, on ne peut rien prédire : on invite à le faire.
+  if (!aUnSolde()) {
+    host.innerHTML = items.length && estPremium() ? `<div class="card"><div class="card-bd">
+      <div class="note">🛡️ Le Bouclier est actif mais il lui manque ton <b>solde actuel</b> pour
+      surveiller le découvert.</div>
+      <button class="btn wide" style="margin-top:12px" data-goto="settings">Renseigner mon solde</button>
+    </div></div>` : "";
+    return;
+  }
+
+  const d = decouvert();
+
+  if (!estPremium()) {
+    // Aperçu volontairement honnête : on dit s'il y a un risque, sans la date ni le détail.
+    host.innerHTML = `<button class="teaser" data-goto="premium">
+      <div class="teaser-ic">🛡️</div>
+      <div class="teaser-txt">
+        <b>${d ? "Un découvert se profile dans les 60 jours." : "Aucun découvert prévu sur 60 jours."}</b>
+        <small>${d
+          ? "Le Bouclier te dira quel jour, combien il te manque, et te prévient à l'avance."
+          : "Le Bouclier surveille en continu et te prévient dès que ça change."}</small>
+      </div>
+      <div class="teaser-go">›</div>
+    </button>`;
+    return;
+  }
+
+  if (!d) {
+    host.innerHTML = `<div class="card ok"><div class="card-bd" style="display:flex; gap:13px; align-items:center">
+      <div style="font-size:26px">🛡️</div>
+      <div>
+        <b style="display:block; font-size:15.5px">Aucun découvert prévu</b>
+        <small style="color:var(--muted)">Ton solde reste au-dessus de
+        ${esc(money(Number(S.seuil) || 0, { round:true }))} pendant les 60 prochains jours.</small>
+      </div>
+    </div></div>`;
+    return;
+  }
+
+  // Quoi décaler pour repasser au-dessus : les échéances d'ici là, les plus grosses d'abord.
+  const dici = [];
+  for (let i = 0; i <= d.joursRestants; i++) {
+    const date = addDays(today(), i);
+    for (const it of itemsOn(items, date)) {
+      if (it.kind !== "income" && !estRegle(it, date)) dici.push({ it, date });
+    }
+  }
+  dici.sort((a, b) => Number(b.it.amount || 0) - Number(a.it.amount || 0));
+
+  // La plus petite échéance qui, à elle seule, suffirait à passer.
+  const suffit = [...dici].reverse().find((x) => Number(x.it.amount || 0) >= d.manque);
+  const pistes = suffit ? [suffit] : dici.slice(0, 2);
+
+  host.innerHTML = `<div class="card alerte">
+    <div class="alerte-hd">
+      <span class="alerte-pill">⚠️ Découvert prévu</span>
+      <span class="alerte-when">${esc(relatif(d.date))}</span>
+    </div>
+    <div class="card-bd">
+      <div class="alerte-big num">${esc(money(d.solde))}</div>
+      <div class="alerte-sub">le ${esc(fmtDate(d.date, { weekday:"long", day:"numeric", month:"long" }))}</div>
+      <div class="alerte-manque">Il te manque <b class="num">${esc(money(d.manque))}</b> pour tenir.</div>
+      ${pistes.length ? `<div class="alerte-pistes">
+        <div class="alerte-pistes-t">Comment l'éviter</div>
+        ${pistes.map(({ it, date }) => `<div class="piste">
+          <span>${catOf(it.category).ic}</span>
+          <div>Décaler ou annuler <b>${esc(it.label)}</b>
+            <small>${esc(money(it.amount))} · prévu ${esc(relatif(date))}</small></div>
+        </div>`).join("")}
+        ${suffit ? `<div class="alerte-note">Celle-ci suffit à repasser au-dessus.</div>`
+                 : `<div class="alerte-note">Décaler ces deux-là couvre le manque.</div>`}
+      </div>` : ""}
+      <button class="btn ghost wide" style="margin-top:14px" data-goto="savings">Voir où récupérer de l'argent</button>
+    </div>
+  </div>`;
 }
 
 // Les 7 prochains jours, regroupés par date.
@@ -912,35 +1221,19 @@ function renderUpcoming(){
 /* ═══════════════════════════════════════════════════════════════════
    5 · Projection de solde (courbe 30 jours, série unique)
    ═══════════════════════════════════════════════════════════════════ */
-function projection(days = 30){
-  const from = today();
-  // Le solde saisi vaut à sa date : on rejoue les échéances entre cette date et aujourd'hui.
-  let solde = Number(S.solde);
-  if (/^\d{4}-\d{2}-\d{2}$/.test(S.soldeDate || "") && S.soldeDate < from) {
-    // garde-fou : on ne rejoue pas plus d'un an, et jamais en boucle infinie
-    let d = S.soldeDate;
-    for (let n = 0; d < from && n < 400; n++, d = addDays(d, 1)) {
-      for (const it of itemsOn(items, d)) {
-        if (it.kind === "income") solde += Number(it.amount || 0);
-        else solde -= Number(it.amount || 0);
-      }
-    }
-  }
-  const pts = [{ date:from, solde }];
-  for (let i = 0; i < days; i++) {
-    const date = addDays(from, i);
-    for (const it of itemsOn(items, date)) {
-      if (it.kind === "income") solde += Number(it.amount || 0);
-      else solde -= Number(it.amount || 0);
-    }
-    pts.push({ date, solde });
-  }
-  return pts;
-}
+// Options de projection issues des réglages courants.
+const soldeOpts = (extra) => ({
+  solde:S.solde, soldeDate:S.soldeDate, shiftWeekend:S.shiftWeekend,
+  seuil:Number(S.seuil) || 0, ...extra,
+});
+const aUnSolde = () => S.solde !== null && S.solde !== "" && Number.isFinite(Number(S.solde));
+const projection = (days = 30, extra) => projectBalance(items, soldeOpts(extra), today(), days);
+// Le découvert n'est calculé que si un solde est renseigné.
+const decouvert = (extra) => (aUnSolde() ? findOverdraft(items, soldeOpts(extra), today(), 60) : null);
 
 function renderSolde(){
   const host = $("soldeBlock");
-  if (S.solde === null || S.solde === "" || isNaN(Number(S.solde))) {
+  if (!aUnSolde()) {
     host.innerHTML = items.length ? `<div class="card"><div class="card-bd">
       <div class="note">Indique ton <b>solde actuel</b> dans les réglages : l'app te dira ce qu'il te
       restera après chaque échéance des 30 prochains jours.</div>
@@ -1155,6 +1448,312 @@ function renderList(){
 }
 
 /* ═══════════════════════════════════════════════════════════════════
+   7 bis · Économies : gaspillage détecté et simulateur « si j'arrête »
+   ═══════════════════════════════════════════════════════════════════ */
+
+// Les catégories où cumuler plusieurs abonnements est presque toujours du gaspillage.
+const CAT_CUMUL = { abo:"streaming ou abonnement", telecom:"télécom", sante:"sport ou santé", assurance:"assurance" };
+
+// Deux libellés désignent-ils la même chose ? (« Netflix » / « netflix.com »)
+function memeChose(a, b){
+  const n = (s) => String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]/g, "");
+  const x = n(a), y = n(b);
+  if (!x || !y) return false;
+  return x === y || (x.length >= 4 && y.length >= 4 && (x.includes(y) || y.includes(x)));
+}
+
+// Ce qui mérite d'être signalé à l'utilisateur, du plus coûteux au moins coûteux.
+function detecterGaspillage(){
+  const abos = items.filter((it) => it.kind !== "income" && !it.paused && it.freq !== "once");
+  const trouve = [];
+
+  // 1. Deux fois la même chose
+  for (let i = 0; i < abos.length; i++) {
+    for (let j = i + 1; j < abos.length; j++) {
+      if (memeChose(abos[i].label, abos[j].label)) {
+        trouve.push({
+          type:"doublon", ic:"👯", gain: Math.min(monthlyEquivalent(abos[i]), monthlyEquivalent(abos[j])),
+          titre:`« ${abos[i].label} » compte deux fois`,
+          detail:`${money(abos[i].amount)} et ${money(abos[j].amount)} — c'est peut-être une saisie en double.`,
+          ids:[abos[i].id, abos[j].id],
+        });
+      }
+    }
+  }
+
+  // 2. Plusieurs abonnements dans une catégorie où un seul suffit
+  for (const [cat, nom] of Object.entries(CAT_CUMUL)) {
+    const dans = abos.filter((it) => it.category === cat);
+    if (dans.length < 2) continue;
+    const parPrix = [...dans].sort((a, b) => monthlyEquivalent(b) - monthlyEquivalent(a));
+    trouve.push({
+      type:"cumul", ic:"🧾", gain: parPrix.slice(1).reduce((t, it) => t + monthlyEquivalent(it), 0),
+      titre:`${dans.length} abonnements ${nom}`,
+      detail:`${dans.map((it) => it.label).join(", ")} — en garder un seul libérerait le reste.`,
+      ids:dans.map((it) => it.id),
+    });
+  }
+
+  // 3. Les petits montants qui coûtent cher à l'année
+  for (const it of abos) {
+    const mois = monthlyEquivalent(it);
+    if (mois > 0 && mois < 20 && mois * 12 >= 100) {
+      trouve.push({
+        type:"petit", ic:"🐜", gain: mois,
+        titre:`${it.label} : ${money(mois * 12, { round:true })} par an`,
+        detail:`${money(it.amount)} passe inaperçu chaque mois, mais ça fait ça sur douze mois.`,
+        ids:[it.id],
+      });
+    }
+  }
+
+  return trouve.sort((a, b) => b.gain - a.gain);
+}
+
+let simuOff = new Set();   // abonnements « résiliés » dans le simulateur (jamais enregistré)
+
+function renderSavings(){
+  const host = $("savingsBody");
+  const abos = items.filter((it) => it.kind !== "income" && !it.paused && it.freq !== "once");
+
+  if (!abos.length) {
+    host.innerHTML = `<div class="card"><div class="empty">
+      <div class="em">💡</div>
+      <p>Ajoute tes abonnements et tes charges : l'app te dira ce qu'ils coûtent
+         à l'année et où il y a du gras à couper.</p>
+      <button class="btn" data-add>Ajouter une échéance</button>
+    </div></div>`;
+    return;
+  }
+
+  const mensuel = abos.reduce((t, it) => t + monthlyEquivalent(it), 0);
+  const gagne = [...simuOff].reduce((t, id) => {
+    const it = items.find((x) => x.id === id);
+    return t + (it ? monthlyEquivalent(it) : 0);
+  }, 0);
+
+  // Effet du simulateur sur le solde projeté à 60 jours.
+  let effetSolde = "";
+  if (aUnSolde()) {
+    const avant = projection(60);
+    const apres = projection(60, { ignore:[...simuOff] });
+    const fa = avant[avant.length - 1], fp = apres[apres.length - 1];
+    effetSolde = `<div class="simu-solde${gagne > 0 ? " on" : ""}">
+      <div>
+        <small>Ton solde le ${esc(fmtDate(fa.date, { day:"numeric", month:"long" }))}</small>
+        <b class="num">${esc(money(fp.solde, { round:true }))}</b>
+      </div>
+      ${gagne > 0 ? `<div class="simu-delta">au lieu de <s class="num">${esc(money(fa.solde, { round:true }))}</s></div>` : ""}
+    </div>`;
+  }
+
+  const gaspi = estPremium() ? detecterGaspillage() : [];
+
+  host.innerHTML = `
+    <div class="totals">
+      <div><span>Par mois</span><b class="num">${esc(money(mensuel, { round:true }))}</b></div>
+      <div><span>Par an</span><b class="num">${esc(money(mensuel * 12, { round:true }))}</b></div>
+      <div><span>Sur 5 ans</span><b class="num">${esc(money(mensuel * 60, { round:true }))}</b></div>
+    </div>
+
+    ${estPremium() ? (gaspi.length ? `
+      <div class="section-title">Où il y a du gras <span class="hd-extra num">jusqu'à ${esc(money(gaspi.reduce((t, g) => t + g.gain, 0) * 12, { round:true }))}/an</span></div>
+      <div class="card"><div class="rows">
+        ${gaspi.slice(0, 6).map((g) => `<div class="row">
+          <div class="av">${g.ic}</div>
+          <div class="mid">
+            <div class="lbl">${esc(g.titre)}</div>
+            <div class="meta" style="white-space:normal">${esc(g.detail)}</div>
+          </div>
+          <div class="amt num" style="color:var(--income)">+${esc(money(g.gain * 12, { round:true }))}<small style="display:block;font-size:10.5px;color:var(--muted);font-weight:600;text-align:right">par an</small></div>
+        </div>`).join("")}
+      </div></div>` : `
+      <div class="card ok" style="margin-top:14px"><div class="card-bd" style="display:flex;gap:13px;align-items:center">
+        <div style="font-size:26px">✨</div>
+        <div><b style="display:block;font-size:15.5px">Rien à jeter</b>
+        <small style="color:var(--muted)">Aucun doublon ni cumul suspect dans tes échéances.</small></div>
+      </div></div>`) : `
+      <button class="teaser" data-goto="premium">
+        <div class="teaser-ic">💡</div>
+        <div class="teaser-txt">
+          <b>Où part vraiment ton argent</b>
+          <small>Le Bouclier repère les doublons, les abonnements qui se cumulent et les petits
+          montants qui coûtent cher à l'année.</small>
+        </div>
+        <div class="teaser-go">›</div>
+      </button>`}
+
+    <div class="section-title">Et si j'arrêtais ? <span class="hd-extra">décoche pour simuler</span></div>
+    <div class="card">
+      <div class="card-bd" style="padding-bottom:6px">
+        <div class="simu-head">
+          <div>
+            <small>Tu économiserais</small>
+            <b class="num${gagne > 0 ? " gain" : ""}">${esc(money(gagne * 12, { round:true }))}<span> / an</span></b>
+          </div>
+          ${gagne > 0 ? `<button class="btn ghost" id="simuReset" style="padding:8px 13px;font-size:13.5px">Tout remettre</button>` : ""}
+        </div>
+        ${gagne > 0 ? `<div class="simu-mois num">soit ${esc(money(gagne, { round:true }))} de plus chaque mois</div>` : ""}
+        ${effetSolde}
+      </div>
+      <div class="rows">
+        ${[...abos].sort((a, b) => monthlyEquivalent(b) - monthlyEquivalent(a)).map((it) => {
+          const off = simuOff.has(it.id);
+          const mois = monthlyEquivalent(it);
+          return `<div class="row${off ? " done" : ""}">
+            <div class="av">${catOf(it.category).ic}</div>
+            <div class="mid">
+              <div class="lbl">${esc(it.label)}</div>
+              <div class="meta"><span>${esc(money(mois * 12, { round:true }))} par an</span></div>
+            </div>
+            <div class="amt num">${esc(money(it.amount))}</div>
+            <button class="simu-btn" data-simu="${esc(it.id)}" aria-pressed="${off}"
+                    aria-label="${off ? "Reprendre" : "Résilier"} ${esc(it.label)} dans la simulation"
+              >${off ? "Résilié" : "Je garde"}</button>
+          </div>`;
+        }).join("")}
+      </div>
+    </div>
+    <p style="font-size:12.5px;color:var(--muted);margin:12px 4px 0">
+      Simulation seulement : rien n'est modifié dans tes échéances.
+    </p>`;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   7 ter · Le Bouclier : argumentaire et achat
+   ═══════════════════════════════════════════════════════════════════ */
+const estPremium = () => !!S.premium;
+
+function renderPremium(){
+  const host = $("premiumBody");
+
+  if (estPremium()) {
+    host.innerHTML = `<div class="card"><div class="card-bd" style="text-align:center; padding:28px 20px">
+        <div style="font-size:44px">🛡️</div>
+        <h2 style="margin:10px 0 6px; font-size:21px; letter-spacing:-.02em">Le Bouclier est actif</h2>
+        <p style="color:var(--muted); font-size:14.5px; margin:0 0 18px; line-height:1.55">
+          Je surveille ton solde en continu et je te préviens
+          ${esc(String(S.alerteJours))} jour${S.alerteJours > 1 ? "s" : ""} avant un découvert.
+        </p>
+        <button class="btn ghost" data-goto="settings">Régler le seuil et le délai</button>
+      </div></div>
+      <p style="font-size:12.5px;color:var(--muted);margin:14px 4px 0">
+        Pour résilier, écris-moi — l'abonnement est géré par Stripe et s'arrête à la fin du mois payé.
+      </p>`;
+    return;
+  }
+
+  // Chiffrer l'argument avec SES données : bien plus convaincant qu'un discours générique.
+  const d = decouvert();
+  const gaspi = detecterGaspillage();
+  const gainAn = gaspi.reduce((t, g) => t + g.gain, 0) * 12;
+
+  host.innerHTML = `
+    <div class="pitch">
+      <div class="pitch-ic">🛡️</div>
+      <h1>Le Bouclier</h1>
+      <p class="pitch-lead">Tu ne devrais pas découvrir ton découvert par un SMS de ta banque.</p>
+    </div>
+
+    ${d ? `<div class="card alerte" style="margin-top:18px">
+      <div class="alerte-hd"><span class="alerte-pill">⚠️ Sur ton compte</span></div>
+      <div class="card-bd">
+        <b style="font-size:15.5px; display:block">Un découvert se profile ${esc(relatif(d.date))}.</b>
+        <small style="color:var(--muted); font-size:13.5px">
+          Active le Bouclier pour savoir quel jour, combien il te manque, et être prévenu avant.
+        </small>
+      </div>
+    </div>` : ""}
+
+    <div class="promesse">
+      <div class="promesse-t">La promesse</div>
+      <p><b>Je te préviens avant que ça arrive.</b>
+      Si tu tombes à découvert un jour où je ne t'ai rien dit, <b>le mois est remboursé.</b></p>
+      <small>Valable si tes échéances et ton solde sont à jour et si les notifications sont
+      autorisées — sans ça, je suis aveugle. Un remboursement par an.</small>
+    </div>
+
+    <div class="section-title">Ce que ça change</div>
+    <div class="card"><div class="rows">
+      ${[
+        ["⚠️", "L'alerte de découvert",
+         `Le jour exact, le montant qui manque, et quoi décaler pour l'éviter. Prévenu ${S.alerteJours} jour${S.alerteJours > 1 ? "s" : ""} avant.`],
+        ["📸", "Le scan de tes abonnements",
+         "Photographie l'écran Abonnements de ton téléphone ou un relevé : tout se remplit tout seul."],
+        ["💡", "La chasse au gaspillage",
+         gainAn > 0
+           ? `Sur tes échéances actuelles, j'ai déjà repéré ${money(gainAn, { round:true })} par an de gras à couper.`
+           : "Doublons, abonnements qui se cumulent, petits montants qui coûtent cher à l'année."],
+        ["🔮", "Le simulateur",
+         "« Si j'arrête ça, il me restera combien à la fin du mois ? » — la réponse en direct."],
+      ].map(([ic, t, s]) => `<div class="row">
+        <div class="av">${ic}</div>
+        <div class="mid">
+          <div class="lbl">${esc(t)}</div>
+          <div class="meta" style="white-space:normal">${esc(s)}</div>
+        </div>
+      </div>`).join("")}
+    </div></div>
+
+    <div class="section-title">Le prix</div>
+    <div class="plans">
+      <button class="plan" data-plan="bouclier_month">
+        <span class="plan-n">Mensuel</span>
+        <span class="plan-p num">2,99 €<small>/mois</small></span>
+        <span class="plan-d">sans engagement</span>
+      </button>
+      <button class="plan best" data-plan="bouclier_year">
+        <span class="plan-tag">2 mois offerts</span>
+        <span class="plan-n">Annuel</span>
+        <span class="plan-p num">24,90 €<small>/an</small></span>
+        <span class="plan-d">soit 2,08 € par mois</span>
+      </button>
+    </div>
+    <p class="pitch-foot">
+      Un seul rejet de prélèvement coûte souvent plus cher que l'année entière.
+      Paiement par Stripe, résiliable quand tu veux.
+    </p>
+    <div id="payErr" class="note" style="margin-top:14px; display:none"></div>`;
+}
+
+// Ouvre le paiement Stripe via le backend mutualisé du dépôt (api/pay/checkout.js).
+async function acheter(plan){
+  const err = $("payErr");
+  const btn = document.querySelector(`.plan[data-plan="${plan}"]`);
+  if (btn) { btn.disabled = true; btn.style.opacity = ".6"; }
+  try {
+    const r = await fetch("/api/pay/checkout", {
+      method:"POST", headers:{ "content-type":"application/json" },
+      body: JSON.stringify({ app:"echeance", plan, returnUrl: location.origin + "/budget/" }),
+    });
+    const d = await r.json();
+    if (!r.ok || !d.url) throw new Error(d.error || "Paiement indisponible");
+    location.href = d.url;
+  } catch (e) {
+    if (err) { err.style.display = "block"; err.innerHTML = `⚠️ ${esc(String(e.message || e))}`; }
+    if (btn) { btn.disabled = false; btn.style.opacity = ""; }
+  }
+}
+
+// Retour de Stripe : ?pay=success&session_id=… → on vérifie côté serveur avant d'activer.
+async function verifierRetourPaiement(){
+  const q = new URLSearchParams(location.search);
+  const etat = q.get("pay"), sid = q.get("session_id");
+  if (!etat) return;
+  history.replaceState(null, "", location.pathname);
+  if (etat !== "success" || !sid) { toast("Paiement annulé."); return; }
+  try {
+    const r = await fetch("/api/pay/status?session_id=" + encodeURIComponent(sid));
+    const d = await r.json();
+    if (d.paid && d.app === "echeance") {
+      S.premium = true; S.premiumPlan = d.plan || null; saveSet();
+      renderAll(); goto("today"); planifierSync();
+      toast("🛡️ Le Bouclier est actif !");
+    } else toast("Paiement non confirmé.");
+  } catch { toast("Vérification impossible."); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
    8 · Feuille d'ajout / édition
    ═══════════════════════════════════════════════════════════════════ */
 let editId = null;
@@ -1280,6 +1879,102 @@ function supprimer(){
 }
 
 /* ═══════════════════════════════════════════════════════════════════
+   8 bis · Scan d'une capture d'écran (Claude Vision)
+   ═══════════════════════════════════════════════════════════════════ */
+let scanTrouve = [];    // ce que l'IA a lu, en attente de validation
+let scanGarde = new Set();
+
+// Réduit l'image avant l'envoi : au-delà de ~1600 px on n'y gagne rien en lisibilité
+// et on prend le risque de dépasser la limite de charge de la fonction serverless.
+function compresserImage(file, maxPx = 1600, quality = 0.82){
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onerror = () => reject(new Error("lecture impossible"));
+    fr.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("image illisible"));
+      img.onload = () => {
+        const ratio = Math.min(1, maxPx / Math.max(img.width, img.height));
+        const c = document.createElement("canvas");
+        c.width = Math.round(img.width * ratio);
+        c.height = Math.round(img.height * ratio);
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        resolve(c.toDataURL("image/jpeg", quality));
+      };
+      img.src = fr.result;
+    };
+    fr.readAsDataURL(file);
+  });
+}
+
+async function lancerScan(file){
+  const btn = $("scanBtn");
+  const txt = btn.querySelector(".teaser-txt b");
+  const ancien = txt.textContent;
+  txt.textContent = "Lecture en cours…";
+  btn.disabled = true;
+  try {
+    const image = await compresserImage(file);
+    const r = await fetch("/api/budget", {
+      method:"POST", headers:{ "content-type":"application/json" },
+      body: JSON.stringify({ action:"scan", image }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || "Lecture impossible");
+    if (!d.items || !d.items.length) { toast("Rien de reconnaissable sur cette image."); return; }
+    scanTrouve = d.items.map((it, i) => ({ ...it, id:"s" + i }));
+    scanGarde = new Set(scanTrouve.map((it) => it.id));
+    ouvrirScan();
+  } catch (e) {
+    toast(String(e.message || e));
+  } finally {
+    txt.textContent = ancien; btn.disabled = false;
+  }
+}
+
+function ouvrirScan(){
+  $("scanBody").innerHTML = `
+    <p style="font-size:13.5px; color:var(--muted); margin:0 0 14px; line-height:1.5">
+      Décoche ce que tu ne veux pas, puis ajoute. Tu pourras tout modifier ensuite.
+    </p>
+    <div class="card"><div class="rows">
+      ${scanTrouve.map((it) => `<div class="row k-${it.kind}">
+        <div class="av">${catOf(it.category).ic}</div>
+        <div class="mid">
+          <div class="lbl">${esc(it.label)}</div>
+          <div class="meta"><span>${esc(freqLabel(it))}</span></div>
+        </div>
+        <div class="amt num">${esc(money(it.amount))}</div>
+        <button class="check" data-scanpick="${it.id}" aria-pressed="true"
+                aria-label="Garder ${esc(it.label)}">✓</button>
+      </div>`).join("")}
+    </div></div>`;
+  $("scanBg").classList.add("on");
+  document.body.style.overflow = "hidden";
+}
+
+function fermerScan(){
+  $("scanBg").classList.remove("on");
+  document.body.style.overflow = "";
+}
+
+function validerScan(){
+  const ajoutes = scanTrouve.filter((it) => scanGarde.has(it.id));
+  if (!ajoutes.length) { fermerScan(); return; }
+  for (const it of ajoutes) {
+    items.push({
+      id: "e" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      kind: it.kind, label: it.label, amount: it.amount, category: it.category,
+      freq: it.freq, day: it.day, weekday: 1, anchorMonth: it.anchorMonth,
+      date: today(), start:"", end:"", note: it.note || "", paused:false, notifyDaysBefore:0,
+    });
+  }
+  persist();
+  fermerScan();
+  toast(`${ajoutes.length} échéance${ajoutes.length > 1 ? "s" : ""} ajoutée${ajoutes.length > 1 ? "s" : ""}.`);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
    9 · Notifications (abonnement push + planification quotidienne)
    ═══════════════════════════════════════════════════════════════════ */
 const VAPID_PUBLIC = "BMUXblAD9S3NEVQcpSTYfO4BDC2La13Bnv5Nv34Q6WrZ0HRjV9EfOF99NsBThUxKINb6Tx-rfxMCVuU1KPwCn4g";
@@ -1318,6 +2013,12 @@ function payload(){
     aheadDays: 7,
     quietIfEmpty: S.quietIfEmpty,
     tzOffset: new Date().getTimezoneOffset(),
+    // Le Bouclier : sans ces champs, le serveur ne peut pas prédire le découvert.
+    solde: aUnSolde() ? Number(S.solde) : null,
+    soldeDate: S.soldeDate || "",
+    seuil: Number(S.seuil) || 0,
+    alerteJours: Number(S.alerteJours) || 3,
+    premium: estPremium(),
   };
 }
 
@@ -1424,8 +2125,29 @@ function renderSettings(){
   $("notifDetail").hidden = !S.notif;
   $("notifHour").value = `${pad2(S.hour)}:${pad2(S.minute)}`;
   $("soldeInput").value = S.solde ?? "";
-  $("soldeDate").value = S.soldeDate || today();
+  // Pas de date tant qu'il n'y a pas de solde : « Constaté le 26 juillet » sous un
+  // champ vide n'a aucun sens. Elle se remplit dès que le solde est saisi.
+  $("soldeDate").value = S.solde === null || S.solde === "" ? "" : (S.soldeDate || today());
   $("currencySel").value = S.currency;
+  $("seuilInput").value = Number(S.seuil) || 0;
+  $("alerteJoursSel").value = String(Number(S.alerteJours) || 3);
+  $("bouclieReglages").hidden = !estPremium();
+  $("boucliePitch").innerHTML = estPremium()
+    ? `<div class="switch" style="padding-top:0">
+         <div class="sw-txt">
+           <b style="color:var(--income)">🛡️ Actif</b>
+           <small>Surveillance du découvert, scan des abonnements et chasse au gaspillage.</small>
+         </div>
+       </div>`
+    : `<button class="teaser" data-goto="premium" style="margin:0">
+         <div class="teaser-ic">🛡️</div>
+         <div class="teaser-txt">
+           <b>Activer le Bouclier</b>
+           <small>Être prévenu avant un découvert, scanner ses abonnements, traquer le gaspillage.</small>
+         </div>
+         <div class="teaser-go">›</div>
+       </button>`;
+
   majNotifNote();
   $("storeInfo").textContent =
     `${items.length} échéance${items.length > 1 ? "s" : ""} enregistrée${items.length > 1 ? "s" : ""} sur cet appareil.`;
@@ -1480,17 +2202,21 @@ function goto(name){
   document.querySelectorAll(".screen").forEach((s) => s.classList.toggle("on", s.id === "sc-" + name));
   document.querySelectorAll("#tabs button").forEach((b) =>
     b.setAttribute("aria-current", b.dataset.screen === name ? "page" : "false"));
-  $("addBtn").hidden = name === "settings";
+  $("addBtn").hidden = name === "settings" || name === "premium" || name === "savings";
   window.scrollTo({ top:0, behavior:"instant" });
   if (name === "settings") renderSettings();
   if (name === "calendar") renderCalendar();
   if (name === "list") renderList();
+  if (name === "savings") renderSavings();
+  if (name === "premium") renderPremium();
 }
 
 function renderAll(){
   renderToday();
   if (screen === "calendar") renderCalendar();
   if (screen === "list") renderList();
+  if (screen === "savings") renderSavings();
+  if (screen === "premium") renderPremium();
 }
 
 function appliquerTheme(mode){
@@ -1532,6 +2258,51 @@ function brancherEcouteurs(){
     if (g) { goto(g.dataset.goto); return; }
     const day = e.target.closest("[data-day]");
     if (day) { calPicked = calPicked === day.dataset.day ? null : day.dataset.day; renderCalendar(); return; }
+
+    // Simulateur : bascule « je garde » / « résilié » (jamais enregistré)
+    const simu = e.target.closest("[data-simu]");
+    if (simu) {
+      const id = simu.dataset.simu;
+      if (simuOff.has(id)) simuOff.delete(id); else simuOff.add(id);
+      renderSavings();
+      return;
+    }
+    if (e.target.closest("#simuReset")) { simuOff.clear(); renderSavings(); return; }
+
+    // Choix d'un plan sur l'écran du Bouclier
+    const plan = e.target.closest("[data-plan]");
+    if (plan) { acheter(plan.dataset.plan); return; }
+
+    // Sélection dans le résultat du scan
+    const pick = e.target.closest("[data-scanpick]");
+    if (pick) {
+      const id = pick.dataset.scanpick;
+      if (scanGarde.has(id)) scanGarde.delete(id); else scanGarde.add(id);
+      pick.setAttribute("aria-pressed", String(scanGarde.has(id)));
+      pick.closest(".row").classList.toggle("done", !scanGarde.has(id));
+      return;
+    }
+  });
+
+  // ── Scan par photo
+  $("scanBtn").addEventListener("click", () => {
+    if (!estPremium()) { goto("premium"); return; }
+    $("scanFile").click();
+  });
+  $("scanFile").addEventListener("change", (e) => {
+    if (e.target.files[0]) lancerScan(e.target.files[0]);
+    e.target.value = "";
+  });
+  $("scanConfirm").addEventListener("click", validerScan);
+  $("scanCancel").addEventListener("click", fermerScan);
+  $("scanBg").addEventListener("click", (e) => { if (e.target === $("scanBg")) fermerScan(); });
+
+  // ── Réglages du Bouclier
+  $("seuilInput").addEventListener("change", (e) => {
+    S.seuil = Number(e.target.value) || 0; saveSet(); planifierSync(); renderAll();
+  });
+  $("alerteJoursSel").addEventListener("change", (e) => {
+    S.alerteJours = Number(e.target.value) || 3; saveSet(); planifierSync(); renderAll();
   });
 
   // ── Calendrier
@@ -1569,7 +2340,9 @@ function brancherEcouteurs(){
   $("sheetCancel").addEventListener("click", fermerSheet);
   $("sheetBg").addEventListener("click", (e) => { if (e.target === $("sheetBg")) fermerSheet(); });
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && $("sheetBg").classList.contains("on")) fermerSheet();
+    if (e.key !== "Escape") return;
+    if ($("sheetBg").classList.contains("on")) fermerSheet();
+    else if ($("scanBg").classList.contains("on")) fermerScan();
   });
 
   // ── Réglages
@@ -1602,10 +2375,12 @@ function brancherEcouteurs(){
   });
   $("soldeInput").addEventListener("change", (e) => {
     S.solde = e.target.value === "" ? null : Number(e.target.value);
-    if (!S.soldeDate) S.soldeDate = today();
-    saveSet(); renderToday();
+    if (S.solde !== null && !S.soldeDate) S.soldeDate = today();
+    saveSet(); renderSettings(); planifierSync(); renderAll();
   });
-  $("soldeDate").addEventListener("change", (e) => { S.soldeDate = e.target.value || today(); saveSet(); renderToday(); });
+  $("soldeDate").addEventListener("change", (e) => {
+    S.soldeDate = e.target.value || today(); saveSet(); planifierSync(); renderAll();
+  });
   $("currencySel").addEventListener("change", (e) => { S.currency = e.target.value; persist(); });
   $("testNotif").addEventListener("click", testerNotif);
   $("exportBtn").addEventListener("click", exporter);
@@ -1640,6 +2415,7 @@ remplirSelects();
 brancherEcouteurs();
 goto("today");
 renderAll();
+verifierRetourPaiement();     // retour de Stripe : ?pay=success&session_id=…
 
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("/budget/sw.js", { scope:"/budget/" }).catch(() => {});

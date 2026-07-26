@@ -29,6 +29,20 @@ export const CATALOG = {
     pro_quarter: { mode: "subscription", currency: "eur", amount: 1199, interval: "month", intervalCount: 3, name: "Metria Pro — trimestriel" },
     pro_year:    { mode: "subscription", currency: "eur", amount: 3999, interval: "year",  name: "Metria Pro — annuel" },
   },
+  echeance: {
+    // Pas de compte dans échéance. (données locales au téléphone) : requiresAuth reste
+    // false, et le statut payé est vérifié au retour via pay/status.js.
+    bouclier_month: {
+      mode: "subscription", currency: "eur", amount: 299, interval: "month",
+      name: "échéance. — le Bouclier",
+      description: "Alerte de découvert, scan des abonnements et simulateur d'économies.",
+    },
+    bouclier_year: {
+      mode: "subscription", currency: "eur", amount: 2490, interval: "year",
+      name: "échéance. — le Bouclier (annuel)",
+      description: "Deux mois offerts par rapport au mensuel.",
+    },
+  },
   ltvtc: {
     soutien: {
       mode: "payment", currency: "chf", amount: 990,

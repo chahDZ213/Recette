@@ -57,6 +57,12 @@ function sanitize(data = {}) {
     aheadDays: Math.max(1, Math.min(31, Number(data.aheadDays) || 7)),
     quietIfEmpty: data.quietIfEmpty !== false,
     tzOffset: Math.max(-840, Math.min(840, Number(data.tzOffset) || 0)),
+    // Bouclier découvert
+    solde: Number.isFinite(Number(data.solde)) && data.solde !== null && data.solde !== "" ? Number(data.solde) : null,
+    soldeDate: clampStr(data.soldeDate, 10),
+    seuil: Number(data.seuil) || 0,
+    alerteJours: Math.max(1, Math.min(14, Number(data.alerteJours) || 3)),
+    premium: !!data.premium,
   };
 }
 
@@ -70,6 +76,84 @@ async function qstash(path, init = {}) {
 async function supprimerPlanification(scheduleId) {
   if (!scheduleId) return;
   try { await qstash(`/v2/schedules/${encodeURIComponent(scheduleId)}`, { method: "DELETE" }); } catch {}
+}
+
+// ─── Lecture d'une capture d'écran par Claude Vision ───
+// Cas d'usage principal : iOS → Réglages → [ton nom] → Abonnements, qui liste tous
+// les abonnements App Store. Marche aussi sur un relevé bancaire photographié.
+const CATEGORIES = "logement, energie, telecom, transport, assurance, credit, abo, impots, sante, courses, epargne, salaire, autre";
+
+const PROMPT_SCAN = `Tu regardes une capture d'écran ou une photo fournie par un utilisateur francophone :
+soit la liste de ses abonnements (écran « Abonnements » d'iOS/Android, page d'un compte),
+soit un relevé bancaire, soit une liste écrite de dépenses récurrentes.
+
+Extrais UNIQUEMENT les dépenses et revenus RÉCURRENTS que tu peux lire avec certitude.
+Ignore les achats ponctuels du passé, les soldes, les totaux et les frais bancaires isolés.
+
+Réponds STRICTEMENT par un objet JSON, sans texte autour :
+{"items":[{"label":"Netflix","amount":13.49,"kind":"debit","freq":"monthly","day":5,"anchorMonth":0,"category":"abo","note":""}]}
+
+Règles :
+- "label" : le nom du marchand, court et propre (« Netflix », pas « NETFLIX.COM 4972 »).
+- "amount" : nombre positif, en unités (13.49). Jamais de symbole monétaire.
+- "kind" : "debit" si c'est prélevé automatiquement, "manual" si l'utilisateur doit payer
+  lui-même (loyer versé par virement, facture à régler), "income" pour une entrée d'argent.
+  Dans le doute sur un abonnement : "debit".
+- "freq" : "monthly", "weekly", "quarterly", "semiannual", "yearly" ou "once".
+  Un abonnement mensuel = "monthly", annuel = "yearly".
+- "day" : jour du mois (1-31) si tu le vois ou peux le déduire d'une date de renouvellement,
+  sinon 1. "anchorMonth" : mois (0=janvier) pour les fréquences annuelles/trimestrielles, sinon 0.
+- "category" : une seule valeur parmi ${CATEGORIES}.
+- Si tu ne lis rien d'exploitable, renvoie {"items":[]}.`;
+
+async function scanImage(body, res) {
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key) return res.status(500).json({ error: "Scan non configuré (ANTHROPIC_API_KEY manquante)" });
+
+  const m = /^data:(image\/[a-zA-Z0-9.+-]+);base64,([\s\S]+)$/.exec(body.image || "");
+  if (!m) return res.status(400).json({ error: "Image invalide" });
+  if (m[2].length > 5_000_000) return res.status(413).json({ error: "Image trop lourde (réduis la qualité)" });
+
+  try {
+    const r = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 1800,
+        messages: [{
+          role: "user",
+          content: [
+            { type: "image", source: { type: "base64", media_type: m[1], data: m[2] } },
+            { type: "text", text: PROMPT_SCAN },
+          ],
+        }],
+      }),
+    });
+    const data = await r.json();
+    if (!r.ok) return res.status(502).json({ error: "Lecture impossible", detail: (data.error && data.error.message) || "" });
+
+    const texte = (data.content || []).filter((b) => b.type === "text").map((b) => b.text).join("\n");
+    const a = texte.indexOf("{"), b = texte.lastIndexOf("}");
+    if (a === -1 || b === -1) return res.status(200).json({ items: [] });
+
+    const parsed = JSON.parse(texte.slice(a, b + 1));
+    const cats = CATEGORIES.split(", ");
+    const items = (Array.isArray(parsed.items) ? parsed.items : []).slice(0, 40).map((it) => ({
+      label: clampStr(it.label, 60) || "Sans nom",
+      amount: Math.abs(Number(it.amount)) || 0,
+      kind: ["debit", "manual", "income"].includes(it.kind) ? it.kind : "debit",
+      freq: ["monthly", "weekly", "quarterly", "semiannual", "yearly", "once"].includes(it.freq) ? it.freq : "monthly",
+      day: Math.max(1, Math.min(31, Number(it.day) || 1)),
+      anchorMonth: Math.max(0, Math.min(11, Number(it.anchorMonth) || 0)),
+      category: cats.includes(it.category) ? it.category : "autre",
+      note: clampStr(it.note, 120),
+    })).filter((it) => it.amount > 0);
+
+    return res.status(200).json({ items });
+  } catch (e) {
+    return res.status(500).json({ error: "Lecture impossible", detail: String((e && e.message) || e) });
+  }
 }
 
 export default async function handler(req, res) {
@@ -116,6 +200,9 @@ export default async function handler(req, res) {
       await supprimerPlanification(scheduleId);
       return res.status(200).json({ ok: true });
     }
+
+    // ─── Scan d'une capture (écran Abonnements iOS/Android, relevé bancaire) ───
+    if (action === "scan") return scanImage(body, res);
 
     if (!subscription) return res.status(400).json({ error: "abonnement push manquant" });
 

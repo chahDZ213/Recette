@@ -16,6 +16,25 @@ et **ce que tu dois payer toi-même** — même application fermée.
 | 📋 **Échéances** | Toutes tes lignes triées par prochaine occurrence, avec le coût mensuel moyen (une assurance annuelle compte pour 1/12) et le reste à vivre. |
 | 🔔 **Rappel quotidien** | Notification push à l'heure de ton choix, recalculée au moment de l'envoi. Rappel anticipé possible par échéance (J-1 à J-7). |
 
+## 🛡️ Le Bouclier (premium)
+
+La partie payante — pensée pour faire économiser de l'argent, pas seulement pour rappeler.
+
+| | |
+|---|---|
+| ⚠️ **Alerte de découvert** | À partir du solde et des échéances, l'app repère le **premier jour** où tu passerais sous ton seuil de sécurité, chiffre **le montant qui manque**, et propose **quoi décaler** pour l'éviter. Notification anticipée (J-N réglable). |
+| 📸 **Scan des abonnements** | Photographie l'écran *Réglages → Abonnements* de ton iPhone (ou un relevé bancaire) : Claude Vision lit la liste et pré-remplit les échéances, avec un écran de validation avant ajout. |
+| 💡 **Chasse au gaspillage** | Doublons de saisie, abonnements qui se cumulent (deux plateformes de streaming, deux forfaits…), petits montants qui coûtent cher à l'année — chiffrés en €/an. |
+| 🔮 **Simulateur « et si j'arrête ? »** | Décoche des abonnements et vois en direct l'économie annuelle **et** l'effet sur ton solde projeté à 60 jours. Simulation pure, rien n'est modifié. |
+
+**La promesse commerciale** : *« Je te préviens avant que ça arrive. Si tu tombes à découvert un
+jour où je ne t'ai rien dit, le mois est remboursé »* (sous conditions : données à jour,
+notifications autorisées, un remboursement par an). C'est un engagement produit à honorer
+manuellement pour l'instant — il n'y a pas d'automatisation de remboursement.
+
+**Prix** : 2,99 €/mois ou 24,90 €/an, via le backend Stripe mutualisé du dépôt
+(`api/pay/checkout.js`, catalogue `echeance` dans `api/pay/_lib.js`).
+
 **Fréquences gérées** : mensuelle, hebdomadaire, trimestrielle, semestrielle, annuelle, ponctuelle.
 Le 31 d'un mois court retombe sur le dernier jour (28/29/30). Option « décaler les week-ends »
 pour coller au comportement réel de la banque. Dates de début et de fin par échéance
@@ -30,8 +49,13 @@ pour coller au comportement réel de la banque. Dates de début et de fin par é
 ### Backend (dossier `api/`)
 - `api/_budget-core.js` — moteur de récurrence (dates, fréquences, décalage week-end).
 - `api/_budget-notify.js` — rédaction du texte de la notification.
-- `api/budget.js` — endpoint unique, quatre actions : `set` / `clear` (planification quotidienne),
-  `test` (envoi immédiat) et `push` (appelée par QStash chaque jour, protégée par `SEND_SECRET`).
+- `api/budget.js` — endpoint unique, cinq actions : `set` / `clear` (planification quotidienne),
+  `test` (envoi immédiat), `push` (appelée par QStash chaque jour, protégée par `SEND_SECRET`)
+  et `scan` (lecture d'une capture par Claude Vision, nécessite `ANTHROPIC_API_KEY`).
+- `api/pay/checkout.js` + `api/pay/status.js` — paiement Stripe du Bouclier (backend mutualisé
+  du dépôt, catalogue `echeance`). Le statut payé étant local au téléphone, il est **revérifié
+  côté serveur** au retour de Stripe avant activation ; ce n'est pas un secret de sécurité mais
+  un déverrouillage de confort — à durcir (compte + vérification serveur) avant monétisation sérieuse.
 
 > **Pourquoi un seul fichier** : le plan Vercel Hobby limite un déploiement à **12 fonctions
 > serverless** et le dépôt en comptait déjà 11. Séparer planification et envoi faisait échouer
@@ -71,6 +95,16 @@ abonnements push restent distincts car la portée du service worker diffère (`/
 
 ## Limites connues
 
+- **Premium stocké en local** : `S.premium` vit dans le `localStorage`, comme le reste. C'est
+  contournable par un utilisateur technique et perdu au vidage du cache. Acceptable pour lancer
+  et mesurer l'intérêt ; à migrer vers un compte + vérification serveur (le socle Supabase de
+  mise. se réplique) avant d'en faire une vraie source de revenus. Même trajectoire que le premium
+  de mise., déjà noté comme point faible du dépôt.
+- **Alerte de découvert = qualité des données** : elle vaut ce que valent le solde saisi et les
+  échéances. Un solde jamais mis à jour la rend aveugle — d'où le solde daté (« constaté le ») et
+  le rattrapage automatique jusqu'à aujourd'hui, mais ça reste déclaratif, pas branché à la banque.
+- **Scan par photo** : Claude Vision lit bien les écrans nets ; un relevé flou ou exotique peut
+  rater des lignes ou se tromper de montant, d'où l'écran de validation obligatoire avant ajout.
 - **Saisie manuelle** : l'app ne se connecte pas à ta banque. Un vrai lien bancaire impose un
   agrégateur agréé (Bridge, Powens, GoCardless Bank Account Data) avec contrat et KYC — hors
   sujet pour cette version. Tes échéances récurrentes se saisissent une fois et ne bougent plus.

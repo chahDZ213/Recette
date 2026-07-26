@@ -117,6 +117,59 @@ export function paidKey(id, dateStr) {
   return `${id}:${dateStr}`;
 }
 
+// --- Projection de solde ---------------------------------------------------
+// Rejoue les échéances jour par jour à partir du solde constaté. Renvoie un point
+// par jour : [{date, solde}], le premier étant le solde avant les mouvements du jour.
+export function projectBalance(items, opts, from, days) {
+  const { solde, soldeDate, shiftWeekend = false, ignore = [] } = opts || {};
+  const exclus = new Set(ignore);
+  const actifs = (items || []).filter((it) => !exclus.has(it.id));
+  let courant = Number(solde);
+  if (!Number.isFinite(courant)) return [];
+
+  const mouvements = (date) => {
+    for (const it of itemsOn(actifs, date, shiftWeekend)) {
+      if (it.kind === "income") courant += Number(it.amount || 0);
+      else courant -= Number(it.amount || 0);
+    }
+  };
+
+  // Le solde a été constaté à une date passée : on rattrape jusqu'à aujourd'hui.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(soldeDate || "") && soldeDate < from) {
+    let d = soldeDate;
+    for (let n = 0; d < from && n < 400; n++, d = addDays(d, 1)) mouvements(d);
+  }
+
+  const pts = [{ date: from, solde: courant }];
+  for (let i = 0; i < days; i++) {
+    const date = addDays(from, i);
+    mouvements(date);
+    pts.push({ date, solde: courant });
+  }
+  return pts;
+}
+
+// Premier jour où le solde projeté passe sous le seuil de sécurité.
+// Renvoie null si la voie est libre sur toute la période.
+export function findOverdraft(items, opts, from, days = 60) {
+  const pts = projectBalance(items, opts, from, days);
+  if (!pts.length) return null;
+  const seuil = Number(opts?.seuil) || 0;
+
+  const franchi = pts.find((p, i) => i > 0 && p.solde < seuil);
+  if (!franchi) return null;
+
+  const bas = pts.reduce((m, p) => (p.solde < m.solde ? p : m), pts[0]);
+  return {
+    date: franchi.date,
+    solde: franchi.solde,
+    manque: seuil - franchi.solde,          // ce qu'il faudrait ajouter pour tenir
+    joursRestants: Math.round((Date.parse(franchi.date) - Date.parse(from)) / 86400000),
+    bas,
+    seuil,
+  };
+}
+
 // Formatage monétaire — même rendu côté serveur (notification) et côté app.
 export function money(amount, currency = "EUR", locale = "fr-FR") {
   const n = Number(amount || 0);

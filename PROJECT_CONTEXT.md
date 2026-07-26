@@ -86,7 +86,7 @@ Recette/
 │   ├── cancel-push.js  ← annule un push planifié
 │   ├── _budget-core.js   ← moteur de récurrence des échéances (dupliqué à l'identique dans budget/index.html)
 │   ├── _budget-notify.js ← rédaction du texte de la notification quotidienne
-│   ├── budget.js       ← endpoint unique d'échéance. : set/clear (planification QStash), test, push
+│   ├── budget.js       ← endpoint unique d'échéance. : set/clear (planif. QStash), test, push, scan (Vision)
 │   └── pay/            ← backend Stripe Checkout MODE TEST, PARTAGÉ entre mise., Metria et LTVTC Topo
 │       ├── _lib.js     ← catalogue produits par app, CORS, JWT, upsert premium_users
 │       ├── checkout.js ← crée une session Checkout (mise. exige le JWT Supabase)
@@ -144,6 +144,21 @@ Recette/
   les données restent dans le `localStorage` du téléphone. Le moteur de récurrence est volontairement
   dupliqué (`api/_budget-core.js` ↔ `budget/index.html`) faute de build côté front — parité vérifiée
   sur ~520 000 combinaisons date × fréquence.
+
+- ✅ **échéance. — Le Bouclier (premium) (2026-07-26)** : couche payante orientée « faire économiser ».
+  (1) **Alerte de découvert** : `projectBalance`/`findOverdraft` (dans `api/_budget-core.js`, dupliqués
+  dans le front) rejouent le solde jour par jour et repèrent le premier passage sous le seuil ;
+  carte d'alerte en tête d'« Aujourd'hui » avec le manque chiffré et quoi décaler, + notification
+  urgente J-N (rédigée dans `api/_budget-notify.js`, réservée au premium). (2) **Scan par photo** :
+  action `scan` de `api/budget.js` → Claude Vision lit l'écran Abonnements iOS ou un relevé, écran
+  de validation avant ajout. (3) **Écran Économies** : détection doublons/cumuls/petits montants
+  chiffrée en €/an, et **simulateur** « et si j'arrête ? » (décoche → économie annuelle + effet sur
+  le solde à 60 j, via `projectBalance({ignore})`). (4) **Paiement** : catalogue `echeance` (2,99 €/mois,
+  24,90 €/an) dans le Stripe mutualisé, statut revérifié au retour via `pay/status.js`.
+  **Statut premium en localStorage** (`S.premium`) — contournable, à migrer vers compte + serveur
+  avant monétisation sérieuse (même limite que le premium mise.). Corrige au passage deux bugs
+  signalés : boutons ghost/danger illisibles en thème sombre (conflit de spécificité → jeton
+  `--on-accent`) et champ date pré-rempli sous un solde vide.
 
 ## 7. Problèmes et points faibles connus
 
