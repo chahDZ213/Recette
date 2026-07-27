@@ -1,0 +1,246 @@
+{
+ "Avenue Appia": {
+  "longueur_m": 958,
+  "nb_extremites": 4,
+  "ext": [
+   {
+    "point": [
+     46.226483,
+     6.137295
+    ],
+    "voies": [
+     "Appia",
+     "Avenue de la Paix",
+     "Route de Pregny"
+    ]
+   },
+   {
+    "point": [
+     46.234583,
+     6.133101
+    ],
+    "voies": []
+   }
+  ]
+ },
+ "Rue Blavignac": {
+  "longueur_m": 444,
+  "nb_extremites": 4,
+  "ext": [
+   {
+    "point": [
+     46.182893,
+     6.135829
+    ],
+    "voies": [
+     "Carouge-Tours",
+     "Rue Jacques-Grosselin"
+    ]
+   },
+   {
+    "point": [
+     46.180024,
+     6.131833
+    ],
+    "voies": []
+   }
+  ]
+ },
+ "Rue Boissonnas": {
+  "longueur_m": 636,
+  "nb_extremites": 4,
+  "ext": [
+   {
+    "point": [
+     46.18869,
+     6.130399
+    ],
+    "voies": [
+     "Route des Acacias",
+     "Rue Pictet-Thellusson"
+    ]
+   },
+   {
+    "point": [
+     46.194307,
+     6.131896
+    ],
+    "voies": [
+     "Rue François-Dussaud"
+    ]
+   }
+  ]
+ },
+ "Chemin du Champ-Baron": {
+  "longueur_m": 176,
+  "nb_extremites": 2,
+  "ext": [
+   {
+    "point": [
+     46.22225,
+     6.132575
+    ],
+    "voies": []
+   },
+   {
+    "point": [
+     46.223157,
+     6.13071
+    ],
+    "voies": [
+     "Chemin du Petit-Saconnex"
+    ]
+   }
+  ]
+ },
+ "Rue Le-Corbusier": {
+  "longueur_m": 375,
+  "nb_extremites": 2,
+  "ext": [
+   {
+    "point": [
+     46.194816,
+     6.168577
+    ],
+    "voies": []
+   },
+   {
+    "point": [
+     46.192242,
+     6.165445
+    ],
+    "voies": []
+   }
+  ]
+ },
+ "Rue des Charmilles": {
+  "longueur_m": 486,
+  "nb_extremites": 3,
+  "ext": [
+   {
+    "point": [
+     46.207796,
+     6.126953
+    ],
+    "voies": [
+     "Charmilles",
+     "Place des Charmilles"
+    ]
+   },
+   {
+    "point": [
+     46.205739,
+     6.13252
+    ],
+    "voies": [
+     "Délices",
+     "Pont des Délices",
+     "Rue de Saint-Jean",
+     "Rue de l'Encyclopédie",
+     "Rue des Délices"
+    ]
+   }
+  ]
+ },
+ "Route de Meyrin": {
+  "longueur_m": 7885,
+  "nb_extremites": 19,
+  "ext": [
+   {
+    "point": [
+     46.213851,
+     6.129501
+    ],
+    "voies": [
+     "Avenue Wendt",
+     "Rue Hoffmann",
+     "Rue de la Servette"
+    ]
+   },
+   {
+    "point": [
+     46.239346,
+     6.033993
+    ],
+    "voies": [
+     "Rond-Point du CERN",
+     "Route Gregory"
+    ]
+   }
+  ]
+ },
+ "Avenue des Tilleuls": {
+  "longueur_m": 538,
+  "nb_extremites": 2,
+  "ext": [
+   {
+    "point": [
+     46.206804,
+     6.125109
+    ],
+    "voies": []
+   },
+   {
+    "point": [
+     46.205837,
+     6.131952
+    ],
+    "voies": [
+     "Délices",
+     "Rue des Charmilles",
+     "Voie couverte de Saint-Jean"
+    ]
+   }
+  ]
+ },
+ "Rue Lombard": {
+  "longueur_m": 14,
+  "nb_extremites": 2,
+  "ext": [
+   {
+    "point": [
+     46.195835,
+     6.147473
+    ],
+    "voies": [
+     "Boulevard de la Tour",
+     "Rue du Petit-Salève"
+    ]
+   },
+   {
+    "point": [
+     46.195922,
+     6.147601
+    ],
+    "voies": [
+     "Boulevard de la Tour"
+    ]
+   }
+  ]
+ },
+ "Route de Drize": {
+  "longueur_m": 1245,
+  "nb_extremites": 2,
+  "ext": [
+   {
+    "point": [
+     46.168499,
+     6.140675
+    ],
+    "voies": [
+     "Pont de Drize"
+    ]
+   },
+   {
+    "point": [
+     46.179631,
+     6.139055
+    ],
+    "voies": [
+     "Carouge-Rondeau",
+     "Place du Rondeau"
+    ]
+   }
+  ]
+ }
+}

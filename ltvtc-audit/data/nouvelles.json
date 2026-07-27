@@ -1,0 +1,329 @@
+[
+ {
+  "rueOfficial": "Chemin Michée-Chauderon",
+  "rueDisplay": "Chemin Michée-Chauderon",
+  "referenceOfficial": "Au Petit-Saconnex",
+  "osmName": "Chemin Michée-Chauderon",
+  "center": [
+   46.204698,
+   6.112865
+  ],
+  "geometry": [
+   [
+    [
+     46.2051607,
+     6.1142814
+    ],
+    [
+     46.2052035,
+     6.1144101
+    ],
+    [
+     46.2052148,
+     6.114446
+    ]
+   ],
+   [
+    [
+     46.204822,
+     6.111155
+    ],
+    [
+     46.2047791,
+     6.1111611
+    ],
+    [
+     46.204763,
+     6.1111631
+    ],
+    [
+     46.2043988,
+     6.1112081
+    ],
+    [
+     46.2043695,
+     6.1112148
+    ],
+    [
+     46.2043477,
+     6.1112369
+    ],
+    [
+     46.2043343,
+     6.111263
+    ],
+    [
+     46.2043259,
+     6.111306
+    ],
+    [
+     46.20435,
+     6.1116974
+    ],
+    [
+     46.2043765,
+     6.1121406
+    ],
+    [
+     46.2044024,
+     6.1125733
+    ],
+    [
+     46.2044305,
+     6.1130409
+    ],
+    [
+     46.2044478,
+     6.1133308
+    ]
+   ],
+   [
+    [
+     46.2050501,
+     6.1139014
+    ],
+    [
+     46.2050318,
+     6.1138335
+    ],
+    [
+     46.2049499,
+     6.1135433
+    ],
+    [
+     46.2049231,
+     6.1134769
+    ]
+   ],
+   [
+    [
+     46.2050501,
+     6.1139014
+    ],
+    [
+     46.2051607,
+     6.1142814
+    ]
+   ],
+   [
+    [
+     46.2049231,
+     6.1134769
+    ],
+    [
+     46.2048983,
+     6.1134531
+    ],
+    [
+     46.2048563,
+     6.1134432
+    ],
+    [
+     46.2045253,
+     6.1134569
+    ],
+    [
+     46.2044889,
+     6.1134386
+    ],
+    [
+     46.2044634,
+     6.1134029
+    ],
+    [
+     46.2044555,
+     6.1133741
+    ],
+    [
+     46.2044478,
+     6.1133308
+    ]
+   ]
+  ],
+  "beginPoint": [
+   46.205215,
+   6.114446
+  ],
+  "endPoint": [
+   46.204822,
+   6.111155
+  ],
+  "beginStreet": "Avenue d'Aïre",
+  "endStreet": "Avenue Henri-Bordier",
+  "beginAlternatives": [
+   "Avenue d'Aïre",
+   "Avenue de la Concorde",
+   "Chemin des Sports",
+   "Concorde"
+  ],
+  "endAlternatives": [
+   "Avenue Henri-Bordier",
+   "Avenue d'Aïre",
+   "Avenue de l'Ain",
+   "Chemin Désiré",
+   "Pont de l'Avenue-d'Aïre"
+  ],
+  "status": "verified"
+ },
+ {
+  "rueOfficial": "LA RUE MARIE THÉRESE MAURETTE",
+  "rueDisplay": "Rue Marie-Thérèse-Maurette",
+  "referenceOfficial": "Près de la Route de Chêne",
+  "osmName": "Rue Marie-Thérèse-Maurette",
+  "center": [
+   46.199123,
+   6.173153
+  ],
+  "geometry": [
+   [
+    [
+     46.1998398,
+     6.1727891
+    ],
+    [
+     46.1997918,
+     6.172775
+    ],
+    [
+     46.1995475,
+     6.1726956
+    ],
+    [
+     46.1994713,
+     6.172689
+    ],
+    [
+     46.1992694,
+     6.1726227
+    ],
+    [
+     46.1989486,
+     6.1725279
+    ]
+   ],
+   [
+    [
+     46.1988369,
+     6.1746122
+    ],
+    [
+     46.1988437,
+     6.1745696
+    ],
+    [
+     46.1989982,
+     6.1736022
+    ],
+    [
+     46.1990378,
+     6.1733512
+    ],
+    [
+     46.1989486,
+     6.1733129
+    ],
+    [
+     46.1988839,
+     6.1732235
+    ],
+    [
+     46.1988551,
+     6.173128
+    ],
+    [
+     46.1988691,
+     6.1730396
+    ],
+    [
+     46.1988792,
+     6.1729744
+    ],
+    [
+     46.1989486,
+     6.1725279
+    ]
+   ]
+  ],
+  "beginPoint": [
+   46.19984,
+   6.172789
+  ],
+  "endPoint": [
+   46.198837,
+   6.174612
+  ],
+  "beginStreet": "Chemin des Tulipiers",
+  "endStreet": "Chemin de la Chevillarde",
+  "beginAlternatives": [
+   "Chemin des Tulipiers",
+   "Route de Chêne"
+  ],
+  "endAlternatives": [
+   "Chemin de la Chevillarde",
+   "Route de Chêne"
+  ],
+  "status": "verified"
+ },
+ {
+  "rueOfficial": "LA RUE PEARL-GROBET-SECRÉTAN",
+  "rueDisplay": "Rue Pearl-Grobet-Secrétan",
+  "referenceOfficial": "Près du Boulevard des Philosophes",
+  "osmName": "Rue Pearl-Grobet-Secrétan",
+  "center": [
+   46.196324,
+   6.146624
+  ],
+  "geometry": [
+   [
+    [
+     46.1966047,
+     6.1467037
+    ],
+    [
+     46.1965349,
+     6.1466635
+    ],
+    [
+     46.1964901,
+     6.1466457
+    ],
+    [
+     46.1962594,
+     6.1466159
+    ],
+    [
+     46.1961867,
+     6.1466065
+    ],
+    [
+     46.1961227,
+     6.1465837
+    ],
+    [
+     46.1960674,
+     6.1465468
+    ]
+   ]
+  ],
+  "beginPoint": [
+   46.196605,
+   6.146704
+  ],
+  "endPoint": [
+   46.196067,
+   6.146547
+  ],
+  "beginStreet": "Boulevard des Philosophes",
+  "endStreet": "Rue des Sources",
+  "beginAlternatives": [
+   "Boulevard Emile-Jaques-Dalcroze",
+   "Boulevard des Philosophes",
+   "Philosophes"
+  ],
+  "endAlternatives": [
+   "Rue des Sources",
+   "Rue du Petit-Salève"
+  ],
+  "status": "verified"
+ }
+]

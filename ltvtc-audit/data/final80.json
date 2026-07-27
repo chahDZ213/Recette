@@ -1,0 +1,305 @@
+[
+ {
+  "rue": "Avenue Appia",
+  "cote": "FIN",
+  "app": "Chemin des Crêts-de-Pregny",
+  "ok80": false,
+  "variante": false,
+  "voies80": [
+   "Chemin des Geais"
+  ]
+ },
+ {
+  "rue": "Rue Maurice-Barraud",
+  "cote": "DEBUT",
+  "app": "Avenue Dumas",
+  "ok80": true,
+  "variante": false,
+  "voies80": [
+   "Avenue Dumas"
+  ]
+ },
+ {
+  "rue": "Rue Blavignac",
+  "cote": "FIN",
+  "app": "Avenue Vibert",
+  "ok80": true,
+  "variante": false,
+  "voies80": [
+   "Avenue Vibert"
+  ]
+ },
+ {
+  "rue": "Rue Boissonnas",
+  "cote": "DEBUT",
+  "app": "Route des Jeunes",
+  "ok80": false,
+  "variante": false,
+  "voies80": [
+   "Parc Boissonnas",
+   "Rue Eugène-Marziano"
+  ]
+ },
+ {
+  "rue": "Rue Caroline",
+  "cote": "FIN",
+  "app": "Rue des Mouettes",
+  "ok80": true,
+  "variante": false,
+  "voies80": [
+   "Place d'Armes",
+   "Rue Jacques-Dalphin",
+   "Rue Louis-de-Montfalcon",
+   "Rue de Lancy",
+   "Rue des Mouettes",
+   "Rue des Pervenches"
+  ]
+ },
+ {
+  "rue": "Chemin du Champ-Baron",
+  "cote": "DEBUT",
+  "app": "Chemin des Genêts",
+  "ok80": false,
+  "variante": false,
+  "voies80": [
+   "Chemin de la Rochette"
+  ]
+ },
+ {
+  "rue": "Avenue de la Jonction",
+  "cote": "FIN",
+  "app": "Rue de la Truite",
+  "ok80": true,
+  "variante": false,
+  "voies80": [
+   "Passerelle du Bois-de-la-Bâtie",
+   "Rue de la Truite"
+  ]
+ },
+ {
+  "rue": "Route de La-Capite",
+  "cote": "FIN",
+  "app": "Chemin du Pré-Langard",
+  "ok80": false,
+  "variante": false,
+  "voies80": []
+ },
+ {
+  "rue": "Rue de La-Tambourine",
+  "cote": "DEBUT",
+  "app": "Route de Troinex",
+  "ok80": true,
+  "variante": false,
+  "voies80": [
+   "Chemin Henri-Baumgartner",
+   "Chemin Vert",
+   "Route de Troinex"
+  ]
+ },
+ {
+  "rue": "Rue Le-Corbusier",
+  "cote": "DEBUT",
+  "app": "Route de Malagnou",
+  "ok80": true,
+  "variante": false,
+  "voies80": [
+   "Chemin de la Boisserette",
+   "Route de Malagnou"
+  ]
+ },
+ {
+  "rue": "Rue Le-Corbusier",
+  "cote": "FIN",
+  "app": "Route de Florissant",
+  "ok80": true,
+  "variante": false,
+  "voies80": [
+   "Chemin Rieu",
+   "Chemin des Pins",
+   "Route de Florissant",
+   "Rue Giovanni-Gambini"
+  ]
+ },
+ {
+  "rue": "Rue Saint-Laurent",
+  "cote": "FIN",
+  "app": "Ruelle du Midi",
+  "ok80": true,
+  "variante": false,
+  "voies80": [
+   "Rue Adrien-Lachenal",
+   "Rue de l'Est",
+   "Rue de la Maison-Rouge",
+   "Rue de la Terrassière",
+   "Ruelle de la Vinaigrerie",
+   "Ruelle des Templiers",
+   "Ruelle du Couchant",
+   "Ruelle du Midi"
+  ]
+ },
+ {
+  "rue": "Route de Chêne",
+  "cote": "FIN",
+  "app": "Chemin de Grange-Falquet",
+  "ok80": false,
+  "variante": false,
+  "voies80": []
+ },
+ {
+  "rue": "Rue du Grand-Pré",
+  "cote": "FIN",
+  "app": "Avenue Giuseppe-Motta",
+  "ok80": false,
+  "variante": false,
+  "voies80": [
+   "Rue Chandieu"
+  ]
+ },
+ {
+  "rue": "Rue des Bossons",
+  "cote": "FIN",
+  "app": "Chemin de l'Avenir",
+  "ok80": true,
+  "variante": false,
+  "voies80": [
+   "Chemin de l'Avenir",
+   "Chemin de la Caroline"
+  ]
+ },
+ {
+  "rue": "Rue des Charmilles",
+  "cote": "DEBUT",
+  "app": "Rue de Lyon",
+  "ok80": true,
+  "variante": false,
+  "voies80": [
+   "Avenue Wendt",
+   "Avenue d'Aïre",
+   "Charmilles",
+   "Place des Charmilles",
+   "Rue de Lyon"
+  ]
+ },
+ {
+  "rue": "Chemin Moïse-Duboule",
+  "cote": "FIN",
+  "app": "Rue de Moillebeau",
+  "ok80": false,
+  "variante": false,
+  "voies80": []
+ },
+ {
+  "rue": "Rue François-Diday",
+  "cote": "DEBUT",
+  "app": "Place Neuve",
+  "ok80": true,
+  "variante": false,
+  "voies80": [
+   "Boulevard du Théâtre",
+   "Place Neuve",
+   "Place de Neuve",
+   "Promenade de la Treille",
+   "Rampe de la Treille",
+   "Rue Alexandre-Calame",
+   "Rue Jean-François-Bartholoni",
+   "Rue de la Corraterie",
+   "Rue de la Croix-Rouge",
+   "Rue de la Tertasse",
+   "Rue du Conseil-Général"
+  ]
+ },
+ {
+  "rue": "Route de Meyrin",
+  "cote": "DEBUT",
+  "app": "Route Einstein",
+  "ok80": false,
+  "variante": false,
+  "voies80": [
+   "Route Balmer",
+   "TT60"
+  ]
+ },
+ {
+  "rue": "Avenue des Tilleuls",
+  "cote": "DEBUT",
+  "app": "Avenue De-Gallatin",
+  "ok80": false,
+  "variante": false,
+  "voies80": [
+   "Voie couverte de Saint-Jean"
+  ]
+ },
+ {
+  "rue": "Rue Lombard",
+  "cote": "FIN",
+  "app": "Boulevard des Philosophes",
+  "ok80": true,
+  "variante": false,
+  "voies80": [
+   "Boulevard de la Tour",
+   "Boulevard des Philosophes",
+   "Lombard",
+   "Rue du Petit-Salève"
+  ]
+ },
+ {
+  "rue": "Avenue Louis-Casaï",
+  "cote": "DEBUT",
+  "app": "Route François-Peyrot",
+  "ok80": true,
+  "variante": false,
+  "voies80": [
+   "Chemin de la Violette",
+   "Pont Louis-Casaï",
+   "Route François-Peyrot",
+   "Route de Pré-Bois"
+  ]
+ },
+ {
+  "rue": "Route de Drize",
+  "cote": "DEBUT",
+  "app": "Route d'Annecy",
+  "ok80": true,
+  "variante": false,
+  "voies80": [
+   "Chemin des Moulins-de-Drize",
+   "Pont de Drize",
+   "Route d'Annecy"
+  ]
+ },
+ {
+  "rue": "Route d'Hermance",
+  "cote": "FIN",
+  "app": "Chemin des Bois",
+  "ok80": true,
+  "variante": false,
+  "voies80": [
+   "Chemin des Bois",
+   "Chemin des Carelles"
+  ]
+ },
+ {
+  "rue": "Route de Thonon",
+  "cote": "FIN",
+  "app": "Chemin des Coprins",
+  "ok80": true,
+  "variante": false,
+  "voies80": [
+   "Chemin de la Californie",
+   "Chemin des Coprins",
+   "Tranchée couverte de Vésenaz"
+  ]
+ },
+ {
+  "rue": "Route de Jussy",
+  "cote": "FIN",
+  "app": "Chemin de la Forge",
+  "ok80": false,
+  "variante": false,
+  "voies80": [
+   "Route de Compois",
+   "Route de La Gara",
+   "Sionnet"
+  ]
+ }
+]
