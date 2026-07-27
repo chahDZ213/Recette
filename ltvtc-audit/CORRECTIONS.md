@@ -74,20 +74,40 @@ Route de Drize, Rue Blavignac, Rue de La-Tambourine, Rue François-Diday,
 Rue Maurice-Barraud, Rue Caroline, Avenue de la Jonction, Rue Saint-Laurent,
 Rue des Bossons, Avenue Louis-Casaï, Route d'Hermance, Route de Thonon.
 
-## 6. Point pédagogique (hors correction)
+## 6. Point pédagogique
 
-Sur les 133 rues du référentiel officiel, le repère attendu à l'examen
-(« près de X ») **n'est ni le début ni la fin** de la rue dans **31 cas**.
-Un candidat qui n'a mémorisé que début/fin ne produira pas la réponse attendue
-pour ces 31 rues. Il faut afficher en plus le repère officiel.
+L'examen comporte **deux types de questions distincts** sur la topographie :
+
+1. « Où se trouve : X ? » — réponse = une adresse ou un repère (liste PCTN) ;
+2. « Indiquez où débute et se termine X » — réponse = deux voies, à choisir
+   dans une liste de propositions.
+
+L'application couvre les deux : `referenceOfficial` pour le premier (136 fiches),
+`beginStreet` / `endStreet` pour le second (248 fiches).
+
+Point de vigilance : sur les 133 rues du référentiel, le repère « près de X »
+**n'est ni le début ni la fin** dans **31 cas** — c'est normal, ce sont deux
+questions différentes. Il faut simplement s'assurer que l'application enseigne
+bien les deux réponses pour ces fiches, et pas seulement le début/fin.
+
+Autre point de vigilance, illustré par l'exemple officiel
+(*Rue de la Coulouvrenière*) : certaines voies touchent les **deux** extrémités
+d'une rue — ici `Rue du Stand`. Elles ne discriminent pas. La bonne réponse est
+la voie propre à chaque bout (`Quai du Rhône` au début, `Rue de l'Arquebuse` à
+la fin). Les champs `beginAlternatives` / `endAlternatives` doivent être acceptés
+à la correction, sans quoi l'élève mémorise la réponse la plus faible.
 
 ## Réserves de méthode
 
 - OSM n'est pas le référentiel officiel du canton. Il fait foi sur la
   **connectivité** (quelle voie touche quelle voie), pas sur l'étendue
   administrative d'une rue.
-- Les données début/fin ne figurent pas dans le document du PCTN : l'examen ne
-  pose que des questions « Où se trouve : X ? ». Elles n'ont donc aucune source
-  officielle à laquelle être confrontées.
+- Les données début/fin **correspondent bien à un type de question officiel** :
+  l'épreuve 2 comporte l'énoncé « INDIQUEZ OÙ DÉBUTE ET SE TERMINE », avec deux
+  champs (Début / Fin) et une liste de propositions
+  (source : *Examens LTVTC — Exemple de questions*, Commission d'examens LRDBHD,
+  ge.ch/document/39903). La liste des destinations ne couvre que le type
+  « Où se trouve : X ? » ; elle ne contient pas les réponses début/fin, qui ont
+  donc été vérifiées contre OpenStreetMap faute de référentiel officiel publié.
 - Les 112 rues « bonus » de l'app n'ont pas de réponse officielle et n'ont été
   contrôlées que sur leur début/fin.

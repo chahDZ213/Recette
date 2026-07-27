@@ -12,7 +12,8 @@ PWA de préparation à l'examen LTVTC de Genève.
 
 | Source | Usage |
 |---|---|
-| Liste officielle des destinations PCTN — *Taxi & VTC 2026 → LTVTC topographie* ([ge.ch/document/7124](https://www.ge.ch/document/7124/telecharger)) | Référentiel des questions et réponses d'examen |
+| Liste officielle des destinations PCTN — *Taxi & VTC 2026 → LTVTC topographie* ([ge.ch/document/7124](https://www.ge.ch/document/7124/telecharger)) | Référentiel des questions « Où se trouve : X ? » |
+| *Examens LTVTC — Exemple de questions*, Commission d'examens LRDBHD ([ge.ch/document/39903](https://www.ge.ch/document/39903/telecharger)) | Confirme le type de question « Indiquez où débute et se termine » |
 | OpenStreetMap via l'API Overpass (relevé du 2026-07-26) | Connectivité réelle des voies (début/fin) |
 
 ## Résultats
@@ -50,9 +51,11 @@ Détail complet dans [`CORRECTIONS.md`](CORRECTIONS.md) et
 
 - **OSM n'est pas le référentiel officiel du canton.** Il fait foi sur la
   connectivité des voies, pas sur l'étendue administrative d'une rue.
-- **Les données début/fin n'ont aucune source officielle.** Le document du PCTN
-  ne pose que des questions « Où se trouve : X ? ». Le format « où débute / où
-  finit cette rue » est propre à l'application.
+- **Le format début/fin est bien un type de question officiel** (épreuve 2 :
+  « INDIQUEZ OÙ DÉBUTE ET SE TERMINE » — voir
+  [ge.ch/document/39903](https://www.ge.ch/document/39903/telecharger)). En
+  revanche le PCTN ne publie pas les réponses de ce type : elles ont été
+  vérifiées contre OpenStreetMap, pas contre un référentiel cantonal.
 - **Une tolérance de 30 m produit des faux positifs** : les grands carrefours
   genevois la dépassent. Tous les contrôles ont été refaits à 80 m.
 - Les **112 rues hors référentiel officiel** n'ont été contrôlées que sur leur
