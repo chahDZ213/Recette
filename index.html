@@ -368,8 +368,19 @@
     </div>
     <button id="shopClear" class="hidden" style="font-family:inherit;font-size:13px;font-weight:600;padding:8px 12px;border-radius:10px;border:1.5px solid var(--line);background:transparent;color:var(--muted)">Vider</button>
   </div>
+
+  <!-- MA LISTE (note libre) -->
+  <div style="margin-bottom:26px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <span id="shopNoteLbl" style="font-size:13px;font-weight:600;color:var(--muted)">📝 MA LISTE</span>
+      <span id="shopNoteSaved" style="font-size:12px;color:var(--muted);opacity:0;transition:opacity .2s">✓ Enregistré</span>
+    </div>
+    <textarea id="shopNote" rows="7" placeholder="Écris tes courses ici…&#10;- Lait&#10;- Œufs&#10;- Pain" style="resize:vertical;line-height:1.7"></textarea>
+  </div>
+
+  <div id="shopRecipesLbl" class="hidden" style="font-size:13px;font-weight:600;color:var(--muted);margin-bottom:12px">🍳 DEPUIS TES RECETTES</div>
   <div id="shoppingList"></div>
-  <div id="shoppingEmpty" class="hidden" style="color:var(--muted);font-size:15px;line-height:1.6;padding:20px 2px">Ta liste est vide.<br>Ouvre une recette et appuie sur <b>🛒 Ajouter aux courses</b>.</div>
+  <div id="shoppingEmpty" class="hidden" style="color:var(--muted);font-size:15px;line-height:1.6;padding:8px 2px">Aucun ingrédient depuis tes recettes.<br>Ouvre une recette et appuie sur <b>🛒 Ajouter aux courses</b>.</div>
 </section>
 
 <!-- CUISINER SANS BALANCE -->
@@ -1013,7 +1024,8 @@ const STR={
   loadHint:"quelques secondes…",
   // courses (étape 2)
   shopTitle:"🛒 Courses", shopClearBtn:"Vider",
-  shopEmpty:"Ta liste est vide.<br>Ouvre une recette et appuie sur <b>🛒 Ajouter aux courses</b>.",
+  shopNoteLbl:"📝 MA LISTE", shopNotePh:"Écris tes courses ici…\n- Lait\n- Œufs\n- Pain", shopNoteSaved:"✓ Enregistré", shopRecipesLbl:"🍳 DEPUIS TES RECETTES",
+  shopEmpty:"Aucun ingrédient depuis tes recettes.<br>Ouvre une recette et appuie sur <b>🛒 Ajouter aux courses</b>.",
   cats:{"Frais":"Frais","Viandes & poissons":"Viandes & poissons","Crémerie":"Crémerie","Épicerie":"Épicerie","Épices":"Épices","Autre":"Autre"},
   // idées
   ideasScreenTitle:"💡 Idées recettes", ideaTypeLabel:"TYPE",
@@ -1148,7 +1160,8 @@ const STR={
   loadHint:"a few seconds…",
   // groceries (step 2)
   shopTitle:"🛒 Groceries", shopClearBtn:"Clear",
-  shopEmpty:"Your list is empty.<br>Open a recipe and tap <b>🛒 Add to groceries</b>.",
+  shopNoteLbl:"📝 MY LIST", shopNotePh:"Write your groceries here…\n- Milk\n- Eggs\n- Bread", shopNoteSaved:"✓ Saved", shopRecipesLbl:"🍳 FROM YOUR RECIPES",
+  shopEmpty:"No ingredients from your recipes yet.<br>Open a recipe and tap <b>🛒 Add to groceries</b>.",
   cats:{"Frais":"Fresh","Viandes & poissons":"Meat & fish","Crémerie":"Dairy","Épicerie":"Pantry","Épices":"Spices","Autre":"Other"},
   // ideas
   ideasScreenTitle:"💡 Recipe ideas", ideaTypeLabel:"TYPE",
@@ -1795,30 +1808,71 @@ function ingEmoji(name){
 // ---- liste de courses ----
 function getShopping(){ try{ return JSON.parse(localStorage.getItem("mise_shopping")||"[]"); }catch(e){ return []; } }
 function setShopping(a){ try{ localStorage.setItem("mise_shopping", JSON.stringify(a)); }catch(e){} }
+// ---- ma liste (note libre, façon bloc-notes) ----
+function getShopNote(){ try{ return localStorage.getItem("mise_shopping_note")||""; }catch(e){ return ""; } }
+function setShopNote(v){ try{ localStorage.setItem("mise_shopping_note", v); }catch(e){} }
+let shopNoteTimer=null;
+function initShopNote(){
+  const ta=$("shopNote"); if(!ta) return;
+  ta.value=getShopNote();
+  if(ta.dataset.wired) return;
+  ta.dataset.wired="1";
+  ta.addEventListener("input", ()=>{
+    setShopNote(ta.value);
+    const s=$("shopNoteSaved");
+    if(s){ s.style.opacity="1"; clearTimeout(shopNoteTimer); shopNoteTimer=setTimeout(()=>{ s.style.opacity="0"; }, 1200); }
+  });
+}
+// Denrées qu'on achète au paquet/à la bouteille : dans la liste on ne met
+// pas de mini-quantité (ex : "1 c.à.c de sel" → juste "sel").
+const SHOP_STAPLES=["sel","poivre","épice","epice","herbe","vanille","extrait de","levure","bicarbonate",
+  "cannelle","muscade","cumin","paprika","curry","curcuma","piment","gingembre en poudre","gingembre moulu",
+  "moutarde","vinaigre","huile","maïzena","maizena","fécule","fecule","arôme","arome","colorant"];
+function isShopStaple(name){ const n=(name||"").toLowerCase(); return SHOP_STAPLES.some(k=>n.includes(k)); }
+// Fusionne les doublons (même nom) et retire les quantités des denrées de fond de placard.
+function dedupeShopping(list){
+  const out=[], idx={};
+  (list||[]).forEach(it=>{
+    const name=(it.name||"").trim(); if(!name) return;
+    const key=name.toLowerCase();
+    const staple=isShopStaple(name);
+    const amt = it.amount==null ? null : it.amount;
+    const unit = it.unit||null;
+    let cur=idx[key];
+    if(cur==null){
+      cur={ name:it.name, amount: staple?null:amt, unit: staple?null:unit, category:normCat(it.category), checked:!!it.checked };
+      idx[key]=cur; out.push(cur);
+    } else {
+      if(staple){ cur.amount=null; cur.unit=null; }
+      else if(cur.amount!=null && amt!=null && (cur.unit||null)===unit){ cur.amount+=amt; }
+      else { cur.amount=null; cur.unit=null; }   // unités différentes ou quantité manquante → nom seul
+      cur.checked = cur.checked && !!it.checked;  // reste à cocher tant qu'un ajout ne l'est pas
+    }
+  });
+  return out;
+}
 function addIngredientsToShopping(r, ratio){
   if(!r || !r.ingredients) return;
   ratio = ratio==null ? 1 : ratio;
   const list=getShopping();
   r.ingredients.forEach(ing=>{
     const amt = ing.amount==null ? null : (ing.amount*ratio);
-    const key=(ing.name||"").trim().toLowerCase();
-    const unit=ing.unit||null;
-    const ex=list.find(x=>(x.name||"").trim().toLowerCase()===key && (x.unit||null)===unit);
-    if(ex && ex.amount!=null && amt!=null){ ex.amount+=amt; ex.checked=false; }
-    else if(!ex){ list.push({ name:ing.name, amount:amt, unit:unit, category:normCat(ing.category), checked:false }); }
+    list.push({ name:ing.name, amount:amt, unit:ing.unit||null, category:normCat(ing.category), checked:false });
   });
-  setShopping(list);
+  setShopping(dedupeShopping(list));
 }
 function addRecipeToShopping(){
   if(!recipe) return;
   addIngredientsToShopping(recipe, servings/base);
 }
 function renderShopping(){
-  const box=$("shoppingList"), empty=$("shoppingEmpty");
-  const list=getShopping();
+  initShopNote();
+  const box=$("shoppingList"), empty=$("shoppingEmpty"), recLbl=$("shopRecipesLbl");
+  const list=dedupeShopping(getShopping());
+  setShopping(list);   // nettoie les doublons déjà enregistrés
   box.innerHTML="";
-  if(!list.length){ empty.classList.remove("hidden"); box.classList.add("hidden"); $("shopClear").classList.add("hidden"); return; }
-  empty.classList.add("hidden"); box.classList.remove("hidden"); $("shopClear").classList.remove("hidden");
+  if(!list.length){ empty.classList.remove("hidden"); box.classList.add("hidden"); $("shopClear").classList.add("hidden"); if(recLbl) recLbl.classList.add("hidden"); return; }
+  empty.classList.add("hidden"); box.classList.remove("hidden"); $("shopClear").classList.remove("hidden"); if(recLbl) recLbl.classList.remove("hidden");
   const groups={};
   list.forEach((it,i)=>{ (groups[normCat(it.category)]=groups[normCat(it.category)]||[]).push({it,i}); });
   CAT_ORDER.forEach(cat=>{
@@ -2349,7 +2403,9 @@ function renderList(){
   if(listTab==="saved"){
     let base=allCache.filter(x=>x.saved);
     if(selectedColl!=="__all__") base=base.filter(x=>x.collection===selectedColl);
-    list=base.sort((a,b)=>{ if(!!a.fav!==!!b.fav) return a.fav?-1:1; return (a.title||"").localeCompare(b.title||"","fr",{sensitivity:"base"}); });
+    // Mettre en favori ne fait plus remonter la recette en haut : elle garde
+    // sa place (ordre alphabétique), seul le cœur change.
+    list=base.sort((a,b)=>(a.title||"").localeCompare(b.title||"","fr",{sensitivity:"base"}));
   } else {
     list=[...allCache].sort((a,b)=>(b._ts||0)-(a._ts||0));
   }
@@ -3010,6 +3066,8 @@ function applyLang(){
   set("loadHint","loadHint");
   // courses (étape 2)
   set("shopTitle","shopTitle"); set("shopClear","shopClearBtn"); set("shoppingEmpty","shopEmpty",true);
+  set("shopNoteLbl","shopNoteLbl"); set("shopNoteSaved","shopNoteSaved"); set("shopRecipesLbl","shopRecipesLbl");
+  if($("shopNote")) $("shopNote").placeholder=t("shopNotePh");
   // idées
   set("ideasScreenTitle","ideasScreenTitle"); set("ideaTypeLabel","ideaTypeLabel"); set("ideaOptLabel","ideaOptLabel"); set("ideaHaveLabel","ideaHaveLabel");
   const chipKeys={"":"ideaAny","salé":"ideaSavory","sucré":"ideaSweet","dessert":"ideaDessert","petit-déjeuner":"ideaBreakfast","apéro":"ideaApero"};
