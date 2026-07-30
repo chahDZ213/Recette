@@ -372,6 +372,39 @@
 
 <div class="toast" id="toast"></div>
 
+<!-- Filet de sécurité : si le module n'a pas démarré (asset servi corrompu par un vieux
+     cache/service worker, coupure réseau…), on propose un rechargement propre au lieu de
+     laisser une page figée où rien ne réagit. Script CLASSIQUE : il tourne même si le
+     module ES échoue. -->
+<div id="reload-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:300;
+     background:#7c2d12;color:#fff;padding:12px 16px;font:14px/1.4 system-ui,sans-serif;
+     text-align:center;align-items:center;justify-content:center;gap:10px;box-shadow:0 4px 14px rgba(0,0,0,.4)">
+  ⚠︎ L'application n'a pas fini de charger.
+  <button onclick="empreinteHardReload()" style="background:#fff;color:#7c2d12;border:0;
+     padding:8px 14px;border-radius:8px;font-weight:700;cursor:pointer">Recharger</button>
+</div>
+<script>
+  // Rechargement propre : vide les caches (souvent la cause d'un asset corrompu) puis recharge.
+  function empreinteHardReload() {
+    try {
+      if (window.caches) {
+        caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k); })); })
+          .catch(function () {}).finally(function () { location.reload(); });
+        return;
+      }
+    } catch (e) {}
+    location.reload();
+  }
+  window.addEventListener('load', function () {
+    setTimeout(function () {
+      if (!window.__empreinteReady) {
+        var b = document.getElementById('reload-banner');
+        if (b) b.style.display = 'flex';
+      }
+    }, 7000);
+  });
+</script>
+
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from './vendor/OrbitControls.js';
@@ -1029,9 +1062,10 @@ function toast(msg) {
 /* ============================================================
    Démarrage
    ============================================================ */
-initThree();
+try { initThree(); } catch (e) { console.error('Aperçu 3D indisponible :', e); } // ne doit pas figer l'app
 renderSwatches();
 renderAll();
 handlePayReturn();
+window.__empreinteReady = true;   // le module a démarré : le filet de sécurité ne se déclenche pas
 window.__empreinte = { state, CATALOG, SETTINGS, estimatePrint, recommendFilament }; // debug
 </script>

@@ -1,5 +1,5 @@
 // sw.js — service worker minimal (network-first)
-const CACHE = "mise-v55";
+const CACHE = "mise-v56";
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(["/", "/index.html"])).catch(() => {}));
@@ -20,7 +20,16 @@ self.addEventListener("fetch", (e) => {
         caches.open(CACHE).then((c) => c.put(e.request, copy)).catch(() => {});
         return res;
       })
-      .catch(() => caches.match(e.request).then((r) => r || caches.match("/")))
+      .catch(() =>
+        caches.match(e.request).then((r) => {
+          if (r) return r;
+          // Repli sur l'accueil UNIQUEMENT pour une navigation de page — jamais pour un
+          // script/module/asset, sinon on renverrait du HTML à la place d'un JS et l'app
+          // se retrouverait figée (aucun bouton ne réagit). Corrige le bug de l'app 3D /print/.
+          if (e.request.mode === "navigate") return caches.match("/");
+          return Response.error();
+        })
+      )
   );
 });
 
