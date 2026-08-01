@@ -1062,10 +1062,34 @@ function toast(msg) {
 /* ============================================================
    Démarrage
    ============================================================ */
+// Récupère le barème défini par le créateur (prix filaments, suppléments couleur, marge,
+// livraison). En cas d'échec, on garde les valeurs par défaut du code. Non bloquant.
+async function loadConfig() {
+  try {
+    const r = await fetch('/api/print-config');
+    if (!r.ok) return;
+    const { config } = await r.json();
+    if (!config) return;
+    if (config.filaments) CATALOG.forEach(f => {
+      const c = config.filaments[f.id];
+      if (c) { if (c.pricePerG != null) f.pricePerG = Number(c.pricePerG);
+               if (c.pricePerMin != null) f.pricePerMin = Number(c.pricePerMin); }
+    });
+    if (config.colors) COLORS.forEach(col => {
+      if (config.colors[col.id] != null) col.surcharge = Number(config.colors[col.id]);
+    });
+    if (config.margin != null) SETTINGS.margin = Number(config.margin);
+    if (config.freeShip != null) SETTINGS.freeShip = Number(config.freeShip);
+    if (config.shipFee != null) SETTINGS.shipFee = Number(config.shipFee);
+    renderSwatches(); renderAll();
+  } catch {}
+}
+
 try { initThree(); } catch (e) { console.error('Aperçu 3D indisponible :', e); } // ne doit pas figer l'app
 renderSwatches();
 renderAll();
 handlePayReturn();
+loadConfig();
 window.__empreinteReady = true;   // le module a démarré : le filet de sécurité ne se déclenche pas
 window.__empreinte = { state, CATALOG, SETTINGS, estimatePrint, recommendFilament }; // debug
 </script>

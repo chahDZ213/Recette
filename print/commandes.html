@@ -96,6 +96,22 @@
   #print-sheet .ps-total .lbl { font-weight:600; } #print-sheet .ps-total .amt { font-size:24px; font-weight:800; }
   #print-sheet .ps-foot { margin-top:20px; font-size:11px; color:#777; border-top:1px solid #ccc; padding-top:10px; }
   #print-sheet .ps-file { margin-top:14px; padding:10px 12px; background:#f4f6fa; border:1px solid #dde3ec; border-radius:8px; font-size:12px; word-break:break-all; }
+
+  .ghost.active { color:var(--text); border-color:var(--accent); background:rgba(59,130,246,.12); }
+  .hidden { display:none !important; }
+  /* éditeur de tarifs */
+  .tf-group { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px 16px; margin-bottom:14px; }
+  .tf-group h3 { margin:0 0 10px; font-size:12px; text-transform:uppercase; letter-spacing:.4px; color:var(--muted); }
+  .tf-head { display:grid; grid-template-columns:1fr 110px 110px; gap:10px; font-size:11px; color:var(--muted-2); text-transform:uppercase; letter-spacing:.3px; padding-bottom:6px; }
+  .tf-head span:not(:first-child), .tf-row input { text-align:right; }
+  .tf-row { display:grid; grid-template-columns:1fr 110px 110px; gap:10px; align-items:center; padding:7px 0; border-bottom:1px dashed var(--line); }
+  .tf-crow { display:grid; grid-template-columns:1fr 110px; gap:10px; align-items:center; padding:7px 0; border-bottom:1px dashed var(--line); }
+  .tf-row .nm, .tf-crow .nm { font-weight:600; }
+  .tf-crow .sw { width:16px; height:16px; border-radius:5px; border:1px solid var(--line-2); display:inline-block; vertical-align:middle; margin-right:8px; }
+  .tf-input, .tf-input2 { width:100%; background:var(--panel-2); border:1px solid var(--line); color:var(--text); border-radius:8px; padding:8px 10px; font:inherit; text-align:right; }
+  .tf-grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  @media (max-width:560px){ .tf-grid2 { grid-template-columns:1fr; } }
+  .tf-field label { display:block; font-size:12px; color:var(--muted); margin-bottom:5px; }
 </style>
 
 <!-- ---------- Connexion ---------- -->
@@ -112,17 +128,31 @@
 <div id="app" class="hidden">
   <header class="top">
     <div class="brand"><span class="logo">◈</span><div>Empreinte <small>Espace créateur</small></div></div>
-    <div style="display:flex;gap:8px">
-      <button class="ghost" id="refresh-btn">↻ Actualiser</button>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="ghost active" id="tab-orders">Commandes</button>
+      <button class="ghost" id="tab-tarifs">Tarifs</button>
+      <button class="ghost" id="refresh-btn">↻</button>
       <button class="ghost" id="logout-btn">Déconnexion</button>
     </div>
   </header>
   <main>
-    <div class="toolbar">
-      <h2>Commandes payées</h2>
-      <span class="count" id="count"></span>
-    </div>
-    <div id="orders"></div>
+    <!-- Vue commandes -->
+    <section id="view-orders">
+      <div class="toolbar">
+        <h2>Commandes payées</h2>
+        <span class="count" id="count"></span>
+      </div>
+      <div id="orders"></div>
+    </section>
+    <!-- Vue tarifs -->
+    <section id="view-tarifs" class="hidden">
+      <div class="toolbar">
+        <h2>Tarifs</h2>
+        <span class="count" id="tarifs-status"></span>
+      </div>
+      <p class="muted" style="margin-top:0;font-size:13px;color:var(--muted)">Ces prix s'appliquent à tous tes clients et sont vérifiés côté serveur (impossible à contourner). €/g = coût matière, €/min = coût machine.</p>
+      <div id="tarifs"></div>
+    </section>
   </main>
 </div>
 
@@ -166,6 +196,76 @@ $('#login-btn').addEventListener('click', ()=> login($('#token-input').value.tri
 $('#token-input').addEventListener('keydown', e => { if (e.key==='Enter') login(e.target.value.trim()); });
 $('#refresh-btn').addEventListener('click', refresh);
 $('#logout-btn').addEventListener('click', ()=>{ localStorage.removeItem(TOKEN_KEY); location.reload(); });
+
+/* ---------- onglets Commandes / Tarifs ---------- */
+function switchView(v){
+  $('#view-orders').classList.toggle('hidden', v!=='orders');
+  $('#view-tarifs').classList.toggle('hidden', v!=='tarifs');
+  $('#tab-orders').classList.toggle('active', v==='orders');
+  $('#tab-tarifs').classList.toggle('active', v==='tarifs');
+  $('#refresh-btn').style.display = v==='orders' ? '' : 'none';
+  if (v==='tarifs') loadTarifs();
+}
+$('#tab-orders').addEventListener('click', ()=>switchView('orders'));
+$('#tab-tarifs').addEventListener('click', ()=>switchView('tarifs'));
+
+/* ---------- éditeur de tarifs ---------- */
+const TF_FILAMENTS = [['pla','PLA'],['petg','PETG'],['asa','ASA'],['abs','ABS'],['tpu','TPU'],['pa','Nylon (PA)']];
+const TF_COLORS = [['black','Noir','#1f2937'],['white','Blanc','#e5e7eb'],['grey','Gris','#9ca3af'],
+  ['red','Rouge','#ef4444'],['orange','Orange','#f97316'],['yellow','Jaune','#eab308'],['green','Vert','#22c55e'],
+  ['blue','Bleu','#3b82f6'],['purple','Violet','#a855f7'],['pink','Rose','#ec4899'],
+  ['gold','Or métallisé','#d4af37'],['silver','Argent métallisé','#cbd5e1'],['transparent','Transparent','#cfe8ff'],['glow','Phosphorescent','#a3e635']];
+
+function renderTarifs(cfg){
+  const f = cfg.filaments||{}, c = cfg.colors||{};
+  const val = v => (v==null?'':v);
+  const filRows = TF_FILAMENTS.map(([id,name])=>`
+    <div class="tf-row"><span class="nm">${name}</span>
+      <input class="tf-input" type="number" step="0.005" min="0" data-fil="${id}" data-k="pricePerG" value="${val(f[id]&&f[id].pricePerG)}">
+      <input class="tf-input" type="number" step="0.005" min="0" data-fil="${id}" data-k="pricePerMin" value="${val(f[id]&&f[id].pricePerMin)}"></div>`).join('');
+  const colRows = TF_COLORS.map(([id,name,hex])=>`
+    <div class="tf-crow"><span class="nm"><span class="sw" style="background:${hex}"></span>${name}</span>
+      <input class="tf-input" type="number" step="0.5" min="0" data-col="${id}" value="${c[id]!=null?c[id]:0}"></div>`).join('');
+  $('#tarifs').innerHTML =
+    `<div class="tf-group"><h3>Filaments — prix</h3>
+       <div class="tf-head"><span>Matériau</span><span>€ / gramme</span><span>€ / minute</span></div>${filRows}</div>
+     <div class="tf-group"><h3>Couleurs — supplément (€)</h3>${colRows}</div>
+     <div class="tf-group"><h3>Général & livraison</h3>
+       <div class="tf-grid2">
+         <div class="tf-field"><label>Marge & préparation (€)</label><input class="tf-input2" id="tf-margin" type="number" step="0.5" min="0" value="${cfg.margin!=null?cfg.margin:2.5}"></div>
+         <div class="tf-field"><label>Livraison gratuite dès (€)</label><input class="tf-input2" id="tf-freeship" type="number" step="1" min="0" value="${cfg.freeShip!=null?cfg.freeShip:40}"></div>
+         <div class="tf-field"><label>Forfait livraison (€)</label><input class="tf-input2" id="tf-shipfee" type="number" step="0.5" min="0" value="${cfg.shipFee!=null?cfg.shipFee:4.9}"></div>
+       </div></div>
+     <button class="btn primary" id="tarifs-save" style="width:100%;padding:13px;font-size:15px">💾 Enregistrer les tarifs</button>`;
+  $('#tarifs-save').addEventListener('click', saveTarifs);
+}
+async function loadTarifs(){
+  $('#tarifs-status').textContent = 'Chargement…';
+  try {
+    const r = await fetch('/api/print-config');
+    const d = await r.json();
+    renderTarifs(d.config||{});
+    $('#tarifs-status').textContent = d.source==='saved' ? 'Tes tarifs' : 'Valeurs par défaut';
+  } catch { $('#tarifs-status').textContent=''; $('#tarifs').innerHTML='<div class="empty">Erreur de chargement.</div>'; }
+}
+async function saveTarifs(){
+  const token = localStorage.getItem(TOKEN_KEY); if(!token) return;
+  const cfg = { filaments:{}, colors:{} };
+  document.querySelectorAll('[data-fil]').forEach(inp=>{
+    const id=inp.dataset.fil; cfg.filaments[id]=cfg.filaments[id]||{}; cfg.filaments[id][inp.dataset.k]=parseFloat(inp.value); });
+  document.querySelectorAll('[data-col]').forEach(inp=>{ cfg.colors[inp.dataset.col]=parseFloat(inp.value)||0; });
+  cfg.margin=parseFloat($('#tf-margin').value)||0;
+  cfg.freeShip=parseFloat($('#tf-freeship').value)||0;
+  cfg.shipFee=parseFloat($('#tf-shipfee').value)||0;
+  const btn=$('#tarifs-save'); btn.disabled=true; const old=btn.textContent; btn.textContent='Enregistrement…';
+  try {
+    const r = await fetch('/api/print-config', { method:'POST', headers:{'content-type':'application/json','x-admin-token':token}, body: JSON.stringify(cfg) });
+    const d = await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(d.error||'Échec');
+    toast('Tarifs enregistrés ✓'); $('#tarifs-status').textContent='Tes tarifs';
+  } catch(e){ toast(e.message||'Échec de l\'enregistrement'); }
+  finally { btn.disabled=false; btn.textContent=old; }
+}
 
 /* ---------- rendu des commandes ---------- */
 function addrLines(a){

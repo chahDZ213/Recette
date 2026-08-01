@@ -8,6 +8,7 @@
 //
 // Carte de test : 4242 4242 4242 4242, date future, CVC quelconque.
 import { cors, getStripe, safeReturnUrl, withParams } from "./_lib.js";
+import { DEFAULT_CONFIG, readConfig } from "./_config.js";
 
 // Pays de livraison autorisés (ajustable). Codes ISO à 2 lettres.
 const SHIP_COUNTRIES = ["FR", "BE", "CH", "LU", "MC", "DE", "ES", "IT", "NL", "PT", "AT", "IE"];
@@ -23,31 +24,14 @@ function clampCents(v) {
   return Math.max(MIN_CENTS, Math.min(MAX_CENTS, n));
 }
 
-// Barème créateur — doit rester aligné avec le catalogue de print/index.html.
-// Le prix est recalculé ici pour ne pas dépendre du montant envoyé par le client.
-const SERVER_TARIFS = {
-  pla:  { pricePerG: 0.030, pricePerMin: 0.020 },
-  petg: { pricePerG: 0.035, pricePerMin: 0.022 },
-  asa:  { pricePerG: 0.045, pricePerMin: 0.024 },
-  abs:  { pricePerG: 0.030, pricePerMin: 0.024 },
-  tpu:  { pricePerG: 0.060, pricePerMin: 0.040 },
-  pa:   { pricePerG: 0.070, pricePerMin: 0.030 },
-};
-const SERVER_MARGIN = 2.5; // € — préparation & marge
-
-// Suppléments couleur (€) — doivent rester alignés avec COLORS dans print/index.html.
-const SERVER_COLORS = {
-  black:0, white:0, grey:0,
-  red:1.5, orange:1.5, yellow:1.5, green:1.5, blue:1.5, purple:1.5, pink:1.5,
-  gold:3, silver:3, transparent:3, glow:4,
-};
-
-function recomputeAmount(order) {
-  const t = SERVER_TARIFS[order && order.filamentId];
+// Prix recalculé à partir du barème créateur (Supabase, via _config.js) — pas de
+// confiance au montant envoyé par le client.
+function recomputeAmount(order, cfg) {
+  const t = cfg.filaments && cfg.filaments[order && order.filamentId];
   const g = Number(order && order.grams), m = Number(order && order.minutes);
   if (!t || !Number.isFinite(g) || !Number.isFinite(m) || g <= 0 || m <= 0) return null;
-  const colorSurcharge = SERVER_COLORS[order && order.colorId] || 0;
-  const euros = g * t.pricePerG + m * t.pricePerMin + SERVER_MARGIN + colorSurcharge;
+  const colorSurcharge = (cfg.colors && cfg.colors[order && order.colorId]) || 0;
+  const euros = g * t.pricePerG + m * t.pricePerMin + (Number(cfg.margin) || 0) + colorSurcharge;
   return clampCents(euros * 100);
 }
 
@@ -68,18 +52,21 @@ export default async function handler(req, res) {
   const currency = (typeof body.currency === "string" && body.currency.length === 3) ? body.currency.toLowerCase() : "eur";
   const order = (body.order && typeof body.order === "object") ? body.order : {};
 
-  // Prix facturé recalculé côté serveur à partir du barème créateur + des grammes/minutes
-  // de la pièce ; on ne fait pas confiance au montant envoyé par le client. Si le filament
-  // est inconnu, repli borné sur le montant client.
-  const serverAmount = recomputeAmount(order);
+  // Barème créateur (Supabase) ; repli sur les valeurs par défaut si indisponible.
+  const cfg = (await readConfig()) || DEFAULT_CONFIG;
+
+  // Prix facturé recalculé côté serveur à partir du barème + des grammes/minutes de la
+  // pièce ; on ne fait pas confiance au montant envoyé par le client. Filament inconnu →
+  // repli borné sur le montant client.
+  const serverAmount = recomputeAmount(order, cfg);
   const amount = serverAmount != null ? serverAmount : clampCents(body.amount);
   if (amount == null) return res.status(400).json({ error: "Montant invalide" });
 
-  // Frais de port : gratuits si la pièce atteint le seuil, sinon forfait.
-  const shipFeeCents = clampCentsShip(body.shipFeeCents);        // forfait (centimes)
-  const freeThresholdCents = clampCentsShip(body.freeThresholdCents); // seuil (centimes)
-  const shippingFree = freeThresholdCents != null && amount >= freeThresholdCents;
-  const shipCents = shippingFree ? 0 : (shipFeeCents || 0);
+  // Frais de port définis par le créateur (barème) : gratuits au-dessus du seuil, sinon forfait.
+  const freeCents = Math.round((Number(cfg.freeShip) || 0) * 100);
+  const feeCents = Math.round((Number(cfg.shipFee) || 0) * 100);
+  const shippingFree = freeCents > 0 && amount >= freeCents;
+  const shipCents = shippingFree ? 0 : feeCents;
 
   const fallback = (process.env.PUBLIC_BASE_URL || "https://recette-xi.vercel.app").replace(/\/$/, "") + "/print/";
   const returnUrl = safeReturnUrl(body.returnUrl, fallback);
@@ -144,11 +131,4 @@ export default async function handler(req, res) {
     console.error("pay/print-order:", e && e.message);
     return res.status(502).json({ error: "Création de la session Stripe impossible : " + ((e && e.message) || "erreur inconnue").slice(0, 200) });
   }
-}
-
-function clampCentsShip(v) {
-  if (v == null) return null;
-  const n = Math.round(Number(v));
-  if (!Number.isFinite(n) || n < 0) return null;
-  return Math.min(n, 100000); // max 1000 € de port, garde-fou
 }

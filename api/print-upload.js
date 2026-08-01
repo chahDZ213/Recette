@@ -50,6 +50,13 @@ export default async function handler(req, res) {
   const path = `orders/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${name}`;
 
   try {
+    // Crée le bucket public s'il n'existe pas encore (idempotent) — aucune manip Supabase requise.
+    await fetch(`${SB_URL}/storage/v1/bucket`, {
+      method: "POST",
+      headers: { apikey: svc, authorization: "Bearer " + svc, "content-type": "application/json" },
+      body: JSON.stringify({ id: BUCKET, name: BUCKET, public: true }),
+    }).catch(() => {});
+
     const up = await fetch(`${SB_URL}/storage/v1/object/${BUCKET}/${path}`, {
       method: "POST",
       headers: {
