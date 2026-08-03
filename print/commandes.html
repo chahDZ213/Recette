@@ -173,7 +173,7 @@ let toastTimer; function toast(m){ const t=$('#toast'); t.textContent=m; t.class
 async function login(token){
   $('#gate-err').textContent = '';
   try {
-    const r = await fetch('/api/pay/print-orders', { headers:{ 'x-admin-token': token } });
+    const r = await fetch('/api/print?action=orders', { headers:{ 'x-admin-token': token } });
     const d = await r.json().catch(()=>({}));
     if (!r.ok) { $('#gate-err').textContent = d.error || 'Accès refusé.'; return false; }
     localStorage.setItem(TOKEN_KEY, token);
@@ -186,7 +186,7 @@ async function login(token){
 async function refresh(){
   const token = localStorage.getItem(TOKEN_KEY); if (!token) return;
   try {
-    const r = await fetch('/api/pay/print-orders', { headers:{ 'x-admin-token': token } });
+    const r = await fetch('/api/print?action=orders', { headers:{ 'x-admin-token': token } });
     const d = await r.json().catch(()=>({}));
     if (!r.ok){ toast(d.error||'Erreur'); return; }
     ORDERS = d.orders || []; renderOrders(); toast('Commandes à jour ✓');
@@ -242,7 +242,7 @@ function renderTarifs(cfg){
 async function loadTarifs(){
   $('#tarifs-status').textContent = 'Chargement…';
   try {
-    const r = await fetch('/api/print-config');
+    const r = await fetch('/api/print?action=config');
     const d = await r.json();
     renderTarifs(d.config||{});
     $('#tarifs-status').textContent = d.source==='saved' ? 'Tes tarifs' : 'Valeurs par défaut';
@@ -259,7 +259,7 @@ async function saveTarifs(){
   cfg.shipFee=parseFloat($('#tf-shipfee').value)||0;
   const btn=$('#tarifs-save'); btn.disabled=true; const old=btn.textContent; btn.textContent='Enregistrement…';
   try {
-    const r = await fetch('/api/print-config', { method:'POST', headers:{'content-type':'application/json','x-admin-token':token}, body: JSON.stringify(cfg) });
+    const r = await fetch('/api/print?action=config', { method:'POST', headers:{'content-type':'application/json','x-admin-token':token}, body: JSON.stringify(cfg) });
     const d = await r.json().catch(()=>({}));
     if(!r.ok) throw new Error(d.error||'Échec');
     toast('Tarifs enregistrés ✓'); $('#tarifs-status').textContent='Tes tarifs';

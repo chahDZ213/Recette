@@ -1027,7 +1027,7 @@ async function startCheckout() {
           + (q.colorSurcharge ? ` · couleur ${fmtEUR(q.colorSurcharge)}` : ''),
       },
     };
-    const r = await fetch(API_BASE + '/print-order', {
+    const r = await fetch('/api/print?action=order', {
       method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload),
     });
     const data = await r.json().catch(() => ({}));
@@ -1066,7 +1066,7 @@ function toast(msg) {
 // livraison). En cas d'échec, on garde les valeurs par défaut du code. Non bloquant.
 async function loadConfig() {
   try {
-    const r = await fetch('/api/print-config');
+    const r = await fetch('/api/print?action=config');
     if (!r.ok) return;
     const { config } = await r.json();
     if (!config) return;
