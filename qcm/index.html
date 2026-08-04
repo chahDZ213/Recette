@@ -220,6 +220,53 @@ function formate(texte) {
   return t;
 }
 
+/* Beaucoup de fiches posent la même question avec des mots différents (l'examen
+   les répète). Comparer les textes à l'identique ne suffit donc pas : sans cette
+   mesure de similitude, le QCM peut proposer deux fois la bonne réponse. */
+
+var VIDES = ['dans','pour','avec','plus','sont','doit','faut','tous','tout','leur',
+             'cette','celui','elle','être','fait','peut','aussi','entre','donc'];
+
+function motsCles(t) {
+  var sansAccent = t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  var mots = sansAccent.match(/[a-z0-9]{4,}/g) || [];
+  var set = Object.create(null);
+  mots.forEach(function (m) { if (VIDES.indexOf(m) === -1) set[m] = 1; });
+  return set;
+}
+
+/* Part des mots du plus court des deux textes que l'autre contient aussi. */
+function similitude(a, b) {
+  var A = motsCles(a), B = motsCles(b);
+  var ca = Object.keys(A).length, cb = Object.keys(B).length;
+  if (!ca || !cb) return 0;
+  var communs = 0;
+  Object.keys(A).forEach(function (m) { if (B[m]) communs++; });
+  // Plancher au dénominateur : sur une réponse très courte, deux ou trois mots
+  // communs ne veulent rien dire et gonfleraient artificiellement le score.
+  return communs / Math.max(Math.min(ca, cb), 6);
+}
+
+/* Texte réduit à sa substance, pour repérer deux réponses identiques.
+   Indispensable pour les réponses d'un ou deux mots (« Rouge. », « Le gilet de
+   haute visibilité. »), que la similitude ci-dessus ne peut pas juger. */
+function texteNorm(t) {
+  return t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+          .replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+var SEUIL = 0.55;   // au-delà, deux réponses disent la même chose
+
+/* Vrai si les deux réponses sont interchangeables : texte identique, l'une
+   contenue dans l'autre, ou vocabulaire largement commun. */
+function memeReponse(a, b) {
+  var na = texteNorm(a), nb = texteNorm(b);
+  if (!na || !nb) return true;
+  if (na === nb) return true;
+  if (na.indexOf(nb) !== -1 || nb.indexOf(na) !== -1) return true;
+  return similitude(a, b) >= SEUIL;
+}
+
 /* Première phrase, pour les propositions du QCM. */
 function resume(texte) {
   var m = texte.match(/^[^.!?]{15,150}[.!?]/);
@@ -324,16 +371,40 @@ function fabriqueQcm() {
   var bonne = fiche(t.n)[t.cat].a;
 
   // Distracteurs : des réponses réelles d'autres fiches, même catégorie.
+  // On écarte celles qui redisent la bonne réponse — sinon deux propositions
+  // sont justes et la question n'a pas de solution.
   var autres = QUESTIONS
     .filter(function (q) { return q.n !== t.n; })
     .map(function (q) { return q[t.cat].a; })
-    .filter(function (a) { return resume(a) !== resume(bonne); });
+    .filter(function (a) {
+      return !memeReponse(a, bonne) && !memeReponse(resume(a), resume(bonne));
+    });
+
+  // Si la catégorie n'offre pas assez de réponses distinctes, on complète avec
+  // les autres catégories plutôt que de rendre une question à 2 ou 3 choix.
+  if (autres.length < 3) {
+    QUESTIONS.forEach(function (q) {
+      CATS.forEach(function (c) {
+        if (q.n === t.n && c.k === t.cat) return;
+        var a = q[c.k].a;
+        if (!memeReponse(a, bonne) && !memeReponse(resume(a), resume(bonne))) {
+          autres.push(a);
+        }
+      });
+    });
+  }
+
+  function distincte(cand, liste) {
+    return liste.every(function (c) {
+      return !memeReponse(c, cand) && !memeReponse(resume(c), resume(cand));
+    });
+  }
 
   var choisis = [];
   while (choisis.length < 3 && autres.length) {
     var i = Math.floor(Math.random() * autres.length);
     var cand = autres.splice(i, 1)[0];
-    if (choisis.every(function (c) { return resume(c) !== resume(cand); })) choisis.push(cand);
+    if (distincte(cand, choisis)) choisis.push(cand);
   }
 
   var opts = choisis.map(function (a) { return {texte:resume(a), bonne:false}; });

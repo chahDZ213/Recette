@@ -1,5 +1,5 @@
 /* Service worker de l'appli de révision : cache-first, tout est statique. */
-const CACHE = 'permisb-verif-v1';
+const CACHE = 'permisb-verif-v2';
 const FICHIERS = [
   './',
   './index.html',
