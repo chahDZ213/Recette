@@ -110,6 +110,12 @@ details.fiche>summary .t{font-weight:500;font-size:14.5px;color:var(--soft);flex
 .fiche-body section{padding:12px 0;border-bottom:1px solid var(--line)}
 .fiche-body section:last-child{border-bottom:0}
 
+.ctx{
+  font-size:13.5px;color:var(--soft);margin:0 0 10px;padding:9px 12px;
+  background:var(--bg);border-left:3px solid var(--line);border-radius:0 8px 8px 0;
+}
+.ctx b{color:var(--ink);font-weight:600}
+.indep{font-size:12.5px;color:var(--soft);margin:0 0 10px;font-style:italic}
 .note{font-size:12.5px;color:var(--soft);background:var(--card);border:1px solid var(--line);
   border-left:3px solid var(--secu);border-radius:10px;padding:11px 13px;margin:14px 0}
 .empty{text-align:center;color:var(--soft);padding:40px 10px}
@@ -247,6 +253,18 @@ function similitude(a, b) {
   return communs / Math.max(Math.min(ca, cb), 6);
 }
 
+/* La question de sécurité routière porte sur l'objet de la vérification et y
+   renvoie souvent par un pronom (« Comment détecter leur usure ? »). Isolée,
+   elle est incompréhensible : on rappelle donc toujours le sujet de la fiche.
+   La question de premiers secours, elle, est indépendante du sujet — lui
+   accoler ce rappel induirait en erreur. */
+function rappelContexte(n, cat) {
+  if (cat !== 'securite') return '';
+  var q = fiche(n);
+  return '<p class="ctx">Sur cette fiche, la question précédente était :<br>' +
+         '<b>' + esc(q.verification.q) + '</b></p>';
+}
+
 /* Texte réduit à sa substance, pour repérer deux réponses identiques.
    Indispensable pour les réponses d'un ou deux mots (« Rouge. », « Le gilet de
    haute visibilité. »), que la similitude ci-dessus ne peut pas juger. */
@@ -320,6 +338,10 @@ RENDER.examen = function () {
       '<div class="card" data-cat="' + c.k + '">' +
         '<span class="tag ' + c.k + '">' + c.label + '</span>' +
         (s.ok + s.ko ? ' <span class="pill">' + s.ok + '✓ / ' + s.ko + '✗</span>' : '') +
+        rappelContexte(q.n, c.k) +
+        (c.k === 'secours'
+          ? '<p class="indep">Question de secourisme, sans rapport avec le sujet de la fiche.</p>'
+          : '') +
         '<p class="q">' + esc(q[c.k].q) + '</p>' +
         '<div class="reponse hidden"><p class="a">' + formate(q[c.k].a) + '</p></div>' +
         '<div class="row voir"><button class="act primary" data-voir="' + i + '">Voir la réponse</button></div>' +
@@ -425,6 +447,7 @@ RENDER.qcm = function () {
   var html =
     '<div class="card">' +
       '<span class="tag ' + g.cat + '">' + LABEL[g.cat] + ' · fiche ' + g.n + '</span>' +
+      rappelContexte(g.n, g.cat) +
       '<p class="q">' + esc(q[g.cat].q) + '</p>' +
       g.opts.map(function (o, i) {
         return '<button class="opt" data-i="' + i + '">' +
