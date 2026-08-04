@@ -24,11 +24,14 @@ GitHub refuse les fichiers de plus de 25 Mo via l'interface web.
 - Une page par photo (plutôt que deux pages en biais)
 - Si l'ordre des questions compte, nomme les fichiers `01.jpg`, `02.jpg`, …
 
-## Ce qui se passe ensuite
+## État actuel
 
-Je lis chaque photo, j'extrais les questions, je recherche et rédige les
-réponses, puis je génère `qcm/questions.json` qui alimente l'appli de
-révision `qcm/index.html`.
+Les 100 fiches ont déjà été extraites du PDF `verificationspermisBCOMPLET.pdf`
+et alimentent l'appli (`qcm/questions.js`). **Les photos ne sont donc plus
+nécessaires au fonctionnement.**
 
-Ce dossier sert d'archive source : l'appli n'a pas besoin des photos pour
-fonctionner une fois les questions extraites.
+Elles restent utiles pour une chose : **recouper le PDF**. Si tu les déposes
+ici, les écarts entre une photo et le texte du PDF seront signalés plutôt que
+tranchés en silence.
+
+Ce dossier est une archive source : l'appli n'en dépend pas.

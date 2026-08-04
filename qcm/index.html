@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1b4965">
+<title>Vérifications Permis B — 100 questions</title>
+<link rel="manifest" href="manifest.json">
+<style>
+:root{
+  --bg:#f4f6f8; --card:#fff; --ink:#16212b; --soft:#5d6b78; --line:#dfe5ea;
+  --accent:#1b4965; --accent-ink:#fff;
+  --ok:#1a7f4b; --ok-bg:#e6f4ec; --ko:#b3261e; --ko-bg:#fbeae9;
+  --verif:#1b4965; --secu:#8a5a00; --sec:#8c1d5a;
+  --radius:14px;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#11171c; --card:#1a2229; --ink:#e8edf1; --soft:#9aa8b4; --line:#2a343d;
+    --accent:#5aa0c9; --accent-ink:#0d1418;
+    --ok:#5fd39a; --ok-bg:#163023; --ko:#f2857c; --ko-bg:#33191a;
+    --verif:#7ab8dd; --secu:#e0b05a; --sec:#e58bb9;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--ink); font:16px/1.55 -apple-system,BlinkMacSystemFont,
+  "Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  -webkit-text-size-adjust:100%; padding-bottom:env(safe-area-inset-bottom);
+}
+.wrap{max-width:720px;margin:0 auto;padding:0 14px 90px}
+
+header{
+  position:sticky;top:0;z-index:20;background:var(--bg);
+  padding:14px 0 6px;border-bottom:1px solid var(--line);
+}
+header .inner{max-width:720px;margin:0 auto;padding:0 14px}
+h1{font-size:19px;margin:0 0 2px;letter-spacing:-.01em}
+.sub{font-size:12.5px;color:var(--soft);margin:0 0 10px}
+nav{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+nav button{
+  flex:0 0 auto;border:1px solid var(--line);background:var(--card);color:var(--soft);
+  padding:7px 14px;border-radius:999px;font-size:14px;font-weight:600;cursor:pointer;
+  font-family:inherit;
+}
+nav button[aria-selected="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+
+.card{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  padding:16px;margin:12px 0;
+}
+.tag{
+  display:inline-block;font-size:11px;font-weight:700;letter-spacing:.07em;
+  text-transform:uppercase;margin-bottom:8px;
+}
+.tag.verification{color:var(--verif)} .tag.securite{color:var(--secu)} .tag.secours{color:var(--sec)}
+.q{font-size:17px;font-weight:650;margin:0 0 12px;line-height:1.4}
+.a{font-size:15.5px;color:var(--ink);margin:0}
+.a ul{margin:6px 0 0;padding-left:20px}
+.a li{margin:3px 0}
+.hidden{display:none !important}
+
+button.act{
+  font-family:inherit;font-size:15px;font-weight:600;cursor:pointer;
+  border-radius:10px;padding:11px 16px;border:1px solid var(--line);
+  background:var(--card);color:var(--ink);
+}
+button.act.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+button.act:active{transform:scale(.985)}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.row>*{flex:1 1 0;min-width:120px}
+
+.num{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:58px;height:58px;border-radius:14px;background:var(--accent);
+  color:var(--accent-ink);font-size:26px;font-weight:800;letter-spacing:-.02em;
+}
+.fiche-head{display:flex;align-items:center;gap:14px;margin-bottom:4px}
+.fiche-head p{margin:0;font-size:13px;color:var(--soft)}
+
+.opt{
+  display:block;width:100%;text-align:left;font:inherit;font-size:15px;
+  background:var(--card);border:1.5px solid var(--line);color:var(--ink);
+  border-radius:12px;padding:12px 14px;margin:8px 0;cursor:pointer;
+}
+.opt:disabled{cursor:default}
+.opt.good{border-color:var(--ok);background:var(--ok-bg)}
+.opt.bad{border-color:var(--ko);background:var(--ko-bg)}
+.opt .mark{font-weight:800;margin-right:8px}
+
+.bar{height:8px;background:var(--line);border-radius:99px;overflow:hidden;margin:8px 0}
+.bar i{display:block;height:100%;background:var(--accent)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
+.stats div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 6px}
+.stats b{display:block;font-size:22px;line-height:1.2}
+.stats span{font-size:11.5px;color:var(--soft)}
+
+input[type=search]{
+  width:100%;font:inherit;font-size:15px;padding:11px 14px;border-radius:12px;
+  border:1px solid var(--line);background:var(--card);color:var(--ink);margin:12px 0 4px;
+}
+details.fiche{background:var(--card);border:1px solid var(--line);border-radius:12px;margin:8px 0;overflow:hidden}
+details.fiche>summary{padding:13px 15px;cursor:pointer;font-weight:650;list-style:none;display:flex;gap:12px;align-items:baseline}
+details.fiche>summary::-webkit-details-marker{display:none}
+details.fiche>summary .n{color:var(--accent);font-weight:800;font-variant-numeric:tabular-nums}
+details.fiche>summary .t{font-weight:500;font-size:14.5px;color:var(--soft);flex:1}
+.fiche-body{padding:0 15px 6px;border-top:1px solid var(--line)}
+.fiche-body section{padding:12px 0;border-bottom:1px solid var(--line)}
+.fiche-body section:last-child{border-bottom:0}
+
+.note{font-size:12.5px;color:var(--soft);background:var(--card);border:1px solid var(--line);
+  border-left:3px solid var(--secu);border-radius:10px;padding:11px 13px;margin:14px 0}
+.empty{text-align:center;color:var(--soft);padding:40px 10px}
+.pill{font-size:11.5px;color:var(--soft);border:1px solid var(--line);border-radius:99px;padding:2px 9px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="inner">
+    <h1>Vérifications — Permis B</h1>
+    <p class="sub">Les 100 fiches de l'examen pratique · Vérification, sécurité routière, premiers secours</p>
+    <nav id="nav">
+      <button data-tab="examen" aria-selected="true">Examen</button>
+      <button data-tab="qcm" aria-selected="false">QCM</button>
+      <button data-tab="fiches" aria-selected="false">Les 100 fiches</button>
+      <button data-tab="progres" aria-selected="false">Progrès</button>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+  <div id="examen"></div>
+  <div id="qcm" class="hidden"></div>
+  <div id="fiches" class="hidden"></div>
+  <div id="progres" class="hidden"></div>
+</div>
+
+<script src="questions.js"></script>
+<script>
+'use strict';
+
+var CATS = [
+  {k:'verification', label:'Vérification'},
+  {k:'securite',     label:'Sécurité routière'},
+  {k:'secours',      label:'Premiers secours'}
+];
+var LABEL = {verification:'Vérification', securite:'Sécurité routière', secours:'Premiers secours'};
+
+/* ---------- progression (localStorage) ---------- */
+
+var STORE = 'permisb-verif-v1';
+var prog = {};
+try { prog = JSON.parse(localStorage.getItem(STORE)) || {}; } catch (e) { prog = {}; }
+
+function save() {
+  try { localStorage.setItem(STORE, JSON.stringify(prog)); } catch (e) {}
+}
+function key(n, cat) { return n + ':' + cat; }
+function stat(n, cat) {
+  return prog[key(n, cat)] || {ok:0, ko:0, box:0};
+}
+function noter(n, cat, juste) {
+  var s = stat(n, cat);
+  if (juste) { s.ok++; s.box = Math.min(s.box + 1, 4); }
+  else       { s.ko++; s.box = 0; }
+  prog[key(n, cat)] = s;
+  save();
+}
+
+/* Poids de tirage : ce qui n'est pas su revient plus souvent. */
+function poids(n, cat) {
+  var s = stat(n, cat);
+  if (s.ok === 0 && s.ko === 0) return 5;   // jamais vue
+  return [8, 4, 2, 1, 1][s.box];            // ratée récemment -> priorité
+}
+
+function tirage(cats) {
+  var pool = [];
+  QUESTIONS.forEach(function (q) {
+    cats.forEach(function (c) {
+      pool.push({n:q.n, cat:c, w:poids(q.n, c)});
+    });
+  });
+  var total = pool.reduce(function (a, x) { return a + x.w; }, 0);
+  var r = Math.random() * total;
+  for (var i = 0; i < pool.length; i++) {
+    r -= pool[i].w;
+    if (r <= 0) return pool[i];
+  }
+  return pool[pool.length - 1];
+}
+
+function fiche(n) {
+  for (var i = 0; i < QUESTIONS.length; i++) if (QUESTIONS[i].n === n) return QUESTIONS[i];
+  return null;
+}
+
+/* ---------- rendu de texte ---------- */
+
+function esc(s) {
+  return String(s).replace(/[&<>"]/g, function (c) {
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];
+  });
+}
+
+/* Les réponses du PDF contiennent parfois des listes "1. … 2. …" mises à plat. */
+function formate(texte) {
+  var t = esc(texte);
+  var parts = t.split(/(?=\b[1-9]\.\s)/).filter(function (x) { return x.trim(); });
+  if (parts.length >= 3 && /^[1-9]\.\s/.test(parts[1])) {
+    var intro = /^[1-9]\.\s/.test(parts[0]) ? '' : parts.shift();
+    var li = parts.map(function (p) {
+      return '<li>' + p.replace(/^[1-9]\.\s*/, '').trim() + '</li>';
+    }).join('');
+    return (intro ? intro.trim() + ' ' : '') + '<ul>' + li + '</ul>';
+  }
+  return t;
+}
+
+/* Première phrase, pour les propositions du QCM. */
+function resume(texte) {
+  var m = texte.match(/^[^.!?]{15,150}[.!?]/);
+  var s = m ? m[0] : texte;
+  if (s.length > 160) s = s.slice(0, 157).replace(/\s+\S*$/, '') + '…';
+  return s.trim();
+}
+
+/* ---------- onglets ---------- */
+
+var TABS = ['examen', 'qcm', 'fiches', 'progres'];
+var RENDER = {};
+
+document.getElementById('nav').addEventListener('click', function (e) {
+  var b = e.target.closest('button[data-tab]');
+  if (!b) return;
+  montre(b.dataset.tab);
+});
+
+function montre(tab) {
+  TABS.forEach(function (t) {
+    document.getElementById(t).classList.toggle('hidden', t !== tab);
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('#nav button'), function (b) {
+    b.setAttribute('aria-selected', String(b.dataset.tab === tab));
+  });
+  window.scrollTo(0, 0);
+  RENDER[tab]();
+}
+
+/* ---------- onglet Examen : une fiche complète, comme le jour J ---------- */
+
+var ficheEnCours = null;
+
+RENDER.examen = function () {
+  var el = document.getElementById('examen');
+  if (!ficheEnCours) ficheEnCours = tirage(['verification']).n;
+  var q = fiche(ficheEnCours);
+
+  var html =
+    '<div class="card">' +
+      '<div class="fiche-head">' +
+        '<span class="num">' + q.n + '</span>' +
+        '<p>Fiche tirée au sort.<br>L\'inspecteur pose les trois questions de cette fiche.</p>' +
+      '</div>' +
+    '</div>';
+
+  CATS.forEach(function (c, i) {
+    var s = stat(q.n, c.k);
+    html +=
+      '<div class="card" data-cat="' + c.k + '">' +
+        '<span class="tag ' + c.k + '">' + c.label + '</span>' +
+        (s.ok + s.ko ? ' <span class="pill">' + s.ok + '✓ / ' + s.ko + '✗</span>' : '') +
+        '<p class="q">' + esc(q[c.k].q) + '</p>' +
+        '<div class="reponse hidden"><p class="a">' + formate(q[c.k].a) + '</p></div>' +
+        '<div class="row voir"><button class="act primary" data-voir="' + i + '">Voir la réponse</button></div>' +
+        '<div class="row juger hidden">' +
+          '<button class="act" data-note="ko" data-cat="' + c.k + '">Pas su</button>' +
+          '<button class="act primary" data-note="ok" data-cat="' + c.k + '">Je savais</button>' +
+        '</div>' +
+      '</div>';
+  });
+
+  html +=
+    '<div class="row"><button class="act primary" id="suivante">Fiche suivante</button></div>' +
+    '<p class="note">Le jour de l\'examen, l\'inspecteur tire une fiche au hasard parmi ces 100. ' +
+    'Les questions déjà ratées reviennent ici plus souvent.</p>';
+
+  el.innerHTML = html;
+
+  el.querySelectorAll('[data-voir]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var card = b.closest('.card');
+      card.querySelector('.reponse').classList.remove('hidden');
+      card.querySelector('.voir').classList.add('hidden');
+      card.querySelector('.juger').classList.remove('hidden');
+    });
+  });
+
+  el.querySelectorAll('[data-note]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      noter(q.n, b.dataset.cat, b.dataset.note === 'ok');
+      var juger = b.closest('.juger');
+      juger.innerHTML = '<span class="pill">' +
+        (b.dataset.note === 'ok' ? 'Noté : acquis' : 'Noté : à revoir') + '</span>';
+    });
+  });
+
+  document.getElementById('suivante').addEventListener('click', function () {
+    ficheEnCours = null;
+    RENDER.examen();
+    window.scrollTo(0, 0);
+  });
+};
+
+/* ---------- onglet QCM ---------- */
+
+var qcmEnCours = null;
+
+function fabriqueQcm() {
+  var t = tirage(['verification', 'securite', 'secours']);
+  var bonne = fiche(t.n)[t.cat].a;
+
+  // Distracteurs : des réponses réelles d'autres fiches, même catégorie.
+  var autres = QUESTIONS
+    .filter(function (q) { return q.n !== t.n; })
+    .map(function (q) { return q[t.cat].a; })
+    .filter(function (a) { return resume(a) !== resume(bonne); });
+
+  var choisis = [];
+  while (choisis.length < 3 && autres.length) {
+    var i = Math.floor(Math.random() * autres.length);
+    var cand = autres.splice(i, 1)[0];
+    if (choisis.every(function (c) { return resume(c) !== resume(cand); })) choisis.push(cand);
+  }
+
+  var opts = choisis.map(function (a) { return {texte:resume(a), bonne:false}; });
+  opts.push({texte:resume(bonne), bonne:true});
+  for (var j = opts.length - 1; j > 0; j--) {   // melange
+    var k = Math.floor(Math.random() * (j + 1));
+    var tmp = opts[j]; opts[j] = opts[k]; opts[k] = tmp;
+  }
+  return {n:t.n, cat:t.cat, opts:opts, complet:bonne};
+}
+
+RENDER.qcm = function () {
+  var el = document.getElementById('qcm');
+  if (!qcmEnCours) qcmEnCours = fabriqueQcm();
+  var g = qcmEnCours;
+  var q = fiche(g.n);
+
+  var html =
+    '<div class="card">' +
+      '<span class="tag ' + g.cat + '">' + LABEL[g.cat] + ' · fiche ' + g.n + '</span>' +
+      '<p class="q">' + esc(q[g.cat].q) + '</p>' +
+      g.opts.map(function (o, i) {
+        return '<button class="opt" data-i="' + i + '">' +
+               '<span class="mark">' + 'ABCD'[i] + '</span>' + esc(o.texte) + '</button>';
+      }).join('') +
+      '<div id="qcm-suite" class="hidden">' +
+        '<p class="a" style="margin-top:14px">' + formate(g.complet) + '</p>' +
+        '<div class="row" style="margin-top:12px">' +
+          '<button class="act primary" id="qcm-next">Question suivante</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+    '<p class="note">Les mauvaises propositions sont de vraies réponses, empruntées à d\'autres fiches. ' +
+    'C\'est fait exprès : elles sont plausibles.</p>';
+
+  el.innerHTML = html;
+
+  el.querySelectorAll('.opt').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var choix = g.opts[+b.dataset.i];
+      el.querySelectorAll('.opt').forEach(function (x) {
+        x.disabled = true;
+        if (g.opts[+x.dataset.i].bonne) x.classList.add('good');
+      });
+      if (!choix.bonne) b.classList.add('bad');
+      noter(g.n, g.cat, choix.bonne);
+      document.getElementById('qcm-suite').classList.remove('hidden');
+      document.getElementById('qcm-next').addEventListener('click', function () {
+        qcmEnCours = null;
+        RENDER.qcm();
+        window.scrollTo(0, 0);
+      });
+    });
+  });
+};
+
+/* ---------- onglet Fiches ---------- */
+
+var filtre = '';
+
+RENDER.fiches = function () {
+  var el = document.getElementById('fiches');
+  var liste = QUESTIONS.filter(function (q) {
+    if (!filtre) return true;
+    var f = filtre.toLowerCase();
+    if (q.n.indexOf(f) === 0) return true;
+    return CATS.some(function (c) {
+      return (q[c.k].q + ' ' + q[c.k].a).toLowerCase().indexOf(f) !== -1;
+    });
+  });
+
+  el.innerHTML =
+    '<input type="search" id="rech" placeholder="Rechercher un mot, ou un numéro de fiche…" value="' +
+      esc(filtre) + '">' +
+    '<p class="sub">' + liste.length + ' fiche' + (liste.length > 1 ? 's' : '') + ' sur 100</p>' +
+    (liste.length ? liste.map(function (q) {
+      return '<details class="fiche">' +
+        '<summary><span class="n">' + q.n + '</span>' +
+          '<span class="t">' + esc(resume(q.verification.q)) + '</span></summary>' +
+        '<div class="fiche-body">' +
+          CATS.map(function (c) {
+            return '<section>' +
+              '<span class="tag ' + c.k + '">' + c.label + '</span>' +
+              '<p class="q" style="font-size:15.5px">' + esc(q[c.k].q) + '</p>' +
+              '<p class="a">' + formate(q[c.k].a) + '</p>' +
+            '</section>';
+          }).join('') +
+        '</div>' +
+      '</details>';
+    }).join('') : '<p class="empty">Aucune fiche ne correspond.</p>');
+
+  var champ = document.getElementById('rech');
+  champ.addEventListener('input', function () {
+    filtre = champ.value;
+    var pos = champ.selectionStart;
+    RENDER.fiches();
+    var neuf = document.getElementById('rech');
+    neuf.focus();
+    neuf.setSelectionRange(pos, pos);
+  });
+};
+
+/* ---------- onglet Progrès ---------- */
+
+RENDER.progres = function () {
+  var el = document.getElementById('progres');
+  var total = QUESTIONS.length * CATS.length;
+  var vues = 0, acquis = 0, revoir = 0;
+
+  QUESTIONS.forEach(function (q) {
+    CATS.forEach(function (c) {
+      var s = stat(q.n, c.k);
+      if (s.ok + s.ko === 0) return;
+      vues++;
+      if (s.box >= 3) acquis++; else if (s.box === 0) revoir++;
+    });
+  });
+
+  var pct = Math.round(acquis / total * 100);
+
+  var faibles = [];
+  QUESTIONS.forEach(function (q) {
+    CATS.forEach(function (c) {
+      var s = stat(q.n, c.k);
+      if (s.ko > 0 && s.box <= 1) faibles.push({n:q.n, cat:c.k, s:s, q:q[c.k].q});
+    });
+  });
+  faibles.sort(function (a, b) { return b.s.ko - a.s.ko; });
+
+  el.innerHTML =
+    '<div class="card">' +
+      '<p class="sub" style="margin:0 0 4px">Acquis : ' + acquis + ' / ' + total + ' réponses</p>' +
+      '<div class="bar"><i style="width:' + pct + '%"></i></div>' +
+      '<div class="stats" style="margin-top:14px">' +
+        '<div><b>' + vues + '</b><span>travaillées</span></div>' +
+        '<div><b style="color:var(--ok)">' + acquis + '</b><span>acquises</span></div>' +
+        '<div><b style="color:var(--ko)">' + revoir + '</b><span>à revoir</span></div>' +
+      '</div>' +
+    '</div>' +
+    (faibles.length ?
+      '<div class="card"><span class="tag">Tes points faibles</span>' +
+        faibles.slice(0, 15).map(function (f) {
+          return '<p style="margin:9px 0;font-size:14.5px">' +
+            '<span class="n" style="color:var(--accent);font-weight:800">' + f.n + '</span> · ' +
+            '<span class="tag ' + f.cat + '" style="margin:0">' + LABEL[f.cat] + '</span><br>' +
+            esc(resume(f.q)) + ' <span class="pill">' + f.s.ko + ' erreur' +
+            (f.s.ko > 1 ? 's' : '') + '</span></p>';
+        }).join('') +
+      '</div>'
+      : '<p class="empty">Réponds à quelques questions : tes points faibles apparaîtront ici.</p>') +
+    '<div class="row"><button class="act" id="raz">Remettre la progression à zéro</button></div>';
+
+  var raz = document.getElementById('raz');
+  raz.addEventListener('click', function () {
+    if (!confirm('Effacer toute ta progression ? Cette action est définitive.')) return;
+    prog = {};
+    save();
+    RENDER.progres();
+  });
+};
+
+/* ---------- démarrage ---------- */
+
+montre('examen');
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(function () {});
+}
+</script>
+</body>
+</html>
