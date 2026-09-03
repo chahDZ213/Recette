@@ -28,6 +28,10 @@ if (VAPID_PUBLIC && VAPID_PRIVATE) {
 }
 
 const MAX_ITEMS = 400;
+
+/* Même modèle et même variable que l'extraction : deux réglages pour une
+   seule décision finiraient par diverger. */
+const MODELE = (process.env.MISE_CLAUDE_MODEL || "").trim() || "claude-opus-5";
 const clampStr = (v, n) => (typeof v === "string" ? v.slice(0, n) : "");
 
 // On ne garde que les champs utiles au calcul : la planification QStash reste légère
@@ -119,7 +123,7 @@ async function scanImage(body, res) {
       method: "POST",
       headers: { "content-type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01" },
       body: JSON.stringify({
-        model: "claude-sonnet-4-6",
+        model: MODELE,
         max_tokens: 1800,
         messages: [{
           role: "user",

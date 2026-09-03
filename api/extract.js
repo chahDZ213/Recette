@@ -5,6 +5,13 @@
 export const maxDuration = 60;
 
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+
+/* Le modèle, réglable sans toucher au code.
+   Opus 5 par défaut : la structuration d'une recette à partir d'une
+   transcription parlée — retrouver les quantités, séparer les étapes,
+   deviner ce qui est sous-entendu — est exactement ce qu'un modèle plus fin
+   fait mieux. La variable permet de redescendre si la facture le demande. */
+const MODELE = (process.env.MISE_CLAUDE_MODEL || "").trim() || "claude-opus-5";
 const SUPADATA_KEY = process.env.SUPADATA_API_KEY;
 const YT_KEY = process.env.YOUTUBE_API_KEY; // optionnel
 
@@ -88,7 +95,7 @@ async function askClaude(source) {
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: "claude-sonnet-4-6",
+      model: MODELE,
       max_tokens: 2200,
       messages: [{
         role: "user",
@@ -114,7 +121,7 @@ async function askClaudeVision(dataUrl) {
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: "claude-sonnet-4-6",
+      model: MODELE,
       max_tokens: 1500,
       messages: [{
         role: "user",
@@ -183,7 +190,7 @@ async function readFridge(dataUrl) {
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: "claude-sonnet-4-6",
+      model: MODELE,
       max_tokens: 400,
       messages: [{
         role: "user",
@@ -205,7 +212,7 @@ async function askClaudeText(prompt, maxTokens) {
   const r = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "content-type": "application/json", "x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01" },
-    body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: maxTokens || 700, messages: [{ role: "user", content: prompt }] }),
+    body: JSON.stringify({ model: MODELE, max_tokens: maxTokens || 700, messages: [{ role: "user", content: prompt }] }),
   });
   const data = await r.json();
   const t = (data.content || []).filter((b) => b.type === "text").map((b) => b.text).join("\n");
