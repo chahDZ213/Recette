@@ -3365,6 +3365,33 @@ let pendingShareId=null, publicPreview=false;
 function checkShareParam(){
   try{ const id=new URLSearchParams(location.search).get("r"); if(id) pendingShareId=id; }catch(e){}
 }
+
+/* Une recette proposée par Kcalcul.
+   Kcalcul suggère des plats calibrés sur ce qu'il reste à manger dans la
+   journée, mais s'arrête aux ingrédients : c'est mise. qui sait en faire une
+   recette suivable. Le lien porte la description dans ?creer=, on la dépose
+   dans le champ de création et on laisse la personne déclencher — un appel à
+   l'IA ne se lance pas tout seul parce qu'on a ouvert un lien. */
+let pendingCreation=null;
+function checkCreationParam(){
+  try{
+    const texte=new URLSearchParams(location.search).get("creer");
+    if(texte && texte.trim()) pendingCreation=texte.trim().slice(0,600);
+    /* L'adresse est nettoyée : un rafraîchissement ne doit pas reproposer
+       la même recette indéfiniment. */
+    if(texte){ history.replaceState({}, "", location.pathname); }
+  }catch(e){}
+}
+function ouvrirCreationEnAttente(){
+  if(!pendingCreation) return;
+  const texte=pendingCreation; pendingCreation=null;
+  try{
+    openAddSheet();
+    showAddPanel("ai");
+    const champ=$("createText");
+    if(champ){ champ.value=texte; champ.focus(); }
+  }catch(e){}
+}
 async function shareRecipeData(r){
   if(!r || !sb || !currentUserId) return;
   const snap={ title:r.title, baseServings:r.baseServings, ingredients:r.ingredients, steps:r.steps, image:r.image||null, platform:r.platform||null };
@@ -3444,6 +3471,7 @@ $("logoutBtn").addEventListener("click", async ()=>{
 
 // init : lien de partage prioritaire, sinon reprise de session
 checkShareParam();
+checkCreationParam();
 handlePayReturn();   // retour éventuel de Stripe Checkout (indépendant de la session)
 (async function(){
   let session=null;
@@ -3456,6 +3484,9 @@ handlePayReturn();   // retour éventuel de Stripe Checkout (indépendant de la 
   }
   if(session){ await onSignedIn(session); }
   else { showAuth(); }
+  /* Une fois la session tranchée : la recette venue de Kcalcul, s'il y en a
+     une. Après, sinon l'écran d'authentification la recouvrirait. */
+  if(session) setTimeout(ouvrirCreationEnAttente, 400);
 })();
 if("serviceWorker" in navigator){ navigator.serviceWorker.register("/sw.js").catch(()=>{}); }
 </script>
