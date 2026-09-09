@@ -1,0 +1,1644 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}</style></head><body>
+<title>CalForge — Aperçu interactif</title>
+<style>
+  :root {
+    --bg: #1e2227; --bg-alt: #252a31; --bg-raised: #2c323b; --bg-doc: #f6f8fb;
+    --border: #3a4149; --border-soft: #333941;
+    --text: #d6dbe1; --text-dim: #8b939e; --text-doc: #1c1f24;
+    --accent: #3d8bfd; --accent-hover: #5c9dfd;
+    --danger: #e05561; --success: #57ab5a; --warning: #d29922;
+    --hl-valid: rgba(87,171,90,.32); --hl-prop: rgba(210,153,34,.30);
+    --hl-anno: rgba(61,139,253,.30); --hl-book: rgba(87,171,90,.26);
+    --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Ubuntu, Cantarell, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg); color: var(--text); font-family: var(--font-ui);
+    font-size: 13px; line-height: 1.45; -webkit-font-smoothing: antialiased;
+  }
+  .app {
+    display: grid; grid-template-rows: auto auto 1fr auto; height: 100vh;
+    max-height: 100vh; overflow: hidden;
+  }
+
+  /* Preview banner */
+  .banner {
+    background: linear-gradient(90deg, #223049, #26313d);
+    border-bottom: 1px solid var(--border); padding: 7px 14px;
+    display: flex; gap: 10px; align-items: center; font-size: 12px; color: var(--text-dim);
+  }
+  .banner b { color: var(--text); }
+  .banner .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); flex: none; }
+
+  /* Menu bar */
+  .menubar {
+    background: var(--bg-alt); border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 2px; padding: 0 6px; height: 30px;
+  }
+  .menubar .brand { font-weight: 700; color: var(--accent); padding: 0 10px 0 6px; letter-spacing: .3px; }
+  .menubar .m { padding: 4px 10px; border-radius: 4px; cursor: default; color: var(--text); }
+  .menubar .m:hover { background: var(--accent); color: #fff; }
+  .menubar .spacer { flex: 1; }
+  .menubar .ver { color: var(--text-dim); padding-right: 8px; font-variant-numeric: tabular-nums; }
+
+  /* Main 3-column area */
+  .main { display: grid; grid-template-columns: 232px minmax(0,1fr) 384px; min-height: 0; }
+  .dock { border-right: 1px solid var(--border); display: flex; flex-direction: column; min-height: 0; }
+  .dock.right { border-right: none; border-left: 1px solid var(--border); display: grid; grid-template-rows: 1fr 1fr; }
+  .dock-title {
+    background: var(--bg-alt); border-bottom: 1px solid var(--border);
+    padding: 6px 10px; font-size: 12px; color: var(--text-dim); text-transform: none;
+    display: flex; align-items: center; justify-content: space-between; flex: none;
+  }
+  .dock-body { padding: 8px; overflow: auto; min-height: 0; }
+
+  /* Search + vehicle list */
+  input[type=text], select {
+    width: 100%; background: var(--bg-raised); border: 1px solid var(--border);
+    border-radius: 4px; padding: 6px 8px; color: var(--text); font-family: inherit; font-size: 13px;
+  }
+  input:focus, select:focus { outline: none; border-color: var(--accent); }
+  select { cursor: pointer; }
+  .vlist { margin-top: 8px; display: flex; flex-direction: column; }
+  .vrow {
+    padding: 7px 9px; border-radius: 4px; cursor: pointer; border: 1px solid transparent;
+  }
+  .vrow:hover { background: var(--bg-alt); }
+  .vrow.sel { background: var(--accent); color: #fff; }
+  .vrow .vsub { font-size: 11px; color: var(--text-dim); }
+  .vrow.sel .vsub { color: #dce9ff; }
+
+  /* Center tabs */
+  .center { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+  .tabbar { display: flex; background: var(--bg-alt); border-bottom: 1px solid var(--border); overflow-x: auto; flex: none; }
+  .tab {
+    padding: 7px 15px; border-right: 1px solid var(--border); cursor: pointer;
+    white-space: nowrap; color: var(--text-dim); display: flex; align-items: center; gap: 8px;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { background: var(--bg-raised); color: var(--text); border-bottom: 2px solid var(--accent); }
+  .tab .x { color: var(--text-dim); border-radius: 3px; padding: 0 3px; }
+  .tab .x:hover { background: var(--danger); color: #fff; }
+  .tabpage { flex: 1; overflow: auto; min-height: 0; display: none; }
+  .tabpage.active { display: block; }
+
+  /* Welcome */
+  .welcome { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 6px; padding: 24px; }
+  .welcome h1 { font-size: 30px; margin: 0; letter-spacing: .5px; }
+  .welcome p { color: var(--text-dim); max-width: 440px; margin: 2px 0; }
+  .welcome .kbd { font-family: var(--font-mono); background: var(--bg-raised); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; color: var(--text); }
+
+  /* Buttons */
+  button {
+    background: var(--bg-raised); border: 1px solid var(--border); border-radius: 4px;
+    color: var(--text); padding: 6px 12px; font-family: inherit; font-size: 12.5px; cursor: pointer;
+  }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.primary:hover { background: var(--accent-hover); }
+  button:disabled { color: var(--text-dim); cursor: not-allowed; opacity: .6; }
+  .btnrow { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+
+  /* Tables */
+  table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+  th, td { text-align: left; padding: 6px 9px; border-bottom: 1px solid var(--border-soft); }
+  th { background: var(--bg-raised); color: var(--text-dim); font-weight: 600; position: sticky; top: 0; }
+  tbody tr { cursor: default; }
+  tbody tr.click { cursor: pointer; }
+  tbody tr.click:hover { background: var(--bg-alt); }
+  tbody tr.sel { background: rgba(61,139,253,.18); }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* Pills */
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .pill.valid { background: rgba(87,171,90,.18); color: #86d78a; border: 1px solid rgba(87,171,90,.4); }
+  .pill.prop { background: rgba(210,153,34,.16); color: #e9be5c; border: 1px solid rgba(210,153,34,.4); }
+  .pill.rej { background: rgba(224,85,97,.14); color: #f08a92; border: 1px solid rgba(224,85,97,.4); }
+  .pill.orig { background: var(--bg-raised); color: var(--text-dim); border: 1px solid var(--border); }
+  .pill.mod { background: rgba(61,139,253,.16); color: #8ab8fd; border: 1px solid rgba(61,139,253,.4); }
+
+  /* Sheet (Fiche) */
+  .sheet { padding: 12px; }
+  .sheet h2 { font-size: 20px; margin: 0 0 10px; }
+  .kv { display: grid; grid-template-columns: 130px 1fr; gap: 3px 10px; margin-bottom: 12px; }
+  .kv .k { color: var(--text-dim); }
+  .section-h { font-size: 12px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .6px; margin: 14px 0 6px; }
+
+  /* Hex view */
+  .analysis { display: grid; grid-template-columns: minmax(0,1fr) 320px; height: 100%; min-height: 0; }
+  .analysis-main { display: flex; flex-direction: column; min-width: 0; border-right: 1px solid var(--border); }
+  .toolbar { display: flex; gap: 6px; padding: 8px; border-bottom: 1px solid var(--border); align-items: center; flex-wrap: wrap; flex: none; }
+  .toolbar input[type=text] { width: 150px; }
+  .toolbar .status { color: var(--text-dim); font-size: 12px; margin-left: 4px; }
+  .hexwrap { overflow: auto; flex: 1; min-height: 0; }
+  table.hex { font-family: var(--font-mono); font-size: 12px; width: auto; }
+  table.hex th, table.hex td { padding: 2px 5px; border: none; text-align: center; }
+  table.hex th { background: var(--bg-alt); }
+  table.hex td.off { color: var(--text-dim); text-align: right; padding-right: 10px; position: sticky; left: 0; background: var(--bg); }
+  table.hex td.ascii { color: var(--text-dim); text-align: left; padding-left: 10px; letter-spacing: 1px; }
+  table.hex td.hl-valid { background: var(--hl-valid); }
+  table.hex td.hl-prop { background: var(--hl-prop); }
+  table.hex td.hl-anno { background: var(--hl-anno); }
+  .side { display: flex; flex-direction: column; min-height: 0; overflow: auto; }
+  .side .block { padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  .side .block h4 { margin: 0 0 6px; font-size: 12.5px; }
+  .cand { border: 1px solid var(--border); border-radius: 5px; padding: 7px 9px; margin-bottom: 6px; background: var(--bg-alt); }
+  .cand.sel { border-color: var(--accent); }
+  .cand .top { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+  .cand .nm { font-weight: 600; font-size: 12.5px; }
+  .cand .meta { color: var(--text-dim); font-size: 11px; margin: 2px 0; }
+  .cand .rat { color: var(--text-dim); font-size: 11px; font-style: italic; }
+  .cand .acts { display: flex; gap: 5px; margin-top: 6px; }
+  .cand .acts button { padding: 3px 8px; font-size: 11px; }
+
+  /* Assistant */
+  .assistant { display: flex; flex-direction: column; min-height: 0; }
+  .assistant .target { padding: 8px 10px; border-bottom: 1px solid var(--border-soft); font-size: 12px; color: var(--text-dim); }
+  .assistant .target b { color: var(--text); }
+  .assistant .controls { padding: 8px 10px; display: flex; flex-direction: column; gap: 7px; border-bottom: 1px solid var(--border-soft); }
+  .assistant .out { flex: 1; overflow: auto; padding: 10px; min-height: 0; }
+  .assistant .ask { padding: 8px 10px; display: flex; gap: 6px; border-top: 1px solid var(--border-soft); }
+  .assistant .ask input { flex: 1; }
+  .ans-head { color: var(--accent); font-weight: 700; margin-bottom: 6px; }
+  .ans-body { white-space: pre-wrap; font-size: 12.5px; }
+  .ans-hyp-h { color: var(--warning); font-weight: 700; margin: 10px 0 4px; }
+  .ans-note { color: var(--text-dim); font-size: 11px; }
+  .ans-disc { color: var(--text-dim); font-style: italic; font-size: 11px; margin-top: 10px; border-top: 1px solid var(--border-soft); padding-top: 8px; }
+  .ans-save { margin-top: 8px; }
+
+  /* Journal */
+  .journal { border-top: 1px solid var(--border); background: var(--bg); height: 118px; display: flex; flex-direction: column; }
+  .journal .h { background: var(--bg-alt); border-bottom: 1px solid var(--border); padding: 4px 10px; font-size: 12px; color: var(--text-dim); }
+  .journal .log { flex: 1; overflow: auto; padding: 6px 10px; font-family: var(--font-mono); font-size: 11.5px; color: #9aa4af; }
+  .journal .log div { white-space: pre; }
+  .journal .log .lv { color: var(--success); }
+
+  /* Modal */
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: none; align-items: center; justify-content: center; z-index: 50; padding: 20px; }
+  .modal-bg.open { display: flex; }
+  .modal { background: var(--bg-raised); border: 1px solid var(--border); border-radius: 8px; max-width: 92vw; max-height: 88vh; overflow: auto; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+  .modal .mh { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 20px; position: sticky; top: 0; background: var(--bg-raised); }
+  .modal .mh h3 { margin: 0; font-size: 15px; }
+  .modal .mb { padding: 16px; }
+  .modal .mb.doc { background: var(--bg-doc); color: var(--text-doc); }
+
+  /* Heatmap */
+  .heat { border-collapse: collapse; font-family: var(--font-mono); font-size: 11px; }
+  .heat td { border: 1px solid rgba(0,0,0,.25); padding: 3px 6px; text-align: center; color: #fff; min-width: 42px; }
+  .heat th { background: transparent; color: var(--text-dim); position: static; padding: 3px 6px; font-weight: 600; }
+
+  /* Report doc */
+  .rep h1 { font-size: 21px; margin: 0 0 2px; color: var(--text-doc); }
+  .rep .sub { color: #6b7280; font-size: 12px; margin-bottom: 4px; }
+  .rep h2 { font-size: 15px; border-bottom: 2px solid var(--accent); padding-bottom: 3px; margin: 20px 0 6px; color: #1a4f9c; }
+  .rep table { color: var(--text-doc); }
+  .rep th, .rep td { border: 1px solid #d0d5dd; }
+  .rep th { background: #eef2f7; color: #333; position: static; }
+  .rep .muted { color: #6b7280; }
+  .rep .disc { margin-top: 22px; color: #6b7280; font-style: italic; font-size: 11px; border-top: 1px solid #d0d5dd; padding-top: 8px; }
+
+  /* Toast */
+  #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--bg-raised); border: 1px solid var(--accent); border-radius: 6px; padding: 9px 16px;
+    opacity: 0; transition: all .25s; z-index: 60; pointer-events: none; box-shadow: 0 8px 24px rgba(0,0,0,.4); }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* Action bar — clear buttons, no keyboard shortcuts needed */
+  .actionbar { display: flex; gap: 8px; padding: 9px 10px; background: var(--bg-alt); border-bottom: 1px solid var(--border); flex-wrap: wrap; align-items: center; flex: none; }
+  .actionbar button.big { font-size: 13px; padding: 9px 13px; font-weight: 600; }
+  .actionbar .grow { flex: 1; }
+  .actionbar .hintmini { color: var(--text-dim); font-size: 11px; }
+
+  /* Welcome start cards */
+  .startgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; width: 100%; max-width: 720px; margin-top: 10px; }
+  .startcard { border: 1px solid var(--border); border-radius: 10px; padding: 16px; text-align: left; cursor: pointer; background: var(--bg-alt); }
+  .startcard:hover { border-color: var(--accent); background: var(--bg-raised); }
+  .startcard .ic { font-size: 22px; }
+  .startcard .t { font-weight: 700; margin: 8px 0 3px; font-size: 14px; }
+  .startcard .d { color: var(--text-dim); font-size: 12px; line-height: 1.4; }
+
+  /* Dropzone */
+  .drop { border: 2px dashed var(--border); border-radius: 10px; padding: 26px 18px; text-align: center; color: var(--text-dim); cursor: pointer; transition: border-color .15s, background .15s, color .15s; }
+  .drop.hover { border-color: var(--accent); color: var(--text); background: rgba(61,139,253,.07); }
+  .drop b { color: var(--text); }
+  .form-row { display: grid; grid-template-columns: 130px 1fr; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .form-row label { color: var(--text-dim); }
+
+  /* Guided tuning wizard */
+  .wiz { max-width: 560px; }
+  .wiz .steps { color: var(--text-dim); font-size: 11px; letter-spacing: .4px; text-transform: uppercase; margin-bottom: 10px; }
+  .wiz .q { font-weight: 700; font-size: 15px; margin: 0 0 14px; }
+  .wiz .opts { display: flex; flex-direction: column; gap: 8px; }
+  .wiz .opt { border: 1px solid var(--border); border-radius: 7px; padding: 11px 13px; cursor: pointer; }
+  .wiz .opt:hover { border-color: var(--accent); background: var(--bg-alt); }
+  .wiz .opt.sel { border-color: var(--accent); background: rgba(61,139,253,.12); }
+  .wiz .opt .ot { font-weight: 600; }
+  .wiz .opt .od { color: var(--text-dim); font-size: 12px; margin-top: 2px; }
+  .wiz .nav { display: flex; justify-content: space-between; gap: 8px; margin-top: 18px; }
+  .wiz .propbox { border: 1px solid var(--border); border-radius: 8px; padding: 4px 12px; background: var(--bg-alt); margin: 6px 0; }
+  .wiz .propline { display: flex; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border-soft); }
+  .wiz .propline:last-child { border-bottom: none; }
+  .wiz .propline b { color: var(--accent); font-variant-numeric: tabular-nums; }
+
+  /* Editable heat cells */
+  .heat td.editable { cursor: cell; }
+  .heat td.editable:hover { outline: 2px solid #fff; outline-offset: -2px; }
+
+  /* Zone preview grid (tuning proposal) */
+  .zonemap { border-collapse: collapse; }
+  .zonemap td { width: 15px; height: 15px; padding: 0; border: 1px solid rgba(0,0,0,.28); }
+  .zonemap td:hover { outline: 2px solid #fff; outline-offset: -2px; }
+
+  @media (max-width: 920px) {
+    .app { height: auto; max-height: none; overflow: visible; }
+    .main { grid-template-columns: 1fr; }
+    .dock.right { grid-template-rows: auto auto; }
+    .center { min-height: 420px; }
+    .analysis { grid-template-columns: 1fr; }
+    .journal { height: 90px; }
+  }
+  @media (prefers-reduced-motion: reduce) { #toast { transition: none; } }
+</style>
+
+<div class="app">
+  <div class="banner">
+    <span class="dot"></span>
+    <span><b>Aperçu interactif de CalForge</b> — tout se fait avec les <b style="color:var(--text);">gros boutons</b> en haut : ajoutez une voiture, ouvrez un fichier ECU (vos maps s'affichent), modifiez les valeurs, ou demandez une modif à Claude qui vous pose des questions puis règle la carte — enfin, extrayez le fichier modifié.</span>
+  </div>
+
+  <div class="menubar">
+    <span class="brand">CalForge</span>
+    <span class="m" data-menu="fichier">Fichier</span>
+    <span class="m" data-menu="vehicule">Véhicule</span>
+    <span class="m" data-menu="aide">Aide</span>
+    <span class="spacer"></span>
+    <span class="ver">v0.9.0</span>
+  </div>
+
+  <div class="main">
+    <!-- Left: vehicles -->
+    <div class="dock">
+      <div class="dock-title">Véhicules</div>
+      <div class="dock-body">
+        <input type="text" id="vsearch" placeholder="Rechercher (marque, VIN, ECU…)">
+        <div class="vlist" id="vlist"></div>
+      </div>
+    </div>
+
+    <!-- Center: tabs -->
+    <div class="center">
+      <div class="actionbar" id="actionbar"></div>
+      <div class="tabbar" id="tabbar"></div>
+      <div id="tabpages"></div>
+    </div>
+
+    <!-- Right: folder + assistant -->
+    <div class="dock right">
+      <div style="display:flex;flex-direction:column;min-height:0;border-bottom:1px solid var(--border);">
+        <div class="dock-title">Dossier véhicule</div>
+        <div class="tabbar" id="foldertabs" style="border-bottom:1px solid var(--border);"></div>
+        <div class="dock-body" id="folderbody" style="flex:1;"></div>
+      </div>
+      <div class="assistant">
+        <div class="dock-title">Assistant IA</div>
+        <div class="target" id="aiTarget"></div>
+        <div class="controls">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="color:var(--text-dim);">Assistant :</span>
+            <select id="aiProvider" style="flex:1;">
+              <option value="offline">Analyse locale (hors-ligne)</option>
+              <option value="claude">Assistant IA (Claude · démo)</option>
+            </select>
+          </div>
+          <div class="btnrow" style="margin:0;">
+            <button id="aiFile">Résumer le fichier</button>
+            <button id="aiPropose">Proposer des pistes</button>
+            <button id="aiVehicle">Résumer le véhicule</button>
+          </div>
+        </div>
+        <div class="out" id="aiOut"></div>
+        <div class="ask">
+          <input type="text" id="aiQuestion" placeholder="Poser une question sur la cible…">
+          <button id="aiAsk">Demander</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="journal">
+    <div class="h">Journal</div>
+    <div class="log" id="log"></div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modalBg">
+  <div class="modal" id="modal">
+    <div class="mh"><h3 id="modalTitle"></h3><button onclick="closeModal()">Fermer</button></div>
+    <div class="mb" id="modalBody"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+"use strict";
+
+/* ---------------------------------------------------------------- data --- */
+const SHA_ORIG = "6732ba7dd0d414e3b434c09fd8882f347799c4de6506a62771142ebafec042ef";
+const SHA_MOD  = "0cf168dc5361b75f0572387ebf64a63b39d8c20b8d139df027a52654db78ab27";
+
+const vehicles = [
+  { id: 3, make: "Audi", model: "RS3 8Y", year: 2022, engine: "DNWA 2.5 TFSI", ecu: "", vin: "", plate: "" },
+  { id: 2, make: "BMW", model: "M340i", year: 2021, engine: "B58B30", ecu: "Bosch DME (démo)", vin: "", plate: "" },
+  { id: 1, make: "Volkswagen", model: "Golf 7 GTI", year: 2019, engine: "DKFA 2.0 TSI",
+    ecu: "Bosch MG1CS111 (démo)", vin: "WVWZZZAUZKW000123", plate: "AB-123-CD",
+    notes: "Données de démonstration. Objectif Stage 1 ~300 ch, boîte DSG d'origine." },
+];
+
+const projects = { 1: [
+  { name: "Stage 2 + downpipe", status: "Actif", created: "2026-07-19", desc: "En attente du montage du downpipe." },
+  { name: "Stage 1", status: "Livré", created: "2026-07-19", desc: "Cartographie Stage 1 livrée." },
+]};
+const history = { 1: [
+  { date: "2026-07-17 09:20", type: "Datalog", title: "Datalog autoroute", content: "Log 3e/4e rapport." },
+  { date: "2026-06-23 14:05", type: "Essai routier", title: "Essai de validation", content: "RAS, températures stables." },
+  { date: "2026-06-22 11:30", type: "Calibration", title: "Flash Stage 1 v1", content: "Base sauvegardée avant écriture." },
+  { date: "2026-06-21 16:45", type: "Intervention", title: "Filtre à air performance", content: "Installé." },
+  { date: "2026-06-19 10:10", type: "Diagnostic", title: "Lecture avant travaux", content: "Aucun code défaut." },
+]};
+const documents = { 1: [
+  { name: "facture-2026-0142.pdf", cat: "Facture", size: "21 o", added: "2026-07-19", notes: "Stage 1 + main d'œuvre" },
+]};
+
+function newCandidate(o){ return Object.assign({ status: "proposed", name: "" }, o); }
+const files = {
+  10: {
+    id: 10, vehicleId: 1, name: "golf7_gti_original.bin", kind: "Original", size: "56.9 Kio",
+    sha: SHA_ORIG, parent: null,
+    facts: { size_bytes: 58304, "entropy_bits_per_byte": 6.582, "ratio_0xFF": 0.2837, "ratio_0x00": 0.0034, extension: ".bin" },
+    fileHyp: [{ statement: "Contient des secteurs de flash effacés/comblés", confidence: 0.58,
+                rationale: "28% du fichier est à 0xFF, l'état effacé d'une mémoire flash NOR." }],
+    candidates: [
+      newCandidate({ id: 1, offset: 0x8020, rows: 16, cols: 16, es: 2, endian: "le", base: 1000, rstep: 55, cstep: 30,
+        confidence: 0.75, status: "validated", name: "Injection — quantité/régime",
+        axes: { col: { role: "rpm", name: "Régime", unit: "tr/min", min: 800, max: 6500 },
+                row: { role: "load", name: "Charge", unit: "%", min: 10, max: 100 } },
+        rationale: "Axe strictement croissant de 16 valeurs (16 bits le) suivi d'un bloc 16×16 à variation régulière (régularité 100%). Heuristique sans fichier de définition : validation humaine requise." }),
+      newCandidate({ id: 2, offset: 0xA240, rows: 12, cols: 16, es: 2, endian: "le", base: 2400, rstep: 40, cstep: 25,
+        confidence: 0.75, name: "Pression de suralimentation",
+        axes: { col: { role: "rpm", name: "Régime", unit: "tr/min", min: 1000, max: 6000 },
+                row: { role: "load", name: "Charge", unit: "%", min: 20, max: 100 } },
+        rationale: "Axe strictement croissant de 16 valeurs (16 bits le) suivi d'un bloc 12×16 à variation régulière (régularité 100%). Heuristique sans fichier de définition : validation humaine requise." }),
+    ],
+    detected: true, annotations: [],
+  },
+  11: {
+    id: 11, vehicleId: 1, name: "golf7_gti_stage1.bin", kind: "Modifié", size: "56.9 Kio",
+    sha: SHA_MOD, parent: "golf7_gti_original.bin",
+    facts: { size_bytes: 58304, "entropy_bits_per_byte": 6.588, "ratio_0xFF": 0.2831, "ratio_0x00": 0.0034, extension: ".bin" },
+    fileHyp: [{ statement: "Contient des secteurs de flash effacés/comblés", confidence: 0.58,
+                rationale: "28% du fichier est à 0xFF, l'état effacé d'une mémoire flash NOR." }],
+    candidates: [], detected: false, annotations: [],
+  },
+};
+const vehicleFiles = { 1: [11, 10] };
+
+const packs = [
+  { name: "Golf 7 GTI MG1CS111 — Pack atelier", maps: 2, imported: "2026-07-19",
+    defs: [
+      { name: "Injection — quantité/régime", cat: "injection", offset: 0x8020, shape: "16×16 · 16 bits LE", unit: "mg/cp", factor: 0.0234375, voff: 0,
+        colAxis: { role: "rpm", name: "Régime", unit: "tr/min", min: 800, max: 6500 },
+        rowAxis: { role: "load", name: "Charge", unit: "%", min: 10, max: 100 } },
+      { name: "Pression de suralimentation", cat: "boost", offset: 0xA240, shape: "12×16 · 16 bits LE", unit: "mbar", factor: 0.5, voff: 300,
+        colAxis: { role: "rpm", name: "Régime", unit: "tr/min", min: 1000, max: 6000 },
+        rowAxis: { role: "load", name: "Charge", unit: "%", min: 20, max: 100 } },
+    ]},
+];
+
+/* --------------------------------------------------------------- state --- */
+const state = { vehicleId: 1, activeFile: null, folderTab: "Fiche", centerTab: "welcome", openFiles: [], selCand: {},
+  catalogueSources: [], autoFetch: false };
+
+/* ----------------------------------------------------------- utilities --- */
+const $ = (s, r=document) => r.querySelector(s);
+const el = (t, c, h) => { const e = document.createElement(t); if (c) e.className = c; if (h != null) e.innerHTML = h; return e; };
+const esc = s => String(s).replace(/[&<>"]/g, m => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[m]));
+const vehName = v => `${v.make} ${v.model}${v.year ? " "+v.year : ""}`;
+const shapeLabel = c => `${c.rows}×${c.cols} · ${8*c.es} bits ${c.endian.toUpperCase()}`;
+const curVehicle = () => vehicles.find(v => v.id === state.vehicleId);
+const STATUS_LABEL = { proposed: "Proposé", validated: "Validé", rejected: "Rejeté" };
+
+let toastTimer;
+function toast(msg) {
+  const t = $("#toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 2600);
+}
+function logLine(msg) {
+  const now = new Date().toTimeString().slice(0, 8);
+  const line = el("div", null, `${now}  <span class="lv">INFO</span>     ${esc(msg)}`);
+  $("#log").appendChild(line); $("#log").scrollTop = $("#log").scrollHeight;
+}
+function openModal(title, html, docMode) {
+  $("#modalTitle").textContent = title;
+  $("#modalBody").className = "mb" + (docMode ? " doc" : "");
+  $("#modalBody").innerHTML = html;
+  $("#modalBg").classList.add("open");
+}
+function closeModal(){ $("#modalBg").classList.remove("open"); }
+window.closeModal = closeModal;
+$("#modalBg").addEventListener("click", e => { if (e.target === $("#modalBg")) closeModal(); });
+
+/* ------------------------------------------------------- vehicle list --- */
+function renderVehicles() {
+  const q = $("#vsearch").value.trim().toLowerCase();
+  const list = $("#vlist"); list.innerHTML = "";
+  vehicles
+    .filter(v => !q || [v.make, v.model, v.vin, v.engine, v.ecu].join(" ").toLowerCase().includes(q))
+    .sort((a, b) => (a.make + a.model).localeCompare(b.make + b.model))
+    .forEach(v => {
+      const row = el("div", "vrow" + (v.id === state.vehicleId ? " sel" : ""));
+      row.innerHTML = `<div>${esc(vehName(v))}</div>` + (v.ecu ? `<div class="vsub">${esc(v.ecu)}</div>` : "");
+      row.onclick = () => selectVehicle(v.id);
+      list.appendChild(row);
+    });
+}
+function selectVehicle(id) {
+  state.vehicleId = id; state.folderTab = "Fiche";
+  renderVehicles(); renderFolder(); renderAssistantTarget();
+  logLine(`Véhicule sélectionné : ${vehName(curVehicle())}`);
+}
+$("#vsearch").addEventListener("input", renderVehicles);
+
+/* ------------------------------------------------------------ folder --- */
+const FOLDER_TABS = ["Fiche", "Projets", "Historique", "Documents", "Fichiers ECU"];
+function renderFolderTabs() {
+  const bar = $("#foldertabs"); bar.innerHTML = "";
+  FOLDER_TABS.forEach(name => {
+    const t = el("div", "tab" + (state.folderTab === name ? " active" : ""), esc(name));
+    t.onclick = () => { state.folderTab = name; renderFolder(); };
+    bar.appendChild(t);
+  });
+}
+function renderFolder() {
+  renderFolderTabs();
+  const body = $("#folderbody"); const v = curVehicle(); body.innerHTML = "";
+  if (!v) { body.innerHTML = "<i>Sélectionnez un véhicule.</i>"; return; }
+  if (state.folderTab === "Fiche") body.appendChild(folderSheet(v));
+  else if (state.folderTab === "Projets") body.appendChild(folderProjects(v));
+  else if (state.folderTab === "Historique") body.appendChild(folderHistory(v));
+  else if (state.folderTab === "Documents") body.appendChild(folderDocuments(v));
+  else if (state.folderTab === "Fichiers ECU") body.appendChild(folderFiles(v));
+}
+function folderSheet(v) {
+  const w = el("div", "sheet");
+  let kv = "";
+  [["VIN", v.vin], ["Immatriculation", v.plate], ["Code moteur", v.engine], ["ECU", v.ecu]]
+    .filter(([, val]) => val).forEach(([k, val]) => kv += `<div class="k">${esc(k)}</div><div>${esc(val)}</div>`);
+  w.innerHTML = `<h2 style="font-size:16px;">${esc(vehName(v))}</h2><div class="kv">${kv}</div>` +
+    (v.notes ? `<p style="color:var(--text-dim);">${esc(v.notes)}</p>` : "");
+  const row = el("div", "btnrow");
+  row.style.marginTop = "10px";
+  const rep = el("button", "primary", "Rapport de dossier…"); rep.onclick = () => showVehicleReport(v);
+  const js = el("button", null, "Exporter JSON"); js.onclick = () => toast("Export JSON — dans l'app : fichier .json enregistré.");
+  const csv = el("button", null, "Fichiers CSV"); csv.onclick = () => toast("Export CSV — dans l'app : fichier .csv enregistré.");
+  row.append(rep, js, csv); w.appendChild(row);
+  return w;
+}
+function tableEl(headers, rows) {
+  const t = el("table");
+  t.innerHTML = "<thead><tr>" + headers.map(h => `<th>${esc(h)}</th>`).join("") + "</tr></thead>";
+  const tb = el("tbody");
+  if (!rows.length) tb.innerHTML = `<tr><td colspan="${headers.length}" style="color:var(--text-dim);">(aucun)</td></tr>`;
+  rows.forEach(r => tb.appendChild(r));
+  t.appendChild(tb); return t;
+}
+function folderProjects(v) {
+  const rows = (projects[v.id] || []).map(p => {
+    const tr = el("tr"); const cls = p.status === "Livré" ? "valid" : "prop";
+    tr.innerHTML = `<td>${esc(p.name)}</td><td><span class="pill ${cls}">${esc(p.status)}</span></td><td class="num">${esc(p.created)}</td><td style="color:var(--text-dim);">${esc(p.desc)}</td>`;
+    return tr;
+  });
+  return tableEl(["Projet", "Statut", "Créé le", "Description"], rows);
+}
+function folderHistory(v) {
+  const rows = (history[v.id] || []).map(h => {
+    const tr = el("tr");
+    tr.innerHTML = `<td class="num">${esc(h.date)}</td><td>${esc(h.type)}</td><td>${esc(h.title)}</td>`;
+    tr.title = h.content; return tr;
+  });
+  return tableEl(["Date", "Type", "Titre"], rows);
+}
+function folderDocuments(v) {
+  const rows = (documents[v.id] || []).map(d => {
+    const tr = el("tr");
+    tr.innerHTML = `<td>${esc(d.name)}</td><td>${esc(d.cat)}</td><td class="num">${esc(d.size)}</td><td class="num">${esc(d.added)}</td>`;
+    return tr;
+  });
+  return tableEl(["Fichier", "Catégorie", "Taille", "Ajouté le"], rows);
+}
+function folderFiles(v) {
+  const wrap = el("div");
+  const btns = el("div", "btnrow");
+  const imp = el("button", "primary", "📂 Ouvrir un fichier…"); imp.onclick = () => openFileDialog();
+  btns.appendChild(imp);
+  wrap.appendChild(btns);
+  const ids = vehicleFiles[v.id] || [];
+  const rows = ids.map(fid => {
+    const f = files[fid]; const tr = el("tr", "click");
+    const kindCls = f.kind === "Original" ? "orig" : "mod";
+    tr.innerHTML = `<td>${esc(f.name)}</td><td><span class="pill ${kindCls}">${esc(f.kind)}</span></td>` +
+      `<td class="num">${esc(f.size)}</td><td style="color:var(--text-dim);">${esc(f.parent || "—")}</td>`;
+    tr.onclick = () => openFile(fid);
+    return tr;
+  });
+  wrap.appendChild(tableEl(["Fichier", "Type", "Taille", "Version de"], rows));
+  wrap.appendChild(el("p", null, `<span style="color:var(--text-dim);font-size:11px;">Double-cliquez un fichier pour l'ouvrir dans la vue d'analyse.</span>`));
+  return wrap;
+}
+
+/* -------------------------------------------------------- center tabs --- */
+function renderCenterTabs() {
+  const bar = $("#tabbar"); bar.innerHTML = "";
+  const perm = [["welcome", "Bienvenue"], ["library", "Bibliothèque ECU"], ["packs", "Map Packs"]];
+  perm.forEach(([id, label]) => bar.appendChild(centerTab(id, label, false)));
+  state.openFiles.forEach(fid => bar.appendChild(centerTab("file-" + fid, files[fid].name, true)));
+  // pages
+  const pages = $("#tabpages");
+  document.querySelectorAll(".tabpage").forEach(p => p.classList.toggle("active", p.dataset.tab === state.centerTab));
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === state.centerTab));
+}
+function centerTab(id, label, closable) {
+  const t = el("div", "tab" + (state.centerTab === id ? " active" : ""), esc(label));
+  t.dataset.tab = id;
+  t.onclick = () => { state.centerTab = id; renderCenterTabs(); };
+  if (closable) {
+    const x = el("span", "x", "✕");
+    x.onclick = e => { e.stopPropagation(); closeFileTab(id.slice(5) | 0); };
+    t.appendChild(x);
+  }
+  return t;
+}
+function buildStaticPages() {
+  const pages = $("#tabpages");
+  const welcome = el("div", "tabpage");
+  welcome.dataset.tab = "welcome";
+  const wc = el("div", "welcome");
+  wc.innerHTML = `<h1>CalForge</h1>
+    <p>Assistant professionnel de calibration ECU. <b style="color:var(--text);">Cliquez pour commencer :</b></p>`;
+  const grid = el("div", "startgrid");
+  const cards = [
+    ["➕", "Ajouter une voiture", "Créez la fiche du véhicule (marque, modèle, moteur, ECU).", addVehicleDialog],
+    ["📂", "Ouvrir un fichier ECU", "Ouvrez l'original (.ori/.bin). Vos cartographies s'affichent automatiquement.", () => openFileDialog()],
+    ["📦", "Importer un Map Pack", "Chargez des définitions de cartes, ou laissez le catalogue les trouver.", importPackDialog],
+    ["🤖", "Demander une modif à Claude", "Dites votre objectif (Stage 1…) ; Claude vous pose des questions puis règle la carte.", () => startTuning()],
+  ];
+  cards.forEach(([ic, t, d, fn]) => {
+    const card = el("div", "startcard", `<div class="ic">${ic}</div><div class="t">${t}</div><div class="d">${d}</div>`);
+    card.onclick = fn;
+    grid.appendChild(card);
+  });
+  wc.appendChild(grid);
+  welcome.appendChild(wc);
+  pages.appendChild(welcome);
+
+  const lib = el("div", "tabpage"); lib.dataset.tab = "library";
+  lib.appendChild(libraryPage());
+  pages.appendChild(lib);
+
+  const pk = el("div", "tabpage"); pk.dataset.tab = "packs";
+  pk.appendChild(packsPage());
+  pages.appendChild(pk);
+}
+function libraryPage() {
+  const w = el("div"); w.style.padding = "10px";
+  w.appendChild(el("div", null, `<input type="text" id="libsearch" placeholder="Rechercher dans toute la bibliothèque (nom, SHA-256, format, véhicule…)">`));
+  const all = Object.values(files);
+  const rows = all.map(f => {
+    const tr = el("tr", "click");
+    const kindCls = f.kind === "Original" ? "orig" : "mod";
+    const v = vehicles.find(x => x.id === f.vehicleId);
+    tr.innerHTML = `<td>${esc(f.name)}</td><td>${esc(v ? vehName(v) : "—")}</td>` +
+      `<td><span class="pill ${kindCls}">${esc(f.kind)}</span></td><td style="color:var(--text-dim);">${esc(f.parent || "—")}</td>` +
+      `<td class="num">${esc(f.size)}</td><td style="color:var(--text-dim);font-family:var(--font-mono);font-size:11px;">${esc(f.sha.slice(0,12))}…</td>`;
+    tr.onclick = () => openFile(f.id);
+    return tr;
+  });
+  w.appendChild(el("div", null, "")).style.height = "8px";
+  w.appendChild(tableEl(["Fichier", "Véhicule", "Type", "Version de", "Taille", "SHA-256"], rows));
+  w.appendChild(el("p", null, `<span style="color:var(--text-dim);font-size:11px;">${all.length} fichier(s)</span>`));
+  return w;
+}
+function packsPage() {
+  const w = el("div"); w.style.padding = "10px"; w.dataset.packsRoot = "1";
+  renderPacksInto(w);
+  return w;
+}
+function refreshPacksPage() {
+  const page = document.querySelector('.tabpage[data-tab="packs"]');
+  const root = page && page.querySelector('[data-packs-root]');
+  if (root) { root.innerHTML = ""; renderPacksInto(root); }
+}
+function renderPacksInto(w) {
+  const btns = el("div", "btnrow");
+  const imp = el("button", null, "Importer un pack…"); imp.onclick = () => toast("Import pack — format ouvert calforge-pack/1 (JSON).");
+  btns.appendChild(imp); w.appendChild(btns);
+  const srcRows = packs.map(p => {
+    const tr = el("tr");
+    const via = p.viaCatalogue ? ` <span class="pill mod" style="margin-left:4px;">catalogue</span>` : "";
+    tr.innerHTML = `<td>${esc(p.name)}${via}</td><td class="num">${p.maps}</td><td class="num">${esc(p.imported)}</td>`;
+    return tr;
+  });
+  w.appendChild(el("div", "section-h", "Sources de définitions"));
+  w.appendChild(tableEl(["Source", "Cartographies", "Importée le"], srcRows));
+  const defRows = packs[0].defs.map(d => {
+    const tr = el("tr");
+    tr.innerHTML = `<td>${esc(d.name)}</td><td>${esc(d.cat)}</td><td class="num">0x${d.offset.toString(16).toUpperCase()}</td><td>${esc(d.shape)}</td><td>${esc(d.unit)}</td>`;
+    tr.title = `physique = brut × ${d.factor} + ${d.voff}`;
+    return tr;
+  });
+  w.appendChild(el("div", "section-h", "Cartographies définies"));
+  w.appendChild(tableEl(["Cartographie", "Catégorie", "Offset", "Dimensions", "Unité"], defRows));
+  w.appendChild(el("p", null, `<span style="color:var(--text-dim);font-size:11px;">Appliquez un pack à un fichier depuis sa vue d'analyse (bouton « Appliquer les définitions »). Correspondance par empreinte SHA-256, signature d'octets ou taille.</span>`));
+  w.appendChild(buildCatalogueBox());
+}
+
+/* --- Automatic catalogue (v0.9, ADR-0013) --- */
+function buildCatalogueBox() {
+  const box = el("div");
+  box.style.cssText = "margin-top:18px;border:1px solid var(--border);border-radius:8px;padding:12px 14px;background:var(--bg-alt);";
+  box.appendChild(el("div", null,
+    `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+       <span style="font-weight:700;font-size:13.5px;">Catalogue automatique</span>
+       <span class="pill mod">Nouveau · v0.9</span></div>
+     <div style="color:var(--text-dim);font-size:11.5px;margin-bottom:10px;">
+       L'app trouve et charge le pack correspondant <b style="color:var(--text);">toute seule</b> — au lieu que ce soit vous qui le fournissiez à chaque import.</div>`));
+
+  const chkWrap = el("label");
+  chkWrap.style.cssText = "display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:10px;";
+  const chk = el("input"); chk.type = "checkbox"; chk.checked = state.autoFetch;
+  chk.style.cssText = "width:auto;cursor:pointer;";
+  chk.onchange = () => {
+    state.autoFetch = chk.checked;
+    logLine("Catalogue : recherche automatique à l'import " + (chk.checked ? "activée" : "désactivée"));
+    refreshPacksPage();
+  };
+  chkWrap.append(chk, el("span", null, "Chercher automatiquement un pack à l'import d'un fichier"));
+  box.appendChild(chkWrap);
+
+  const list = el("div");
+  list.style.cssText = "border:1px solid var(--border);border-radius:5px;min-height:52px;max-height:120px;overflow:auto;padding:4px;margin-bottom:8px;background:var(--bg);";
+  if (!state.catalogueSources.length) {
+    list.appendChild(el("div", null,
+      `<span style="color:var(--text-dim);font-size:12px;padding:8px;display:block;">Aucune source. Sans source configurée, <b style="color:var(--text);">aucune connexion réseau</b> n'est effectuée.</span>`));
+  } else {
+    state.catalogueSources.forEach((s, i) => {
+      const row = el("div");
+      row.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 8px;border-radius:4px;";
+      row.onmouseenter = () => { row.style.background = "var(--bg-raised)"; };
+      row.onmouseleave = () => { row.style.background = ""; };
+      const icon = s.kind === "dir" ? "📁" : "🌐";
+      row.appendChild(el("span", null, `<span style="font-size:12.5px;">${icon}&nbsp;&nbsp;${esc(s.value)}</span>`));
+      const rm = el("button", null, "Retirer"); rm.style.cssText = "padding:2px 9px;font-size:11px;";
+      rm.onclick = () => { state.catalogueSources.splice(i, 1); logLine("Catalogue : source retirée — " + s.value); refreshPacksPage(); };
+      row.appendChild(rm);
+      list.appendChild(row);
+    });
+  }
+  box.appendChild(list);
+
+  const brow = el("div", "btnrow");
+  const addDir = el("button", null, "Ajouter un dossier…");
+  addDir.onclick = () => {
+    const p = window.prompt("Chemin du dossier de packs (local / NAS / disque synchronisé) :", "/mnt/nas/map-packs");
+    if (p) addCatalogueSource("dir", p.trim());
+  };
+  const addUrl = el("button", null, "Ajouter une URL…");
+  addUrl.onclick = () => {
+    const u = window.prompt("URL de base (l'app demandera « <url>/<sha256>.calpack.json ») :", "https://packs.mon-atelier.fr/catalogue");
+    if (!u) return;
+    const url = u.trim();
+    if (!/^https?:\/\//.test(url)) { toast("L'URL doit commencer par http:// ou https://."); return; }
+    addCatalogueSource("url", url);
+  };
+  const sim = el("button", "primary", "Simuler un import (Golf 7 GTI)");
+  sim.onclick = simulateCatalogueImport;
+  brow.append(addDir, addUrl, sim);
+  box.appendChild(brow);
+
+  box.appendChild(el("div", null,
+    `<div style="color:var(--text-dim);font-size:11px;line-height:1.55;">
+      CalForge ne télécharge un pack que depuis <b style="color:var(--text);">vos propres sources</b> — jamais en fouillant le web pour des fichiers ECU sous copyright.
+      Une URL de base est interrogée pour l'empreinte <b style="color:var(--text);">exacte</b> du fichier, donc une correspondance en ligne concerne précisément votre fichier.
+      Désactivé par défaut, respectueux de la vie privée : sans source configurée, aucune connexion réseau.</div>`));
+  return box;
+}
+function addCatalogueSource(kind, value) {
+  if (!value) return;
+  if (state.catalogueSources.some(s => s.value === value)) { toast("Source déjà configurée."); return; }
+  state.catalogueSources.push({ kind, value });
+  logLine("Catalogue : source ajoutée — " + value);
+  toast((kind === "dir" ? "Dossier" : "URL") + " ajouté(e) au catalogue.");
+  refreshPacksPage();
+}
+function simulateCatalogueImport() {
+  logLine("Import du fichier golf7_gti_original.bin (SHA-256 " + SHA_ORIG.slice(0, 12) + "…)");
+  if (!state.autoFetch) {
+    toast("Recherche automatique désactivée : aucune connexion réseau.");
+    logLine("Catalogue : recherche automatique désactivée — rien à faire.");
+    return;
+  }
+  if (!state.catalogueSources.length) {
+    toast("Aucune source configurée : aucune connexion réseau.");
+    logLine("Catalogue : aucune source configurée — aucune connexion réseau.");
+    return;
+  }
+  const src = state.catalogueSources[0];
+  const where = src.kind === "url"
+    ? (src.value.replace(/\/+$/, "") + "/" + SHA_ORIG + ".calpack.json")
+    : (src.value + " → correspondance par empreinte SHA-256");
+  logLine("Catalogue : interrogation de " + where);
+  packs[0].viaCatalogue = true;
+  toast("Catalogue : 1 pack trouvé et appliqué automatiquement (confiance 95 %).");
+  logLine("Catalogue : « " + packs[0].name + " » trouvé et appliqué — SHA-256 exact. Validation humaine toujours requise.");
+  refreshPacksPage();
+}
+
+/* --------------------------------------------------- file analysis view --- */
+function openFile(fid) {
+  if (!state.openFiles.includes(fid)) state.openFiles.push(fid);
+  state.activeFile = fid; state.centerTab = "file-" + fid;
+  if (!document.querySelector(`.tabpage[data-tab="file-${fid}"]`)) buildFilePage(fid);
+  renderCenterTabs(); renderAssistantTarget();
+  logLine(`Ouverture de ${files[fid].name}`);
+}
+function closeFileTab(fid) {
+  state.openFiles = state.openFiles.filter(x => x !== fid);
+  const page = document.querySelector(`.tabpage[data-tab="file-${fid}"]`);
+  if (page) page.remove();
+  if (state.centerTab === "file-" + fid) { state.centerTab = "welcome"; state.activeFile = null; renderAssistantTarget(); }
+  renderCenterTabs();
+}
+
+/* byte window for the hex view around the maps region (0x8000..0x8220) */
+function u16le(v) { return [v & 0xff, (v >> 8) & 0xff]; }
+function buildWindowBytes() {
+  const start = 0x8000, len = 0x220;
+  const b = new Uint8Array(len);
+  // axis: 16 u16 LE from 600 step 100 at local 0
+  for (let i = 0; i < 16; i++) { const [lo, hi] = u16le(600 + i * 100); b[i*2] = lo; b[i*2+1] = hi; }
+  // map: 16x16 u16 LE base 1000 + r*55 + c*30 at local 0x20
+  let p = 0x20;
+  for (let r = 0; r < 16; r++) for (let c = 0; c < 16; c++) {
+    const [lo, hi] = u16le(Math.min(65535, 1000 + r*55 + c*30)); b[p++] = lo; b[p++] = hi;
+  }
+  return { start, bytes: b };
+}
+const WIN = buildWindowBytes();
+
+function buildFilePage(fid) {
+  const f = files[fid];
+  const page = el("div", "tabpage"); page.dataset.tab = "file-" + fid;
+  const wrap = el("div", "analysis");
+
+  const mainCol = el("div", "analysis-main");
+  const toolbar = el("div", "toolbar");
+  toolbar.innerHTML = `<input type="text" placeholder="Aller à l'offset (hex)" data-goto>`;
+  const bTune = el("button", "primary", "🤖 Demander une modif à Claude");
+  const bDetect = el("button", null, "Détecter les cartographies");
+  const bApply = el("button", null, "Appliquer les définitions");
+  const bExport = el("button", null, "⬇️ Extraire le fichier…");
+  const status = el("span", "status");
+  toolbar.append(bTune, bDetect, bApply, bExport, status);
+  mainCol.appendChild(toolbar);
+  bTune.onclick = () => startTuning(fid);
+  bExport.onclick = () => exportModified(f);
+
+  const hexwrap = el("div", "hexwrap");
+  mainCol.appendChild(hexwrap);
+
+  const side = el("div", "side");
+
+  wrap.append(mainCol, side); page.appendChild(wrap);
+  $("#tabpages").appendChild(page);
+
+  function refresh() {
+    hexwrap.innerHTML = ""; hexwrap.appendChild(renderHex(f));
+    side.innerHTML = ""; side.appendChild(renderSide(f, status));
+  }
+  bDetect.onclick = () => {
+    status.textContent = "Détection en cours…";
+    setTimeout(() => {
+      const found = f.isReal ? detectMapsFromBuf(f) : [
+        newCandidate({ id: 1, offset: 0x8020, rows: 16, cols: 16, es: 2, endian: "le", confidence: 0.75,
+          rationale: "Axe strictement croissant de 16 valeurs (16 bits LE) suivi d'un bloc 16×16 à variation régulière (régularité 100%). Heuristique — validation humaine requise." }),
+        newCandidate({ id: 2, offset: 0xA240, rows: 12, cols: 16, es: 2, endian: "le", confidence: 0.75,
+          rationale: "Axe strictement croissant de 16 valeurs (16 bits LE) suivi d'un bloc 12×16 à variation régulière (régularité 100%). Heuristique — validation humaine requise." }),
+      ];
+      const validated = f.candidates.filter(c => c.status === "validated");
+      f.candidates = validated.concat(found.filter(nf => !validated.some(v => v.offset === nf.offset)));
+      f.detected = true;
+      const prop = f.candidates.filter(c => c.status === "proposed").length;
+      status.textContent = prop ? `${prop} candidat(s) proposé(s)` : "Aucune cartographie évidente (aucune donnée inventée)";
+      logLine(`Détection sur ${f.name} : ${f.candidates.length} candidat(s)`);
+      refresh();
+    }, 260);
+  };
+  bApply.onclick = () => {
+    const pack = packs[0];
+    if (f.sha === SHA_ORIG) {
+      pack.defs.forEach(d => {
+        if (!f.candidates.some(c => c.offset === d.offset && c.fromDef)) {
+          f.candidates.push(newCandidate({ id: 100 + d.offset, offset: d.offset, rows: +d.shape.split("×")[0],
+            cols: +d.shape.split("×")[1].split(" ")[0], es: 2, endian: "le", confidence: 0.95, name: d.name,
+            fromDef: d, axes: (d.colAxis && d.rowAxis) ? { col: d.colAxis, row: d.rowAxis } : null,
+            base: d.offset === 0x8020 ? 1000 : 2400, rstep: d.offset === 0x8020 ? 55 : 40, cstep: d.offset === 0x8020 ? 30 : 25,
+            rationale: `Définition « ${d.name} » du pack « ${pack.name} », correspondance par empreinte SHA-256 exacte. Vérifiez avant toute modification.` }));
+        }
+      });
+      status.textContent = `${pack.defs.length} définition(s) appliquée(s)`;
+      logLine(`Définitions appliquées à ${f.name} (${pack.defs.length})`);
+      toast("Définitions du pack appliquées (confiance 95 %).");
+    } else {
+      status.textContent = "Aucun pack ne correspond à ce fichier";
+      toast("Aucun pack ne correspond à ce fichier.");
+    }
+    refresh();
+  };
+  toolbar.querySelector("[data-goto]").addEventListener("keydown", e => {
+    if (e.key !== "Enter") return;
+    const raw = e.target.value.trim().replace(/^0x/i, "");
+    const off = parseInt(raw, 16);
+    if (isNaN(off)) { toast("Offset hexadécimal invalide."); return; }
+    const win = fileWindow(f);
+    if (off < win.start || off >= win.start + win.len) {
+      toast(`Hors de la fenêtre affichée (0x${win.start.toString(16).toUpperCase()}–0x${(win.start+win.len).toString(16).toUpperCase()}).`);
+      return;
+    }
+    const rowIdx = Math.floor((off - win.start) / 16);
+    const rowEl = hexwrap.querySelectorAll("table.hex tbody tr")[rowIdx];
+    if (rowEl) rowEl.scrollIntoView({ block: "center" });
+  });
+
+  page._refresh = refresh;
+  refresh();
+}
+
+function candColorClass(f, globalOffset) {
+  for (const c of f.candidates) {
+    if (c.status === "rejected") continue;
+    const end = c.offset + c.rows * c.cols * c.es;
+    if (globalOffset >= c.offset && globalOffset < end)
+      return c.status === "validated" ? "hl-valid" : "hl-prop";
+  }
+  for (const a of f.annotations) {
+    if (globalOffset >= a.offset && globalOffset < a.offset + a.length) return "hl-anno";
+  }
+  return "";
+}
+function renderHex(f) {
+  const t = el("table", "hex");
+  let head = "<thead><tr><th></th>";
+  for (let i = 0; i < 16; i++) head += `<th>${i.toString(16).toUpperCase()}</th>`;
+  head += "<th>ASCII</th></tr></thead>";
+  t.innerHTML = head;
+  const tb = el("tbody");
+  const win = fileWindow(f);
+  const start = win.start, bytes = win.buf, len = win.len;
+  for (let row = 0; row * 16 < len; row++) {
+    const tr = el("tr");
+    const base = start + row * 16;
+    let cells = `<td class="off">${base.toString(16).toUpperCase().padStart(8, "0")}</td>`;
+    let ascii = "";
+    for (let col = 0; col < 16; col++) {
+      const idx = row * 16 + col;
+      if (idx >= len) { cells += "<td></td>"; continue; }
+      const bv = bytes[start + idx];
+      const cls = candColorClass(f, base + col);
+      cells += `<td class="${cls}">${bv.toString(16).toUpperCase().padStart(2, "0")}</td>`;
+      ascii += (bv >= 0x20 && bv < 0x7f) ? String.fromCharCode(bv) : "·";
+    }
+    cells += `<td class="ascii">${esc(ascii)}</td>`;
+    tr.innerHTML = cells; tb.appendChild(tr);
+  }
+  t.appendChild(tb); return t;
+}
+function renderSide(f, status) {
+  const wrap = el("div");
+  // annotations
+  const b1 = el("div", "block");
+  b1.innerHTML = `<h4>Comment faire ?</h4>
+    <div style="color:var(--text-dim);font-size:12px;line-height:1.5;">
+      1. Cliquez <b style="color:var(--text);">✏️ Modifier les valeurs</b> sur une carte pour l'ouvrir et éditer les cases.<br>
+      2. Ou <b style="color:var(--text);">🤖 Demander une modif à Claude</b> (en haut) : il vous pose des questions puis règle la carte.<br>
+      3. Puis <b style="color:var(--text);">⬇️ Extraire le fichier</b> pour récupérer le fichier modifié.</div>`;
+  wrap.appendChild(b1);
+  // candidates
+  const b2 = el("div", "block");
+  b2.innerHTML = `<h4>Cartographies <span style="color:var(--text-dim);font-weight:400;">(hypothèses à valider)</span></h4>`;
+  if (!f.candidates.length) {
+    b2.appendChild(el("div", null, `<span style="color:var(--text-dim);font-size:12px;">Aucune. Lancez « Détecter les cartographies » ou « Appliquer les définitions ».</span>`));
+  } else {
+    f.candidates.slice().sort((a, b) => b.confidence - a.confidence).forEach(c => {
+      const card = el("div", "cand" + (state.selCand[f.id] === c.id ? " sel" : ""));
+      const statusPill = `<span class="pill ${c.status === 'validated' ? 'valid' : c.status === 'rejected' ? 'rej' : 'prop'}">${STATUS_LABEL[c.status]}</span>`;
+      card.innerHTML =
+        `<div class="top"><span class="nm">${esc(c.name || "sans nom")}</span>${statusPill}</div>` +
+        `<div class="meta">0x${c.offset.toString(16).toUpperCase()} · ${shapeLabel(c)} · confiance ${(c.confidence*100).toFixed(0)}%</div>` +
+        `<div class="rat">${esc(c.rationale)}</div>`;
+      const acts = el("div", "acts");
+      const bEdit = el("button", "primary", "✏️ Modifier les valeurs"); bEdit.onclick = () => openMapView(f, c);
+      const bv = el("button", null, "Valider…"); bv.onclick = () => validateCand(f, c);
+      const br = el("button", null, "Rejeter"); br.onclick = () => { c.status = "rejected"; logLine(`Candidat #${c.id} rejeté`); refreshFilePage(f.id); };
+      acts.append(bEdit, bv, br); card.appendChild(acts);
+      card.onclick = () => { state.selCand[f.id] = c.id; };
+      b2.appendChild(card);
+    });
+  }
+  wrap.appendChild(b2);
+  return wrap;
+}
+function refreshFilePage(fid) {
+  const page = document.querySelector(`.tabpage[data-tab="file-${fid}"]`);
+  if (page && page._refresh) page._refresh();
+}
+function validateCand(f, c) {
+  const suggested = c.name || "Cartographie " + ("0x" + c.offset.toString(16).toUpperCase());
+  const name = window.prompt("Nom de la cartographie (validation humaine) :", suggested);
+  if (name === null) return;
+  c.status = "validated"; c.name = name.trim() || suggested;
+  logLine(`Candidat #${c.id} marqué validé : ${c.name}`);
+  toast("Cartographie validée — elle devient un fait.");
+  refreshFilePage(f.id);
+}
+
+/* =============== Byte buffer helpers (real editing & export) =============== */
+function rd16(buf, off) { return buf[off] | (buf[off + 1] << 8); }
+function wr16(buf, off, v) { v = Math.max(0, Math.min(65535, Math.round(v))); buf[off] = v & 0xff; buf[off + 1] = (v >> 8) & 0xff; }
+
+function materializeBuf(f) {
+  if (f.buf) return f.buf;
+  const size = (f.facts && f.facts.size_bytes) || 58304;
+  const buf = new Uint8Array(size).fill(0xff);
+  for (let i = 0; i < 16; i++) wr16(buf, 0x8000 + i * 2, 600 + i * 100);
+  for (let r = 0; r < 16; r++) for (let c = 0; c < 16; c++) wr16(buf, 0x8020 + (r * 16 + c) * 2, 1000 + r * 55 + c * 30);
+  for (let i = 0; i < 16; i++) wr16(buf, 0xA220 + i * 2, 800 + i * 120);
+  for (let r = 0; r < 12; r++) for (let c = 0; c < 16; c++) wr16(buf, 0xA240 + (r * 16 + c) * 2, 2400 + r * 40 + c * 25);
+  f.buf = buf;
+  return buf;
+}
+function fileWindow(f) {
+  const buf = materializeBuf(f);
+  let start = 0;
+  if (f.candidates && f.candidates.length) {
+    const c = f.candidates.slice().sort((a, b) => a.offset - b.offset)[0];
+    start = Math.max(0, c.offset - 0x20);
+  }
+  start -= start % 16;
+  const len = Math.min(0x220, buf.length - start);
+  return { start, buf, len };
+}
+function mapValues(f, c) {
+  const buf = materializeBuf(f); const m = []; let lo = Infinity, hi = -Infinity;
+  for (let r = 0; r < c.rows; r++) { m.push([]); for (let col = 0; col < c.cols; col++) {
+    const raw = rd16(buf, c.offset + (r * c.cols + col) * 2);
+    let v = raw, dec = 0;
+    if (c.fromDef && (c.fromDef.factor !== 1 || c.fromDef.voff !== 0)) { v = raw * c.fromDef.factor + c.fromDef.voff; dec = 2; }
+    m[r].push({ raw, v, dec }); lo = Math.min(lo, v); hi = Math.max(hi, v);
+  } }
+  return { m, lo, hi };
+}
+function physToRaw(c, physical) {
+  let raw = physical;
+  if (c.fromDef && (c.fromDef.factor !== 1 || c.fromDef.voff !== 0)) raw = (physical - c.fromDef.voff) / c.fromDef.factor;
+  return Math.max(0, Math.min(65535, Math.round(raw)));
+}
+function writeCell(f, c, r, col, physical) { wr16(materializeBuf(f), c.offset + (r * c.cols + col) * 2, physToRaw(c, physical)); }
+function applyPercent(f, c, pct) {
+  const buf = materializeBuf(f), factor = 1 + pct / 100;
+  for (let r = 0; r < c.rows; r++) for (let col = 0; col < c.cols; col++) {
+    const off = c.offset + (r * c.cols + col) * 2; wr16(buf, off, rd16(buf, off) * factor);
+  }
+}
+function humanSize(n) { return n >= 1024 ? (n / 1024).toFixed(1) + " Kio" : n + " o"; }
+function computeFacts(buf, name) {
+  const N = buf.length, counts = new Array(256).fill(0);
+  const step = Math.max(1, Math.floor(N / 200000));
+  let sampled = 0, ff = 0, zero = 0;
+  for (let i = 0; i < N; i += step) { const b = buf[i]; counts[b]++; sampled++; if (b === 0xff) ff++; if (b === 0) zero++; }
+  let H = 0; for (const cnt of counts) if (cnt) { const p = cnt / sampled; H -= p * Math.log2(p); }
+  return { size_bytes: N, entropy_bits_per_byte: +H.toFixed(3), ratio_0xFF: +(ff / sampled).toFixed(4),
+    ratio_0x00: +(zero / sampled).toFixed(4), extension: "." + (name.split(".").pop() || "bin").toLowerCase() };
+}
+function detectMapsFromBuf(f) {
+  const buf = materializeBuf(f), N = buf.length, cands = [], AX = 16;
+  const limit = Math.min(N - AX * 2 - AX * AX * 2, 2 * 1024 * 1024);
+  let id = 1;
+  for (let off = 0; off <= limit && cands.length < 6; off += 2) {
+    let prev = rd16(buf, off);
+    if (prev === 0 || prev === 0xffff) continue;
+    let ok = true;
+    for (let i = 1; i < AX; i++) { const v = rd16(buf, off + i * 2); if (v <= prev) { ok = false; break; } prev = v; }
+    if (!ok) continue;
+    const bstart = off + AX * 2;
+    let smooth = 0, total = 0;
+    for (let r = 0; r < AX; r++) for (let cc = 0; cc < AX - 2; cc++) {
+      const a = rd16(buf, bstart + (r * AX + cc) * 2), b = rd16(buf, bstart + (r * AX + cc + 1) * 2), d = rd16(buf, bstart + (r * AX + cc + 2) * 2);
+      if (Math.abs((d - b) - (b - a)) < 400) smooth++;
+      total++;
+    }
+    const ratio = smooth / total;
+    if (ratio > 0.7) {
+      cands.push(newCandidate({ id: id++, offset: bstart, rows: AX, cols: AX, es: 2, endian: "le",
+        confidence: Math.min(0.75, 0.5 + ratio * 0.3),
+        rationale: `Axe strictement croissant de ${AX} valeurs (16 bits LE) à 0x${off.toString(16).toUpperCase()} suivi d'un bloc ${AX}×${AX} à variation régulière (régularité ${(ratio * 100).toFixed(0)}%). Heuristique — validation humaine requise.` }));
+      off = bstart + AX * AX * 2 - 2;
+    }
+  }
+  return cands;
+}
+
+/* ===================== Clear buttons & guided flow ===================== */
+function buildActionBar() {
+  const bar = document.getElementById("actionbar"); if (!bar) return;
+  bar.innerHTML = "";
+  const mk = (label, cls, fn) => { const b = el("button", "big" + (cls ? " " + cls : ""), label); b.onclick = fn; return b; };
+  bar.append(
+    mk("➕ Ajouter une voiture", "", addVehicleDialog),
+    mk("📂 Ouvrir un fichier ECU", "primary", () => openFileDialog()),
+    mk("📦 Importer un Map Pack", "", importPackDialog),
+    mk("🤖 Demander une modif à Claude", "", () => startTuning())
+  );
+  bar.append(el("span", "grow"));
+  bar.append(el("span", "hintmini", "Tout se fait avec ces boutons — aucun raccourci nécessaire."));
+}
+
+function addVehicleDialog() {
+  openModal("Ajouter une voiture", `
+    <div style="max-width:420px;">
+      <div class="form-row"><label>Marque *</label><input type="text" id="nvMake" placeholder="ex. Volkswagen"></div>
+      <div class="form-row"><label>Modèle *</label><input type="text" id="nvModel" placeholder="ex. Golf 7 GTI"></div>
+      <div class="form-row"><label>Année</label><input type="text" id="nvYear" placeholder="ex. 2019"></div>
+      <div class="form-row"><label>Code moteur</label><input type="text" id="nvEngine" placeholder="ex. DKFA 2.0 TSI"></div>
+      <div class="form-row"><label>ECU</label><input type="text" id="nvEcu" placeholder="ex. Bosch MG1CS111"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
+        <button onclick="closeModal()">Annuler</button>
+        <button class="primary" id="nvSave">Créer la voiture</button>
+      </div>
+    </div>`);
+  $("#nvMake").focus();
+  $("#nvSave").onclick = () => {
+    const make = $("#nvMake").value.trim(), model = $("#nvModel").value.trim();
+    if (!make || !model) { toast("Marque et modèle sont requis."); return; }
+    const id = Math.max(0, ...vehicles.map(v => v.id)) + 1;
+    vehicles.push({ id, make, model, year: $("#nvYear").value.trim(), engine: $("#nvEngine").value.trim(),
+      ecu: $("#nvEcu").value.trim(), vin: "", plate: "" });
+    vehicleFiles[id] = [];
+    closeModal(); renderVehicles(); selectVehicle(id);
+    toast("Voiture créée : " + make + " " + model);
+  };
+}
+
+function openFileDialog() {
+  const v = curVehicle();
+  openModal("Ouvrir un fichier ECU", `
+    <div style="max-width:480px;">
+      <p style="color:var(--text-dim);margin-top:0;">Ouvrez le fichier d'origine (.ori, .bin, dump complet…) de <b style="color:var(--text);">${esc(v ? vehName(v) : "la voiture")}</b>. Il est analysé <b style="color:var(--text);">dans votre navigateur</b> (empreinte SHA-256 réelle + détection des cartographies). Rien n'est envoyé sur Internet.</p>
+      <div class="drop" id="dropzone">
+        <div style="font-size:24px;">📂</div>
+        <div style="margin-top:6px;"><b>Glissez votre fichier ici</b> ou cliquez pour parcourir</div>
+        <div style="font-size:11px;margin-top:4px;">Tous formats acceptés — aucune restriction d'extension.</div>
+      </div>
+      <input type="file" id="fileInput" style="display:none;">
+      <div style="text-align:center;margin:12px 0;color:var(--text-dim);">— ou —</div>
+      <button class="primary" style="width:100%;" id="useDemo">Utiliser un fichier de démonstration (Golf 7 GTI)</button>
+    </div>`);
+  const dz = $("#dropzone"), fi = $("#fileInput");
+  dz.onclick = () => fi.click();
+  dz.ondragover = e => { e.preventDefault(); dz.classList.add("hover"); };
+  dz.ondragleave = () => dz.classList.remove("hover");
+  dz.ondrop = e => { e.preventDefault(); dz.classList.remove("hover"); if (e.dataTransfer.files[0]) loadRealFile(e.dataTransfer.files[0]); };
+  fi.onchange = () => { if (fi.files[0]) loadRealFile(fi.files[0]); };
+  $("#useDemo").onclick = () => { closeModal(); materializeBuf(files[10]); openFile(10); toast("Fichier de démonstration ouvert."); };
+}
+
+async function loadRealFile(file) {
+  const v = curVehicle();
+  if (!v) { toast("Ajoutez ou sélectionnez d'abord une voiture."); return; }
+  try {
+    const buf = new Uint8Array(await file.arrayBuffer());
+    if (!buf.length) { toast("Fichier vide."); return; }
+    let sha;
+    if (window.crypto && crypto.subtle) {
+      const digest = await crypto.subtle.digest("SHA-256", buf);
+      sha = Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, "0")).join("");
+    } else { sha = "(SHA-256 indisponible hors contexte sécurisé)"; }
+    const id = Math.max(10, ...Object.keys(files).map(Number)) + 1;
+    const f = { id, vehicleId: v.id, name: file.name, kind: "Original", size: humanSize(buf.length),
+      sha, parent: null, buf, isReal: true, facts: computeFacts(buf, file.name), fileHyp: [],
+      candidates: [], detected: true, annotations: [] };
+    f.candidates = detectMapsFromBuf(f);
+    files[id] = f; (vehicleFiles[v.id] = vehicleFiles[v.id] || []).unshift(id);
+    closeModal(); renderFolder(); openFile(id);
+    logLine(`Fichier importé : ${file.name} (${f.size}, SHA-256 ${sha.slice(0, 12)}…)`);
+    toast(f.candidates.length ? `${f.candidates.length} cartographie(s) candidate(s) détectée(s).`
+      : "Aucune cartographie évidente (aucune donnée inventée).");
+  } catch (err) {
+    toast("Lecture impossible : " + err.message);
+  }
+}
+
+function importPackDialog() {
+  state.centerTab = "packs"; renderCenterTabs();
+  toast("Onglet Map Packs : importez un pack, ou laissez le catalogue le trouver.");
+}
+
+/* ---- Editable 2D map view ---- */
+function heatColor(t) {
+  const cold = [43, 93, 184], hot = [224, 85, 97];
+  const rr = Math.round(cold[0] + t * (hot[0] - cold[0])), gg = Math.round(cold[1] + t * (hot[1] - cold[1])), bb = Math.round(cold[2] + t * (hot[2] - cold[2]));
+  return `rgba(${rr},${gg},${bb},.85)`;
+}
+function openMapView(f, c) {
+  const { m, lo, hi } = mapValues(f, c);
+  const span = (hi - lo) || 1;
+  const unit = c.fromDef ? c.fromDef.unit : "";
+  let html = `<div class="mapview" style="min-width:min(90vw,720px);">
+    <div style="margin-bottom:8px;color:var(--text-dim);font-size:12px;">
+      <b style="color:var(--text);">${esc(c.name || "Candidat")}</b> · ${esc(f.name)} · ${shapeLabel(c)} · offset 0x${c.offset.toString(16).toUpperCase()}`
+    + (c.fromDef ? ` · <b style="color:var(--text);">${esc(unit)}</b> (brut × ${c.fromDef.factor} + ${c.fromDef.voff})` : " · valeurs brutes")
+    + `<br>Confiance ${(c.confidence * 100).toFixed(0)}% — ${esc(c.rationale)}</div>
+    <div style="color:var(--accent);font-size:12px;margin-bottom:8px;">Cliquez une case pour changer sa valeur, ou appliquez un <b>+X %</b> à toute la carte ci-dessous.</div>
+    <div style="overflow:auto;max-height:52vh;"><table class="heat"><thead><tr><th></th>`;
+  for (let col = 0; col < c.cols; col++) html += `<th>${col}</th>`;
+  html += "</tr></thead><tbody>";
+  for (let r = 0; r < c.rows; r++) {
+    html += `<tr><th>${r}</th>`;
+    for (let col = 0; col < c.cols; col++) {
+      const cell = m[r][col], t = (cell.v - lo) / span;
+      html += `<td class="editable" data-r="${r}" data-c="${col}" style="background:${heatColor(t)};" title="brut : ${cell.raw}">${cell.v.toFixed(cell.dec)}</td>`;
+    }
+    html += "</tr>";
+  }
+  html += `</tbody></table></div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px;">
+      <button id="mvPct" class="primary">Appliquer +</button>
+      <input type="text" id="mvPctVal" value="5" style="width:64px;text-align:right;"> %
+      <span style="flex:1;"></span>
+      <button id="mvExport">⬇️ Extraire le fichier…</button>
+    </div>
+    <div style="color:var(--text-dim);font-size:11px;margin-top:8px;">Toute modification crée un <b style="color:var(--text);">nouveau fichier dérivé</b> : l'original reste intact. Les valeurs sont des propositions à vérifier au banc avant flash.</div>`;
+  openModal("Carte — " + (c.name || "Candidat"), html);
+  $("#modalBody").querySelectorAll("td.editable").forEach(td => {
+    td.onclick = () => {
+      const r = +td.dataset.r, col = +td.dataset.c, cur = m[r][col];
+      const ans = window.prompt(`Nouvelle valeur (${unit || "brut"}) pour la case [${r}, ${col}] :`, cur.v.toFixed(cur.dec));
+      if (ans === null) return;
+      const num = parseFloat(ans.replace(",", "."));
+      if (isNaN(num)) { toast("Valeur invalide."); return; }
+      ensureModifiable(f, c, info => {
+        writeCell(info.f, info.c, r, col, num);
+        logLine(`Case [${r},${col}] modifiée sur ${info.f.name}`);
+        openMapView(info.f, info.c);
+      });
+    };
+  });
+  $("#mvPct").onclick = () => {
+    const pct = parseFloat(($("#mvPctVal").value || "").replace(",", "."));
+    if (isNaN(pct)) { toast("Pourcentage invalide."); return; }
+    ensureModifiable(f, c, info => {
+      applyPercent(info.f, info.c, pct);
+      logLine(`+${pct}% appliqué à « ${info.c.name || "carte"} » sur ${info.f.name}`);
+      toast(`+${pct}% appliqué (${info.c.rows * info.c.cols} cases).`);
+      openMapView(info.f, info.c);
+    });
+  };
+  $("#mvExport").onclick = () => exportModified(f);
+}
+
+/* ---- Non-destructive: first edit clones the original into a "Modifié" file ---- */
+function ensureModifiable(f, c, cb) {
+  ensureModifiableMulti(f, clone => cb({ f: clone, c: clone.candidates.find(x => x.offset === c.offset) || c }));
+}
+function ensureModifiableMulti(f, cb) {
+  if (f.isDerived) { cb(f); return; }
+  const clone = cloneAsModified(f);
+  toast("Fichier modifié créé (l'original reste intact).");
+  logLine(`Nouveau fichier dérivé : ${clone.name}`);
+  openFile(clone.id);
+  cb(clone);
+}
+function cloneAsModified(f) {
+  const buf = materializeBuf(f).slice();
+  const ext = (f.name.match(/\.[^.]+$/) || [".bin"])[0];
+  const baseName = f.name.replace(/\.[^.]+$/, "");
+  const id = Math.max(10, ...Object.keys(files).map(Number)) + 1;
+  const clone = { id, vehicleId: f.vehicleId, name: `${baseName}_modifie${ext}`, kind: "Modifié",
+    size: humanSize(buf.length), sha: "(recalculé à l'extraction)", parent: f.name, buf,
+    isReal: f.isReal, isDerived: true, facts: Object.assign({}, f.facts), fileHyp: [],
+    candidates: f.candidates.map(c => Object.assign(newCandidate({}), c)), detected: true, annotations: [] };
+  files[id] = clone;
+  (vehicleFiles[f.vehicleId] = vehicleFiles[f.vehicleId] || []).unshift(id);
+  renderFolder();
+  return clone;
+}
+
+/* ---- Guided tuning wizard: Claude asks questions, then edits the map ---- */
+const TUNE_Q = [
+  { key: "goal", q: "Quel est ton objectif ?", opts: [
+    { v: "stage1", t: "Stage 1", d: "Reprogrammation sur véhicule d'origine (admission/échappement d'origine)." },
+    { v: "stage2", t: "Stage 2", d: "Downpipe / échappement sport, admission — plus de débit." },
+    { v: "eco", t: "Éco / sobriété", d: "Optimiser la consommation, gains de couple modérés à bas régime." },
+  ] },
+  { key: "fuel", q: "Quel carburant ?", opts: [
+    { v: "95", t: "SP95", d: "Prudence sur l'avance et la charge." },
+    { v: "98", t: "SP98", d: "Marge un peu plus large." },
+    { v: "e85", t: "E85 / Éthanol", d: "Potentiel supérieur (nécessite matériel/cartographie adaptés)." },
+  ] },
+  { key: "prio", q: "Ta priorité ?", opts: [
+    { v: "safe", t: "Fiabilité avant tout", d: "Gains contenus, grosses marges de sécurité." },
+    { v: "balanced", t: "Équilibré", d: "Bon compromis gains / fiabilité." },
+    { v: "power", t: "Performance max", d: "Vise le gain le plus élevé (à valider au banc)." },
+  ] },
+];
+let wizState = null;
+function startTuning(fid) {
+  const f = fid != null ? files[fid] : (state.activeFile != null ? files[state.activeFile] : null);
+  if (!f) { toast("Ouvrez d'abord un fichier ECU."); openFileDialog(); return; }
+  const maps = f.candidates.filter(c => c.status !== "rejected");
+  if (!maps.length) { toast("Aucune cartographie détectée. Lancez « Détecter les cartographies »."); return; }
+  // No "which map?" question: tune them all together. Preview the clearest one
+  // (a map with known axes, else the most confident).
+  const primary = maps.find(m => axisRoles(m).known) || maps.slice().sort((a, b) => b.confidence - a.confidence)[0];
+  wizState = { f, maps, primary, step: 0, answers: {} };
+  renderWizard();
+}
+function renderWizard() {
+  const w = wizState, total = TUNE_Q.length;
+  if (w.step < total) {
+    const Q = TUNE_Q[w.step];
+    let html = `<div class="wiz"><div class="steps">Réglage guidé — question ${w.step + 1} / ${total}</div>
+      <div class="q">${esc(Q.q)}</div><div class="opts">`;
+    Q.opts.forEach(o => {
+      const sel = w.answers[Q.key] === o.v ? " sel" : "";
+      html += `<div class="opt${sel}" data-v="${o.v}"><div class="ot">${esc(o.t)}</div><div class="od">${esc(o.d)}</div></div>`;
+    });
+    html += `</div><div class="nav">
+      <button id="wizBack">${w.step === 0 ? "Annuler" : "← Précédent"}</button>
+      <button class="primary" id="wizNext">${w.step === total - 1 ? "Voir la proposition →" : "Suivant →"}</button></div></div>`;
+    openModal("🤖 Demander une modif à Claude", html);
+    $("#modalBody").querySelectorAll(".opt").forEach(o => o.onclick = () => {
+      w.answers[Q.key] = o.dataset.v;
+      $("#modalBody").querySelectorAll(".opt").forEach(x => x.classList.toggle("sel", x === o));
+    });
+    $("#wizBack").onclick = () => { if (w.step === 0) closeModal(); else { w.step--; renderWizard(); } };
+    $("#wizNext").onclick = () => { if (!w.answers[Q.key]) { toast("Choisis une option."); return; } w.step++; renderWizard(); };
+    return;
+  }
+  // Compute a proposal for EVERY map, tuned together and coherently.
+  const props = w.maps.map(m => ({ cand: m, p: computeZonedProposal(w.answers, m) }));
+  const primaryEntry = props.find(e => e.cand.offset === w.primary.offset) || props[0];
+  const p = primaryEntry.p;
+  const src = p.known
+    ? `<div style="color:var(--success);font-size:11.5px;margin-bottom:8px;">✓ Axe régime détecté depuis la définition — <b>régime en ${p.rpmDim === "col" ? "colonnes" : "lignes"}</b> (${p.rpmAxis.min}→${p.rpmAxis.max} ${esc(p.rpmAxis.unit)}), charge ${p.rpmDim === "col" ? "en lignes" : "en colonnes"} (${p.loadAxis.min}→${p.loadAxis.max} ${esc(p.loadAxis.unit)}).</div>`
+    : `<div style="color:var(--warning);font-size:11.5px;margin-bottom:8px;">⚠ Axes non fournis par une définition — convention supposée (colonnes = régime). Applique un Map Pack avec axes pour lever la supposition.</div>`;
+  const rpmL = (frac) => p.known ? ` (~${p.rpmAt(frac)} ${esc(p.rpmAxis.unit)})` : "";
+  const mapsList = props.map(e =>
+    `<div class="propline"><span>${esc(e.cand.name || "Carte 0x" + e.cand.offset.toString(16).toUpperCase())}${axisRoles(e.cand).known ? "" : " <span style=\"color:var(--warning);\">(axe supposé)</span>"}</span><b>~+${e.p.avg} % (pic +${e.p.max} %)</b></div>`
+  ).join("");
+  const html = `<div class="wiz"><div class="steps">Réglage guidé — proposition (zone par zone)</div>
+    <div class="q">Voici ce que je propose</div>
+    <div style="color:var(--text-dim);font-size:12.5px;margin-bottom:6px;">D'après tes réponses (${esc(proposalSummary(w.answers))}), je règle <b style="color:var(--text);">les ${props.length} carte(s) du fichier ensemble</b>, de façon cohérente (carburant et suralimentation augmentés de concert), chacune <b style="color:var(--text);">modulée selon sa zone</b> :</div>
+    <div class="propbox">${mapsList}</div>
+    <div style="color:var(--text-dim);font-size:11.5px;margin:6px 0 2px;">Aperçu des zones — <b style="color:var(--text);">${esc(w.primary.name || "carte principale")}</b> :</div>
+    ${src}
+    ${p.previewHtml}
+    <div class="propbox">
+      <div class="propline"><span>Bas régime${rpmL(0)} — pleine charge</span><b>+${p.zones.lowRpm} %</b></div>
+      <div class="propline"><span>Mi-régime${rpmL(0.55)} — pic de charge</span><b>+${p.zones.peak} %</b></div>
+      <div class="propline"><span>Haut régime${rpmL(1)} — tempéré (sécurité)</span><b>+${p.zones.highRpm} %</b></div>
+      <div class="propline"><span>Faible charge — conduite partielle</span><b>+${p.zones.partLoad} %</b></div>
+      <div class="propline"><span>Confiance</span><span>${(p.confidence * 100).toFixed(0)} %</span></div>
+    </div>
+    <div style="color:var(--text-dim);font-size:11.5px;margin:8px 0;line-height:1.5;">${esc(p.rationale)}</div>
+    <div style="color:var(--warning);font-size:11.5px;margin-bottom:6px;">⚠ Proposition, pas une certitude : à valider au banc / sur la route avant tout flash. L'original reste intact.</div>
+    <div class="nav"><button id="wizBack">← Précédent</button>
+      <button class="primary" id="wizApply">Régler les ${props.length} carte(s) et créer le fichier</button></div></div>`;
+  openModal("🤖 Demander une modif à Claude", html);
+  $("#wizBack").onclick = () => { w.step = TUNE_Q.length - 1; renderWizard(); };
+  $("#wizApply").onclick = () => {
+    ensureModifiableMulti(w.f, clone => {
+      const done = [];
+      w.maps.forEach(m => {
+        const cc = clone.candidates.find(x => x.offset === m.offset);
+        if (!cc) return;
+        const zp = computeZonedProposal(w.answers, cc);
+        applyZonedPercent(clone, cc, zp.pcts);
+        cc.status = "validated";
+        done.push(`${cc.name || "carte"} ~+${zp.avg}%`);
+      });
+      logLine(`Claude : ${done.length} carte(s) réglée(s) ensemble sur ${clone.name} (${proposalSummary(w.answers)}) — ${done.join(" ; ")}`);
+      closeModal();
+      toast(`${done.length} carte(s) réglée(s). Cliquez « Extraire le fichier » pour récupérer le résultat.`);
+      const primary = clone.candidates.find(x => x.offset === w.primary.offset) || clone.candidates[0];
+      openMapView(clone, primary);
+    });
+  };
+}
+/* Which stored dimension (col/row) is the RPM axis, from the definition if present. */
+function axisRoles(cand) {
+  const ax = cand.axes;
+  if (ax && ax.col && ax.row) {
+    if (ax.col.role === "rpm") return { known: true, rpmDim: "col", rpmAxis: ax.col, loadAxis: ax.row };
+    if (ax.row.role === "rpm") return { known: true, rpmDim: "row", rpmAxis: ax.row, loadAxis: ax.col };
+  }
+  return { known: false, rpmDim: "col", rpmAxis: null, loadAxis: null };
+}
+const PEAK_POS = 0.55;
+/* Gain shaped by load and RPM fractions, driven by answers. rpmDim says which axis is RPM. */
+function zoneWeights(a, rows, cols, rpmDim) {
+  const goalBase = a.goal === "stage2" ? 22 : a.goal === "eco" ? 5 : 11;   // % at hottest zone
+  const fuelMult = a.fuel === "98" ? 1.05 : a.fuel === "e85" ? 1.15 : 1.0;
+  const prioMult = a.prio === "safe" ? 0.85 : a.prio === "power" ? 1.12 : 1.0;
+  const basePeak = goalBase * fuelMult * prioMult;
+  let topTaper = a.prio === "safe" ? 0.55 : a.prio === "power" ? 1.0 : 0.78; // high-RPM keep-factor
+  topTaper = Math.min(1.0, topTaper + (a.fuel === "e85" ? 0.12 : a.fuel === "98" ? 0.04 : 0));
+  const lowEnd = a.goal === "eco" ? 0.9 : 0.75;   // low-RPM keep-factor (torque)
+  const frac = (i, n) => n > 1 ? i / (n - 1) : 0.5;
+  const rpmW = (rf) => rf <= PEAK_POS
+    ? lowEnd + (1 - lowEnd) * (rf / PEAK_POS)
+    : 1 + (topTaper - 1) * ((rf - PEAK_POS) / (1 - PEAK_POS));
+  const pcts = [];
+  for (let r = 0; r < rows; r++) {
+    pcts.push([]);
+    for (let c = 0; c < cols; c++) {
+      const rpmFrac = rpmDim === "col" ? frac(c, cols) : frac(r, rows);
+      const loadFrac = rpmDim === "col" ? frac(r, rows) : frac(c, cols);
+      const loadW = 0.25 + 0.75 * loadFrac;   // part-throttle moves little, full load moves most
+      pcts[r].push(+Math.max(0, Math.min(30, basePeak * loadW * rpmW(rpmFrac))).toFixed(1));
+    }
+  }
+  return pcts;
+}
+function computeZonedProposal(a, cand) {
+  const rows = cand.rows, cols = cand.cols;
+  const roles = axisRoles(cand);
+  const pcts = zoneWeights(a, rows, cols, roles.rpmDim);
+  const rpmN = roles.rpmDim === "col" ? cols : rows;
+  const loadN = roles.rpmDim === "col" ? rows : cols;
+  const pctAt = (li, ri) => roles.rpmDim === "col" ? pcts[li][ri] : pcts[ri][li];
+  const idx = (frac, n) => Math.round(frac * (n - 1));
+  const zoneVal = (loadFrac, rpmFrac) => pctAt(idx(loadFrac, loadN), idx(rpmFrac, rpmN));
+  const zones = {
+    lowRpm: zoneVal(1, 0), peak: zoneVal(1, PEAK_POS),
+    highRpm: zoneVal(1, 1), partLoad: zoneVal(0.15, PEAK_POS),
+  };
+  let sum = 0, n = 0, max = 0;
+  for (const row of pcts) for (const v of row) { sum += v; n++; if (v > max) max = v; }
+  const conf = a.prio === "safe" ? 0.7 : a.prio === "power" ? 0.55 : 0.62;
+  const rpmAt = (frac) => roles.rpmAxis
+    ? Math.round((roles.rpmAxis.min + frac * (roles.rpmAxis.max - roles.rpmAxis.min)) / 100) * 100 : 0;
+  const rationale = (roles.known
+    ? `Axes lus depuis la définition. `
+    : `Convention supposée (colonnes = régime) — à confirmer avec un Map Pack. `)
+    + "Le couple bas et mi-régime à pleine charge est privilégié ; le haut régime est "
+    + (a.prio === "safe" ? "fortement" : a.prio === "power" ? "peu" : "modérément")
+    + " tempéré pour préserver la mécanique ; la faible charge (conduite partielle) bouge très peu.";
+  const previewHtml = zonePreviewHtml(pctAt, loadN, rpmN, max, roles, rpmAt);
+  return {
+    pcts, zones, known: roles.known, rpmDim: roles.rpmDim, rpmAxis: roles.rpmAxis, loadAxis: roles.loadAxis,
+    rpmAt, previewHtml, avg: +(sum / n).toFixed(1), max: +max.toFixed(1), confidence: conf, rationale,
+  };
+}
+function changeColor(t) { return `hsl(${Math.round(130 * (1 - t))}, 62%, 44%)`; }  // green→red
+function zonePreviewHtml(pctAt, loadN, rpmN, max, roles, rpmAt) {
+  const denom = max || 1;
+  let cells = "";
+  // Display: RPM left→right, load high (top) → low (bottom).
+  for (let li = loadN - 1; li >= 0; li--) {
+    cells += "<tr>";
+    for (let ri = 0; ri < rpmN; ri++) {
+      const v = pctAt(li, ri);
+      const rpmTxt = roles.rpmAxis ? `${rpmAt(rpmN > 1 ? ri / (rpmN - 1) : 0.5)} ${roles.rpmAxis.unit}` : `col ${ri}`;
+      cells += `<td style="background:${changeColor(v / denom)};" title="+${v}% · régime ${rpmTxt}"></td>`;
+    }
+    cells += "</tr>";
+  }
+  const xlab = roles.known ? `Régime (${roles.rpmAxis.min}→${roles.rpmAxis.max} ${esc(roles.rpmAxis.unit)}) →` : "Régime supposé →";
+  return `<div style="margin:4px 0 10px;">
+    <div style="display:flex;align-items:stretch;gap:6px;">
+      <div style="writing-mode:vertical-rl;transform:rotate(180deg);color:var(--text-dim);font-size:10px;text-align:center;">Charge ↑</div>
+      <table class="zonemap"><tbody>${cells}</tbody></table>
+    </div>
+    <div style="color:var(--text-dim);font-size:10px;margin-left:16px;margin-top:2px;">${xlab}</div>
+    <div style="display:flex;align-items:center;gap:6px;margin:6px 0 0 16px;color:var(--text-dim);font-size:10px;">
+      <span>faible</span>
+      <span style="display:inline-block;width:120px;height:8px;border-radius:4px;background:linear-gradient(90deg, ${changeColor(0)}, ${changeColor(0.5)}, ${changeColor(1)});"></span>
+      <span>fort (+${(+max).toFixed(0)} %)</span>
+    </div></div>`;
+}
+function applyZonedPercent(f, c, pcts) {
+  const buf = materializeBuf(f);
+  for (let r = 0; r < c.rows; r++) for (let col = 0; col < c.cols; col++) {
+    const off = c.offset + (r * c.cols + col) * 2;
+    wr16(buf, off, rd16(buf, off) * (1 + pcts[r][col] / 100));
+  }
+}
+function proposalSummary(a) {
+  const g = a.goal === "stage2" ? "Stage 2" : a.goal === "eco" ? "éco" : "Stage 1";
+  const pr = a.prio === "safe" ? "fiabilité" : a.prio === "power" ? "perf. max" : "équilibré";
+  return `${g}, ${(a.fuel || "").toUpperCase()}, ${pr}`;
+}
+
+/* ---- Export the (modified) file ---- */
+function exportModified(f) {
+  const buf = materializeBuf(f);
+  const blob = new Blob([buf], { type: "application/octet-stream" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  let name = f.isDerived ? f.name : f.name.replace(/(\.[^.]+)$/, "_export$1");
+  if (!/\.[^.]+$/.test(name)) name += ".bin";
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  logLine(`Fichier extrait : ${name} (${humanSize(buf.length)})`);
+  toast(`Fichier « ${name} » extrait.`);
+}
+
+/* -------------------------------------------------------- AI assistant --- */
+function renderAssistantTarget() {
+  const v = curVehicle(); const f = state.activeFile ? files[state.activeFile] : null;
+  const parts = [];
+  if (f) parts.push(`Fichier : <b>${esc(f.name)}</b>`);
+  if (v) parts.push(`Véhicule : <b>${esc(vehName(v))}</b>`);
+  $("#aiTarget").innerHTML = parts.length ? "Cible — " + parts.join(" · ") : "<i>Aucune cible sélectionnée.</i>";
+  $("#aiFile").disabled = !f; $("#aiPropose").disabled = !f;
+}
+function buildFileContext(f) {
+  const facts = [
+    { label: "Nom du fichier", value: f.name },
+    { label: "Taille", value: f.size },
+    { label: "Type", value: f.kind },
+    { label: "Empreinte SHA-256", value: f.sha },
+  ];
+  const v = vehicles.find(x => x.id === f.vehicleId);
+  if (v) facts.push({ label: "Véhicule", value: vehName(v) });
+  if (f.parent) facts.push({ label: "Version dérivée de", value: f.parent });
+  for (const [k, val] of Object.entries(f.facts)) facts.push({ label: "Mesure : " + k, value: String(val) });
+  const validated = f.candidates.filter(c => c.status === "validated");
+  const proposed = f.candidates.filter(c => c.status === "proposed");
+  facts.push({ label: "Cartographies", value: `${validated.length} validée(s), ${proposed.length} proposée(s)` });
+  validated.forEach(c => facts.push({ label: `Carte validée « ${c.name || "sans nom"} »`, value: `offset 0x${c.offset.toString(16).toUpperCase()}, ${shapeLabel(c)}` }));
+  facts.push({ label: "Annotations", value: String(f.annotations.length) });
+
+  const hyps = f.fileHyp.map(h => ({ ...h }));
+  proposed.forEach(c => hyps.push({
+    statement: `La zone @0x${c.offset.toString(16).toUpperCase()} (${shapeLabel(c)}) est la carte « ${c.name || "sans nom"} »`,
+    confidence: c.confidence, rationale: c.rationale }));
+  return { subject: `Fichier ECU « ${f.name} »`, facts, hyps };
+}
+function buildVehicleContext(v) {
+  const fs = (vehicleFiles[v.id] || []).map(id => files[id]);
+  const facts = [{ label: "Véhicule", value: vehName(v) }];
+  [["VIN", v.vin], ["Code moteur", v.engine], ["Type d'ECU", v.ecu]].filter(([, x]) => x)
+    .forEach(([k, x]) => facts.push({ label: k, value: x }));
+  facts.push({ label: "Projets", value: String((projects[v.id] || []).length) });
+  facts.push({ label: "Fichiers ECU", value: String(fs.length) });
+  facts.push({ label: "Entrées d'historique", value: String((history[v.id] || []).length) });
+  const notes = (history[v.id] || []).slice(0, 6).map(h => `${h.date.slice(0,10)} · ${h.type} : ${h.title}`);
+  return { subject: `Véhicule « ${vehName(v)} »`, facts, hyps: [], notes };
+}
+function offlineText(ctx, task) {
+  const bulletFacts = ctx.facts.map(f => `• ${f.label} : ${f.value}`).join("\n");
+  const bulletHyps = ctx.hyps.length
+    ? ctx.hyps.map(h => `• ${h.statement} — confiance ${(h.confidence*100).toFixed(0)}%\n    ↳ ${h.rationale}`).join("\n")
+    : "• Aucune hypothèse en cours.";
+  if (task === "propose") {
+    return `Pistes de travail pour ${ctx.subject} :\n\n` +
+      `• Valider ou rejeter les cartographies proposées avant toute analyse.\n` +
+      `• Comparer ce fichier à son original pour isoler les zones travaillées.\n` +
+      `• Annoter les zones sensibles (checksums, limiteurs) pour ne pas les perdre.\n\n` +
+      `Ces suggestions sont méthodologiques (analyse locale) ; elles ne reposent que sur les faits ci-dessous.\n\n${bulletFacts}`;
+  }
+  let out = `Synthèse de ${ctx.subject}.\n\nFaits établis :\n${bulletFacts}`;
+  if (ctx.hyps.length) out += `\n\nHypothèses à valider :\n${bulletHyps}`;
+  if (ctx.notes && ctx.notes.length) out += `\n\nPoints notables :\n` + ctx.notes.map(n => `• ${n}`).join("\n");
+  return out;
+}
+function claudeText(ctx) {
+  const v = ctx.facts.find(f => f.label === "Véhicule");
+  const validated = ctx.facts.filter(f => f.label.startsWith("Carte validée"));
+  const parts = [];
+  parts.push(`D'après les données fournies, ${ctx.subject.toLowerCase()} présente les éléments suivants.`);
+  if (validated.length) parts.push(`Fait avéré : la cartographie ${validated.map(f => f.label.replace("Carte validée ", "")).join(", ")} est validée.`);
+  if (ctx.hyps.length) parts.push(`Hypothèse (confiance ${(ctx.hyps[0].confidence*100).toFixed(0)} %) : ${ctx.hyps[0].statement}. Elle n'est pas confirmée — à vérifier avant toute intervention.`);
+  parts.push("Aucune modification n'est déductible sans comparaison à une version retravaillée ; je recommande une comparaison côte à côte.");
+  return parts.join("\n\n");
+}
+function runAssistant(kind) {
+  const provider = $("#aiProvider").value;
+  const v = curVehicle(); const f = state.activeFile ? files[state.activeFile] : null;
+  let ctx;
+  if (kind === "vehicle") { if (!v) return; ctx = buildVehicleContext(v); }
+  else { if (!f) return; ctx = buildFileContext(f); }
+  const task = kind === "propose" ? "propose" : "summarize";
+  const out = $("#aiOut");
+  out.innerHTML = `<div style="color:var(--text-dim);">Analyse en cours…</div>`;
+  setTimeout(() => {
+    const aiGen = provider === "claude";
+    const text = aiGen ? claudeText(ctx) : offlineText(ctx, task);
+    let html = `<div class="ans-head">${aiGen ? "anthropic" : "offline"} · ${task}</div>`;
+    html += `<div class="ans-body">${esc(text)}</div>`;
+    if (ctx.hyps.length) {
+      html += `<div class="ans-hyp-h">Hypothèses utilisées</div><ul style="margin:4px 0;padding-left:18px;">`;
+      ctx.hyps.forEach(h => html += `<li style="font-size:12px;">${esc(h.statement)} <span class="ans-note">(confiance ${(h.confidence*100).toFixed(0)}%)</span></li>`);
+      html += `</ul>`;
+    }
+    html += `<div class="ans-note">Basé sur ${ctx.facts.length} fait(s) du projet.</div>`;
+    const disc = (aiGen ? `Généré par l'assistant IA « anthropic ». ` : "") +
+      "Réponse générée automatiquement à partir des données du projet. Les hypothèses ne sont pas des certitudes : vérifiez toujours avant toute modification.";
+    html += `<div class="ans-disc">${esc(disc)}</div>`;
+    html += `<button class="ans-save" onclick="saveAnswer()">Enregistrer dans l'historique du véhicule</button>`;
+    out.innerHTML = html;
+    logLine(`Assistant (${provider}) — ${task}`);
+  }, aiGenDelay(provider));
+}
+function aiGenDelay(p){ return p === "claude" ? 520 : 200; }
+window.saveAnswer = function() { toast("Enregistré dans l'historique du véhicule (type : Note)."); logLine("Réponse de l'assistant enregistrée dans l'historique."); };
+
+$("#aiFile").onclick = () => runAssistant("file");
+$("#aiPropose").onclick = () => runAssistant("propose");
+$("#aiVehicle").onclick = () => runAssistant("vehicle");
+$("#aiAsk").onclick = () => {
+  const q = $("#aiQuestion").value.trim(); if (!q) return;
+  const provider = $("#aiProvider").value;
+  const f = state.activeFile ? files[state.activeFile] : null; const v = curVehicle();
+  const ctx = f ? buildFileContext(f) : buildVehicleContext(v);
+  const out = $("#aiOut");
+  if (provider === "offline") {
+    out.innerHTML = `<div class="ans-head">offline · ask</div>` +
+      `<div class="ans-body">${esc("L'analyse locale (hors-ligne) ne rédige pas de réponse libre : elle vous restitue les données pertinentes.\n\nQuestion : " + q + "\n\nÉléments connus sur " + ctx.subject + " :\n" + ctx.facts.map(f => "• " + f.label + " : " + f.value).join("\n"))}</div>` +
+      `<div class="ans-disc">Pour une réponse rédigée, activez l'assistant IA (Claude) dans la configuration.</div>`;
+  } else {
+    out.innerHTML = `<div class="ans-head">anthropic · ask</div>` +
+      `<div class="ans-body">${esc("Question : " + q + "\n\n" + claudeText(ctx))}</div>` +
+      `<div class="ans-disc">Généré par l'assistant IA « anthropic ». Vérifiez toujours avant toute modification.</div>`;
+  }
+  logLine(`Assistant (${provider}) — question`);
+};
+
+/* ------------------------------------------------------------- reports --- */
+function showVehicleReport(v) {
+  const gen = new Date().toISOString().slice(0, 16).replace("T", " ");
+  const fs = (vehicleFiles[v.id] || []).map(id => files[id]);
+  const idRows = [["Marque / modèle", vehName(v)], ["VIN", v.vin || "—"], ["Immatriculation", v.plate || "—"],
+    ["Code moteur", v.engine || "—"], ["Type d'ECU", v.ecu || "—"]]
+    .map(([k, val]) => `<tr><td>${esc(k)}</td><td>${esc(val)}</td></tr>`).join("");
+  const projRows = (projects[v.id] || []).map(p => `<tr><td>${esc(p.name)}</td><td>${esc(p.status)}</td><td>${esc(p.created)}</td><td>${esc(p.desc)}</td></tr>`).join("") || `<tr><td colspan="4" class="muted">(aucun)</td></tr>`;
+  const histRows = (history[v.id] || []).map(h => `<tr><td>${esc(h.date)}</td><td>${esc(h.type)}</td><td>${esc(h.title)}</td><td>${esc(h.content)}</td></tr>`).join("") || `<tr><td colspan="4" class="muted">(aucun)</td></tr>`;
+  const fileRows = fs.map(f => {
+    const maps = f.candidates.filter(c => c.status === "validated")
+      .map(c => `${esc(c.name || "sans nom")} (0x${c.offset.toString(16).toUpperCase()}, ${shapeLabel(c)})`).join("<br>") || `<span class="muted">—</span>`;
+    return `<tr><td>${esc(f.name)}</td><td>${esc(f.kind)}</td><td>${esc(f.size)}</td><td class="muted" style="font-family:var(--font-mono);">${esc(f.sha.slice(0,16))}…</td><td>${maps}</td></tr>`;
+  }).join("");
+  const html = `<div class="rep">
+    <h1>Dossier véhicule — ${esc(vehName(v))}</h1>
+    <div class="sub">CalForge 0.9.0 — généré le ${esc(gen)}</div>
+    <h2>Identité</h2><table><tr><th>Champ</th><th>Valeur</th></tr>${idRows}</table>
+    ${v.notes ? `<p>${esc(v.notes)}</p>` : ""}
+    <h2>Projets</h2><table><tr><th>Projet</th><th>Statut</th><th>Créé le</th><th>Description</th></tr>${projRows}</table>
+    <h2>Historique</h2><table><tr><th>Date</th><th>Type</th><th>Titre</th><th>Détails</th></tr>${histRows}</table>
+    <h2>Fichiers ECU</h2><table><tr><th>Fichier</th><th>Type</th><th>Taille</th><th>SHA-256</th><th>Cartographies validées</th></tr>${fileRows}</table>
+    <div class="disc">Document généré automatiquement par CalForge à partir des données du projet. Les hypothèses (cartographies non validées, mesures interprétées) ne sont pas des certitudes et doivent être vérifiées avant toute intervention.</div>
+  </div>
+  <div style="margin-top:14px;display:flex;gap:8px;"><button class="primary" onclick="toastPdf()">Enregistrer en PDF</button><button onclick="toastPdf('HTML')">Enregistrer en HTML</button></div>`;
+  openModal("Rapport de dossier véhicule", html, true);
+}
+window.toastPdf = function(fmt){ toast(`Rapport ${fmt || "PDF"} — dans l'app : rendu par Qt et enregistré sur le disque.`); };
+
+/* ------------------------------------------------------------- menus --- */
+document.querySelectorAll(".menubar .m").forEach(m => m.onclick = () => {
+  const which = m.dataset.menu;
+  if (which === "aide") openModal("À propos de CalForge",
+    `<div style="max-width:440px;"><h3 style="margin-top:0;">CalForge 0.9.0</h3>
+     <p style="color:var(--text-dim);">Assistant professionnel de calibration ECU alimenté par l'IA.</p>
+     <p style="color:var(--text-dim);">Ceci est un aperçu navigateur interactif. L'application réelle est un logiciel desktop Python/PySide6 : dossiers véhicules, analyse binaire, détection de cartographies, Map Packs, catalogue automatique, assistant IA, rapports PDF.</p>
+     <p style="color:var(--text-dim);">v0.9 — <b style="color:var(--text);">catalogue automatique</b> (ADR-0013) : l'app va chercher le pack correspondant toute seule, uniquement depuis des sources que vous configurez et êtes en droit d'utiliser. Jamais de fouille du web ; désactivé par défaut.</p></div>`);
+  else if (which === "vehicle") toast("Menu Véhicule : Nouveau (Ctrl+N), Modifier (F2), Supprimer.");
+  else toast("Menu Fichier : Importer (Ctrl+I), Bibliothèque (Ctrl+L), Map Packs (Ctrl+M), Assistant (Ctrl+J).");
+});
+
+/* --------------------------------------------------------------- init --- */
+function init() {
+  buildActionBar();
+  buildStaticPages();
+  renderVehicles(); renderFolder(); renderCenterTabs(); renderAssistantTarget();
+  $("#aiOut").innerHTML = `<div style="color:var(--text-dim);">L'assistant analyse vos données <b style="color:var(--text);">sans jamais inventer d'information</b> : il distingue toujours les faits mesurés des hypothèses, affiche son niveau de confiance et vous laisse la validation finale.<br><br>Choisissez une action ci-dessus.</div>`;
+  logLine("CalForge démarré (aperçu interactif).");
+  logLine("Données de démonstration chargées : 3 véhicules.");
+}
+init();
+</script>
+
+</body></html>
