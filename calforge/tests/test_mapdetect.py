@@ -81,6 +81,24 @@ class TestDetection:
         for candidate in candidates:
             assert candidate.end <= table_end
 
+    def test_one_dimensional_curve_is_found(self) -> None:
+        """A 1D map — an axis of N breakpoints followed by N smoothly varying
+        values (a *curve*, not a table) — must be detected as a 1×N candidate,
+        at lower (capped) confidence than a 2D table."""
+        rng = np.random.default_rng(5)
+        prefix = rng.integers(0, 256, size=800, dtype=np.uint8).tobytes()
+        axis = np.arange(700, 700 + 16 * 90, 90, dtype="<u2")  # 16 breakpoints
+        curve = np.round(300 + 220 * np.sin(np.linspace(0, 2.6, 16))).astype("<u2")
+        tail = rng.integers(0, 256, size=600, dtype=np.uint8).tobytes()
+        data = prefix + axis.tobytes() + curve.tobytes() + tail
+        expected_offset = len(prefix) + axis.nbytes
+
+        candidates = detect_maps(data)
+        curves = [c for c in candidates if c.rows == 1 and c.offset == expected_offset]
+        assert curves, f"expected a 1D curve at 0x{expected_offset:X}: {candidates[:4]}"
+        assert curves[0].cols == 16
+        assert 0.0 < curves[0].confidence <= 0.60
+
 
 class TestDecodeBlock:
     def test_roundtrip_le16(self) -> None:

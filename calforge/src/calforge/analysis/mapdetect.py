@@ -21,6 +21,9 @@ import numpy as np
 
 #: A heuristic can never prove a map; the cap enforces ADR-0004 honesty.
 MAX_CONFIDENCE = 0.85
+#: A 1D curve is more ambiguous than a 2D table (any smooth vector after a
+#: monotonic run qualifies), so its confidence is capped lower.
+_CURVE_MAX_CONFIDENCE = 0.60
 
 _AXIS_MIN = 8
 _AXIS_MAX = 32
@@ -108,6 +111,26 @@ def _smoothness(block: np.ndarray) -> float | None:
     return 0.6 * scores[0] + 0.4 * scores[1]
 
 
+def _curve_smoothness(vector: np.ndarray) -> float | None:
+    """Score in [0, 1] for a 1D value vector (the outputs of a curve/1D map).
+
+    A 1D calibration map is an axis of N breakpoints followed by N smoothly
+    varying values (torque limiters, temperature corrections, lambda targets…).
+    Rejects the same non-map content as :func:`_smoothness`: constant,
+    near-constant, or single-value-dominated vectors (erased padding, flags).
+    """
+    if vector.size < _AXIS_MIN:
+        return None
+    value_range = float(vector.max() - vector.min())
+    if value_range == 0.0 or np.unique(vector).size < max(3, vector.size // 8):
+        return None
+    _, counts = np.unique(vector, return_counts=True)
+    if counts.max() > vector.size * 0.5:
+        return None
+    roughness = float(np.abs(np.diff(vector.astype(np.float64), n=2)).mean()) / (value_range * 0.25)
+    return max(0.0, 1.0 - min(1.0, roughness))
+
+
 def _axis_length_candidates(run_length: int) -> list[int]:
     """Column counts to try for one monotonic run.
 
@@ -131,6 +154,20 @@ def detect_maps(data: bytes) -> list[MapCandidate]:
             run_length = run_end - run_start
             # (score, rows, cols, data_start, smooth)
             best: tuple[float, int, int, int, float] | None = None
+            # 1D curve: the whole monotonic run is the axis; the map's values
+            # follow it directly (a curve, not a strict continuation of the axis).
+            best_curve: tuple[float, int, int, float] | None = None
+            if _AXIS_MIN <= run_length <= _AXIS_MAX:
+                curve_start = run_end
+                curve_end = curve_start + run_length
+                if curve_end <= len(values):
+                    csmooth = _curve_smoothness(values[curve_start:curve_end])
+                    if csmooth is not None and csmooth >= 0.6:
+                        axis_quality = (run_length - _AXIS_MIN) / (_AXIS_MAX - _AXIS_MIN)
+                        cscore = min(
+                            _CURVE_MAX_CONFIDENCE, 0.08 + 0.10 * axis_quality + 0.42 * csmooth
+                        )
+                        best_curve = (cscore, run_length, curve_start, csmooth)
             for axis_len in _axis_length_candidates(run_length):
                 cols = axis_len
                 data_start = run_start + axis_len  # block follows the axis
@@ -156,26 +193,44 @@ def detect_maps(data: bytes) -> list[MapCandidate]:
                     ):
                         best = (score, rows, cols, data_start, smooth)
 
-            if best is None:
-                continue
-            score, rows, cols, data_start, smooth = best
-            candidates.append(
-                MapCandidate(
-                    offset=data_start * element_size,
-                    rows=rows,
-                    cols=cols,
-                    element_size=element_size,
-                    endianness=endianness,
-                    confidence=round(score, 3),
-                    rationale=(
-                        f"Axe strictement croissant de {cols} valeurs "
-                        f"({8 * element_size} bits{' ' + endianness if endianness else ''}) "
-                        f"suivi d'un bloc {rows}×{cols} à variation régulière "
-                        f"(régularité {smooth:.0%}). Heuristique sans fichier de "
-                        "définition : validation humaine requise."
-                    ),
+            if best is not None:
+                score, rows, cols, data_start, smooth = best
+                candidates.append(
+                    MapCandidate(
+                        offset=data_start * element_size,
+                        rows=rows,
+                        cols=cols,
+                        element_size=element_size,
+                        endianness=endianness,
+                        confidence=round(score, 3),
+                        rationale=(
+                            f"Axe strictement croissant de {cols} valeurs "
+                            f"({8 * element_size} bits{' ' + endianness if endianness else ''}) "
+                            f"suivi d'un bloc {rows}×{cols} à variation régulière "
+                            f"(régularité {smooth:.0%}). Heuristique sans fichier de "
+                            "définition : validation humaine requise."
+                        ),
+                    )
                 )
-            )
+            if best_curve is not None:
+                cscore, cols, data_start, csmooth = best_curve
+                candidates.append(
+                    MapCandidate(
+                        offset=data_start * element_size,
+                        rows=1,
+                        cols=cols,
+                        element_size=element_size,
+                        endianness=endianness,
+                        confidence=round(cscore, 3),
+                        rationale=(
+                            f"Axe strictement croissant de {cols} valeurs "
+                            f"({8 * element_size} bits{' ' + endianness if endianness else ''}) "
+                            f"suivi d'une courbe 1D de {cols} valeurs à variation régulière "
+                            f"(régularité {csmooth:.0%}). Heuristique sans fichier de "
+                            "définition : validation humaine requise."
+                        ),
+                    )
+                )
 
     # Overlap suppression: keep the most confident candidate per region.
     candidates.sort(key=lambda c: c.confidence, reverse=True)
