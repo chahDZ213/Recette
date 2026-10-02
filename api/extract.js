@@ -106,6 +106,55 @@ async function getTikTokCaption(url) {
   } catch { return ""; }
 }
 
+// --- Description via les balises og: de la page (Instagram, Facebook, TikTok…) ---
+// Les réseaux sociaux servent la légende de la vidéo dans og:title / og:description
+// même quand le reste de la page exige JavaScript ou une connexion.
+async function getOgMeta(rawUrl) {
+  try {
+    const ctrl = new AbortController();
+    const to = setTimeout(() => ctrl.abort(), 8000);
+    const r = await fetch(rawUrl, {
+      redirect: "follow",
+      signal: ctrl.signal,
+      headers: {
+        "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+        "accept": "text/html,application/xhtml+xml",
+        "accept-language": "fr-FR,fr;q=0.9,en;q=0.6",
+      },
+    });
+    clearTimeout(to);
+    if (!r.ok) return "";
+    const html = (await r.text()).slice(0, 400000);
+    const pick = (prop) => {
+      const m = new RegExp(`<meta[^>]+(?:property|name)=["']${prop}["'][^>]*>`, "i").exec(html);
+      if (!m) return "";
+      const c = /content=["']([\s\S]*?)["']/i.exec(m[0]);
+      return c ? c[1] : "";
+    };
+    const decode = (s) => s
+      .replace(/&quot;/g, '"').replace(/&#x27;|&#39;|&apos;/g, "'")
+      .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#(\d+);/g, (_, n) => String.fromCharCode(n))
+      .replace(/&amp;/g, "&");
+    const title = decode(pick("og:title") || "");
+    const desc = decode(pick("og:description") || pick("twitter:description") || pick("description") || "");
+    return [title, desc].filter(Boolean).join("\n").trim();
+  } catch { return ""; }
+}
+
+// --- Dernier recours : page rendue par Supadata (quand les og: sont vides ou bloquées) ---
+async function getWebScrape(url) {
+  if (!SUPADATA_KEY) return "";
+  try {
+    const r = await fetch(`https://api.supadata.ai/v1/web/scrape?url=${encodeURIComponent(url)}`, {
+      headers: { "x-api-key": SUPADATA_KEY },
+    });
+    if (!r.ok) return "";
+    const d = await r.json();
+    const c = d && (d.content || d.markdown || d.text);
+    return typeof c === "string" ? c.slice(0, 8000).trim() : "";
+  } catch { return ""; }
+}
+
 function extractJSON(text) {
   const t = text.replace(/```json/gi, "").replace(/```/g, "").trim();
   const a = t.indexOf("{"), b = t.lastIndexOf("}");
@@ -356,17 +405,26 @@ Exactement 4 idées, variées.`;
       source = web.text;
     } else {
       const ytId = extractVideoId(url); // non-null seulement pour YouTube
-      const [transcript, ytDescription, tiktokCaption] = await Promise.all([
+      const [transcript, ytDescription, tiktokCaption, ogMeta] = await Promise.all([
         getTranscript(url),
         ytId ? getDescription(ytId) : Promise.resolve(""),
         getTikTokCaption(url),
+        getOgMeta(url),
       ]);
-      const description = [ytDescription, tiktokCaption].filter(Boolean).join("\n\n");
-      source = `${description ? "DESCRIPTION ÉCRITE (publiée par l'auteur — fait foi pour les quantités et le nombre de personnes):\n" + description + "\n\n" : ""}TRANSCRIPTION PARLÉE:\n${transcript}`.trim();
+      // on garde chaque source écrite, sans doublons (la légende TikTok réapparaît souvent dans les og:)
+      const parts = [ytDescription, tiktokCaption, ogMeta].map((s) => (s || "").trim()).filter(Boolean);
+      const uniq = parts.filter((p, i) => !parts.some((q, j) => j !== i && q.includes(p) && (q.length > p.length || j < i)));
+      let description = uniq.join("\n\n");
+      // toujours rien d'écrit ET pas d'audio exploitable -> page rendue en dernier recours
+      if (!description && transcript.trim().length < 40) description = await getWebScrape(url);
+      source = [
+        description ? "DESCRIPTION ÉCRITE (publiée par l'auteur — fait foi pour les quantités et le nombre de personnes):\n" + description : "",
+        transcript.trim() ? "TRANSCRIPTION PARLÉE:\n" + transcript : "",
+      ].filter(Boolean).join("\n\n");
       if ((description + transcript).trim().length < 40) {
         return res.status(200).json({
           found: false,
-          error: "Impossible de lire cette vidéo (pas de transcription disponible). Colle la description à la main.",
+          error: "Impossible de lire cette vidéo (ni transcription ni description accessibles). Colle la recette à la main.",
         });
       }
     }
