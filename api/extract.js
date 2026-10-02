@@ -27,13 +27,15 @@ const INSTRUCTIONS = `Tu renvoies UNIQUEMENT un objet JSON, sans aucun texte aut
 Règles :
 - "amount" est un nombre (ou null si non quantifiable). "unit" peut être null (ex: oeufs, gousses).
 - "category" classe l'ingrédient dans EXACTEMENT une de ces valeurs : "Frais" (légumes, fruits, herbes fraîches, ail, oignon), "Viandes & poissons", "Crémerie" (oeufs, lait, beurre, fromage, crème, yaourt), "Épicerie" (pâtes, riz, farine, conserves, huile, sucre, produits secs), "Épices" (sel, poivre, épices, condiments, sauces), ou "Autre" si rien ne colle.
-- "baseServings" = nombre de personnes de la recette d'origine. Si non précisé, mets 4.
+- "baseServings" = nombre de personnes/parts indiqué dans la recette d'origine. Si non précisé, mets 4.
+- FIDÉLITÉ ABSOLUE AUX QUANTITÉS : recopie EXACTEMENT les chiffres donnés dans le texte (quantités, unités, nombre de personnes). N'adapte JAMAIS les quantités à un autre nombre de personnes que celui d'origine. Si la quantité d'un ingrédient n'est donnée nulle part, mets "amount": null — n'invente JAMAIS un chiffre plausible.
+- Si une DESCRIPTION ÉCRITE et une transcription parlée divergent sur un chiffre, la description écrite fait foi.
 - Dans "steps", NE répète PAS les quantités chiffrées : réfère-toi aux ingrédients par leur nom, pour que l'ajustement des portions reste cohérent.
 - "timerSeconds" : durée en secondes UNIQUEMENT si l'étape implique une attente (cuisson, repos, four). Sinon null.
 - "temp" : température de cuisson en °C (nombre entier) si l'étape en mentionne une (four à 180°C, four th.6, etc.). Convertis les thermostats en °C (th.6 ≈ 180). Sinon null.
 - "mode" : mode de cuisson de l'étape, EXACTEMENT une de ces valeurs en minuscules sans accent : "four", "poele", "casserole", "friture", "vapeur", "micro-ondes", "grill", "barbecue", "repos". "repos" = attente sans cuisson (frigo, levée, marinade, refroidissement). Si l'étape est une simple préparation sans cuisson ni attente, mets null.
 - "imageQuery" : 2 à 4 mots en ANGLAIS décrivant visuellement le plat fini (sert à chercher une photo). Toujours rempli. Exemples : "beef bourguignon stew", "chocolate lava cake".
-- Le texte fourni est une transcription parlée : déduis les quantités et étapes au mieux, corrige les approximations orales ("genre deux trois oeufs" -> 3).
+- Si le texte fourni contient une transcription parlée : corrige les approximations orales ("genre deux trois oeufs" -> 3), mais seulement pour des quantités réellement mentionnées.
 - Si aucune recette n'est trouvable, renvoie {"found": false}.`;
 
 function extractVideoId(url) {
@@ -79,6 +81,31 @@ async function getDescription(id) {
   } catch { return ""; }
 }
 
+// --- Légende TikTok via oEmbed (la recette est souvent écrite dans la description, pas dite dans la vidéo) ---
+async function getTikTokCaption(url) {
+  if (!/tiktok\.com/i.test(url || "")) return "";
+  try {
+    let target = url;
+    // les liens courts (vm.tiktok.com, /t/) redirigent vers l'URL canonique exigée par oEmbed
+    if (/vm\.tiktok\.com|tiktok\.com\/t\//i.test(url)) {
+      try {
+        const ctrl = new AbortController();
+        const to = setTimeout(() => ctrl.abort(), 6000);
+        const r0 = await fetch(url, { redirect: "follow", signal: ctrl.signal, headers: { "user-agent": "Mozilla/5.0" } });
+        clearTimeout(to);
+        if (r0.url) target = r0.url;
+      } catch {}
+    }
+    const ctrl = new AbortController();
+    const to = setTimeout(() => ctrl.abort(), 8000);
+    const r = await fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(target)}`, { signal: ctrl.signal });
+    clearTimeout(to);
+    if (!r.ok) return "";
+    const d = await r.json();
+    return (d && typeof d.title === "string") ? d.title.trim() : "";
+  } catch { return ""; }
+}
+
 function extractJSON(text) {
   const t = text.replace(/```json/gi, "").replace(/```/g, "").trim();
   const a = t.indexOf("{"), b = t.lastIndexOf("}");
@@ -97,6 +124,7 @@ async function askClaude(source) {
     body: JSON.stringify({
       model: MODELE,
       max_tokens: 2200,
+      temperature: 0,   // extraction fidèle : on recopie, on n'improvise pas
       messages: [{
         role: "user",
         content: `Voici le contenu d'une vidéo de recette (description et/ou transcription parlée). Structure-le.\n\n"""${source.slice(0, 14000)}"""\n\n${INSTRUCTIONS}`,
@@ -123,6 +151,7 @@ async function askClaudeVision(dataUrl) {
     body: JSON.stringify({
       model: MODELE,
       max_tokens: 1500,
+      temperature: 0,   // lecture fidèle de l'image
       messages: [{
         role: "user",
         content: [
@@ -327,12 +356,14 @@ Exactement 4 idées, variées.`;
       source = web.text;
     } else {
       const ytId = extractVideoId(url); // non-null seulement pour YouTube
-      const [transcript, description] = await Promise.all([
+      const [transcript, ytDescription, tiktokCaption] = await Promise.all([
         getTranscript(url),
         ytId ? getDescription(ytId) : Promise.resolve(""),
+        getTikTokCaption(url),
       ]);
-      source = `${description}\n\nTRANSCRIPTION:\n${transcript}`.trim();
-      if (source.replace("TRANSCRIPTION:", "").trim().length < 40) {
+      const description = [ytDescription, tiktokCaption].filter(Boolean).join("\n\n");
+      source = `${description ? "DESCRIPTION ÉCRITE (publiée par l'auteur — fait foi pour les quantités et le nombre de personnes):\n" + description + "\n\n" : ""}TRANSCRIPTION PARLÉE:\n${transcript}`.trim();
+      if ((description + transcript).trim().length < 40) {
         return res.status(200).json({
           found: false,
           error: "Impossible de lire cette vidéo (pas de transcription disponible). Colle la description à la main.",
