@@ -109,7 +109,7 @@ async function getTikTokCaption(url) {
 // --- Description via les balises og: de la page (Instagram, Facebook, TikTok…) ---
 // Les réseaux sociaux servent la légende de la vidéo dans og:title / og:description
 // même quand le reste de la page exige JavaScript ou une connexion.
-async function getOgMeta(rawUrl) {
+async function getOgMeta(rawUrl, ua) {
   try {
     const ctrl = new AbortController();
     const to = setTimeout(() => ctrl.abort(), 8000);
@@ -117,7 +117,7 @@ async function getOgMeta(rawUrl) {
       redirect: "follow",
       signal: ctrl.signal,
       headers: {
-        "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+        "user-agent": ua || "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
         "accept": "text/html,application/xhtml+xml",
         "accept-language": "fr-FR,fr;q=0.9,en;q=0.6",
       },
@@ -414,17 +414,25 @@ Exactement 4 idées, variées.`;
         getTikTokCaption(url),
         getOgMeta(url),
       ]);
+      // Facebook/Instagram servent souvent une page de connexion aux navigateurs
+      // inconnus mais donnent toujours les og: à leur propre crawler : 2e tentative.
+      let og = ogMeta;
+      if (!og && /facebook\.com|fb\.watch|instagram\.com/i.test(url)) {
+        og = await getOgMeta(url, "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)");
+      }
       // on garde chaque source écrite, sans doublons (la légende TikTok réapparaît souvent dans les og:)
-      const parts = [ytDescription, tiktokCaption, ogMeta].map((s) => (s || "").trim()).filter(Boolean);
+      const parts = [ytDescription, tiktokCaption, og].map((s) => (s || "").trim()).filter(Boolean);
       const uniq = parts.filter((p, i) => !parts.some((q, j) => j !== i && q.includes(p) && (q.length > p.length || j < i)));
-      let description = uniq.join("\n\n");
-      // toujours rien d'écrit ET pas d'audio exploitable -> page rendue en dernier recours
-      if (!description && transcript.trim().length < 40) description = await getWebScrape(url);
+      const description = uniq.join("\n\n");
+      // aucune description trouvée (même avec de l'audio) -> page rendue en dernier recours :
+      // la recette écrite dans la légende vaut mieux que la seule transcription parlée
+      const pageDump = description ? "" : await getWebScrape(url);
       source = [
         description ? "DESCRIPTION ÉCRITE (publiée par l'auteur — fait foi pour les quantités et le nombre de personnes):\n" + description : "",
+        pageDump ? "CONTENU DE LA PAGE (extrait automatique, peut contenir du bruit ; si la recette y est écrite, ses chiffres font foi):\n" + pageDump : "",
         transcript.trim() ? "TRANSCRIPTION PARLÉE:\n" + transcript : "",
       ].filter(Boolean).join("\n\n");
-      if ((description + transcript).trim().length < 40) {
+      if ((description + pageDump + transcript).trim().length < 40) {
         return res.status(200).json({
           found: false,
           error: "Impossible de lire cette vidéo (ni transcription ni description accessibles). Colle la recette à la main.",

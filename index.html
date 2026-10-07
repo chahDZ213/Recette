@@ -1339,7 +1339,11 @@ $("decodeBtn").addEventListener("click", async ()=>{
   try{
     const r=await callBackend({url:d.url});
     if(!r.found){ setError(r.error||t("errNotFound")); showAddPanel("text"); }
-    else { r.platform=d.platform; r.sourceUrl=d.url; await addToHistory(r); loadRecipe(r); generatePhotoFor(r); }
+    else {
+      r.platform=d.platform; r.sourceUrl=d.url; await addToHistory(r); loadRecipe(r); generatePhotoFor(r);
+      // le lien importé ne doit pas rester dans le champ pour le prochain ajout
+      $("url").value=""; $("preview").classList.add("hidden"); $("url").style.borderColor=LINE;
+    }
   }catch(e){ setError(t("errServer")); }
   loading(false);
 });
@@ -2625,12 +2629,43 @@ async function acquireWakeLock(){
 }
 function releaseWakeLock(){ try{ if(wakeLock){ wakeLock.release(); wakeLock=null; } }catch(e){} }
 document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible" && !$("cook").classList.contains("hidden")) acquireWakeLock(); });
-function speakStep(){
+// ---- voix premium ElevenLabs (via /api/tts), repli silencieux sur la voix du navigateur ----
+let ttsAvailable=null;      // null = pas encore testé, false = indisponible (clé absente / erreur)
+let ttsAudio=null, ttsSeq=0;
+const ttsCache=new Map();   // texte -> URL d'objet audio (petites étapes, ~24 entrées max)
+async function fetchTtsUrl(text){
+  if(ttsCache.has(text)) return ttsCache.get(text);
+  const r=await fetch("/api/tts",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({text,lang:curLang})});
+  if(r.status===501){ ttsAvailable=false; return null; }
+  if(!r.ok) throw new Error("tts "+r.status);
+  const u=URL.createObjectURL(await r.blob());
+  if(ttsCache.size>24){ const k=ttsCache.keys().next().value; try{ URL.revokeObjectURL(ttsCache.get(k)); }catch(e){} ttsCache.delete(k); }
+  ttsCache.set(text,u);
+  return u;
+}
+function speakBrowser(text){
+  try{ window.speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(text); u.lang=(curLang==="en"?"en-US":"fr-FR"); u.rate=1; window.speechSynthesis.speak(u); }catch(e){}
+}
+async function speakStep(){
   if(!voiceOn || !recipe || !recipe.steps) return;
   const s=recipe.steps[cookStep]; if(!s) return;
-  try{ window.speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance((s.title?s.title+". ":"")+stepTextWithQty(s.content||"")); u.lang=(curLang==="en"?"en-US":"fr-FR"); u.rate=1; window.speechSynthesis.speak(u); }catch(e){}
+  const text=(s.title?s.title+". ":"")+stepTextWithQty(s.content||"");
+  const seq=++ttsSeq;
+  stopSpeak();
+  if(ttsAvailable!==false){
+    try{
+      const u=await fetchTtsUrl(text);
+      if(seq!==ttsSeq || !voiceOn) return;   // l'étape a changé ou la voix a été coupée pendant le chargement
+      if(u){ ttsAvailable=true; ttsAudio=new Audio(u); ttsAudio.play().catch(()=>{ speakBrowser(text); }); return; }
+    }catch(e){ ttsAvailable=false; }
+    if(seq!==ttsSeq || !voiceOn) return;
+  }
+  speakBrowser(text);
 }
-function stopSpeak(){ try{ window.speechSynthesis.cancel(); }catch(e){} }
+function stopSpeak(){
+  try{ window.speechSynthesis.cancel(); }catch(e){}
+  if(ttsAudio){ try{ ttsAudio.pause(); }catch(e){} ttsAudio=null; }
+}
 function endCookExtras(){ releaseWakeLock(); stopSpeak(); voiceOn=false; { const b=$("voiceBtn"); if(b) b.classList.remove("on"); } stopHandsFree(); { const h=$("handsFreeBtn"); if(h) h.classList.remove("on"); } }
 $("voiceBtn").addEventListener("click", ()=>{
   voiceOn=!voiceOn;
