@@ -764,7 +764,7 @@
       <div id="manualBox">
         <textarea id="manualText" rows="6" placeholder="Ingrédients : 250g de farine…&#10;Étapes : 1. Mélanger…" style="resize:vertical"></textarea>
         <button id="micManual" class="mic-btn">🎤 Dicter</button>
-        <button id="manualBtn" class="press" style="margin-top:10px;width:100%;font-size:16px;font-weight:600;padding:14px 20px;border-radius:12px;border:none;background:var(--accent);color:#fff">Structurer ce texte</button>
+        <button id="manualBtn" class="press" style="margin-top:10px;width:100%;font-size:16px;font-weight:600;padding:14px 20px;border-radius:12px;border:none;background:var(--accent);color:#fff">Importer la recette</button>
       </div>
     </div>
 
@@ -1011,7 +1011,7 @@ const STR={
   transAllFail:(n)=>`⚠️ ${n} recette${n>1?"s":""} n'${n>1?"ont":"a"} pas pu être traduite${n>1?"s":""} — réessaie en rechangeant la langue.`,
   ideasTitle:"Trouver une idée avec mes ingrédients", ideasSub:"Dis ce que t'as dans le frigo → mise. te trouve des idées",
   weekTitle:"Planifier ma semaine", weekSub:"Planifie tes repas → liste de courses en un coup",
-  manualToggle:"Coller un texte de recette", manualPh:"Ingrédients : 250g de farine…\nÉtapes : 1. Mélanger…", manualBtn:"Créer la recette",
+  manualToggle:"Coller un texte de recette", manualPh:"Ingrédients : 250g de farine…\nÉtapes : 1. Mélanger…", manualBtn:"Importer la recette",
   createToggle:"Créer une recette avec l'IA", createDesc:"Décris ce que tu veux cuisiner, mise. te génère la recette complète avec un titre.", createPh:"Ex : un gâteau au yaourt moelleux pour 6, sans beurre…", createBtn:"✨ Créer la recette",
   dictate:"🎤 Dicter", listening:"● En écoute…",
   imgPickLabel:"Scanner une recette", imgPickDesc:"Prends une photo ou importe une capture d'écran",
@@ -1147,7 +1147,7 @@ const STR={
   transAllFail:(n)=>`⚠️ ${n} recipe${n>1?"s":""} couldn't be translated — switch the language again to retry.`,
   ideasTitle:"Find an idea with my ingredients", ideasSub:"Tell mise. what's in your fridge → it finds ideas for you",
   weekTitle:"Plan my week", weekSub:"Plan your meals → shopping list in one tap",
-  manualToggle:"Paste a recipe text", manualPh:"Ingredients: 250g flour…\nSteps: 1. Mix…", manualBtn:"Create the recipe",
+  manualToggle:"Paste a recipe text", manualPh:"Ingredients: 250g flour…\nSteps: 1. Mix…", manualBtn:"Import the recipe",
   createToggle:"Create a recipe with AI", createDesc:"Describe what you want to cook — mise. generates the full recipe with a title.", createPh:"E.g.: a soft yogurt cake for 6, butter-free…", createBtn:"✨ Create the recipe",
   dictate:"🎤 Dictate", listening:"● Listening…",
   imgPickLabel:"Scan a recipe", imgPickDesc:"Take a photo or import a screenshot",
@@ -1602,16 +1602,16 @@ $("createBtn").addEventListener("click", async ()=>{
 });
 $("manualBtn").addEventListener("click", async ()=>{
   setError("");
-  const t=$("manualText").value;
-  if(t.trim().length<30){ setError("Colle un peu plus de texte (description ou sous-titres)."); return; }
-  $("manualBtn").textContent="Structuration…"; $("manualBtn").disabled=true; showLoadOverlay(true);
+  const txt=$("manualText").value;
+  if(txt.trim().length<30){ setError("Colle un peu plus de texte (description ou sous-titres)."); return; }
+  $("manualBtn").textContent="Importation…"; $("manualBtn").disabled=true; showLoadOverlay(true);
   try{
-    const r=await callBackend({text:t});
+    const r=await callBackend({text:txt});
     if(!r.found) setError(r.error||"Pas de recette claire dans ce texte.");
     else { await addToHistory(r); loadRecipe(r); generatePhotoFor(r); $("manualText").value=""; }
   }catch(e){ setError("Échec de la structuration."); }
   showLoadOverlay(false);
-  $("manualBtn").textContent="Structurer ce texte"; $("manualBtn").disabled=false;
+  $("manualBtn").textContent=t("manualBtn"); $("manualBtn").disabled=false;
 });
 
 // ---- recette ----

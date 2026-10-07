@@ -173,7 +173,8 @@ async function askClaude(source) {
     body: JSON.stringify({
       model: MODELE,
       max_tokens: 2200,
-      temperature: 0,   // extraction fidèle : on recopie, on n'improvise pas
+      // NOTE : pas de "temperature" ici — les modèles Claude 5 rejettent ce
+      // paramètre (400). La fidélité vient des règles du prompt.
       messages: [{
         role: "user",
         content: `Voici le contenu d'une vidéo de recette (description et/ou transcription parlée). Structure-le.\n\n"""${source.slice(0, 14000)}"""\n\n${INSTRUCTIONS}`,
@@ -181,6 +182,7 @@ async function askClaude(source) {
     }),
   });
   const data = await r.json();
+  if (!r.ok || data.error) { console.error("extract/askClaude: erreur API", r.status, JSON.stringify(data.error || data).slice(0, 500)); throw new Error("api claude"); }
   const text = (data.content || []).filter((b) => b.type === "text").map((b) => b.text).join("\n");
   return extractJSON(text);
 }
@@ -200,7 +202,6 @@ async function askClaudeVision(dataUrl) {
     body: JSON.stringify({
       model: MODELE,
       max_tokens: 1500,
-      temperature: 0,   // lecture fidèle de l'image
       messages: [{
         role: "user",
         content: [
@@ -211,6 +212,7 @@ async function askClaudeVision(dataUrl) {
     }),
   });
   const data = await r.json();
+  if (!r.ok || data.error) { console.error("extract/vision: erreur API", r.status, JSON.stringify(data.error || data).slice(0, 500)); throw new Error("api claude"); }
   const text = (data.content || []).filter((b) => b.type === "text").map((b) => b.text).join("\n");
   return extractJSON(text);
 }
@@ -293,6 +295,7 @@ async function askClaudeText(prompt, maxTokens) {
     body: JSON.stringify({ model: MODELE, max_tokens: maxTokens || 700, messages: [{ role: "user", content: prompt }] }),
   });
   const data = await r.json();
+  if (!r.ok || data.error) { console.error("extract/texte: erreur API", r.status, JSON.stringify(data.error || data).slice(0, 500)); throw new Error("api claude"); }
   const t = (data.content || []).filter((b) => b.type === "text").map((b) => b.text).join("\n");
   return extractJSON(t);
 }
@@ -436,6 +439,7 @@ Exactement 4 idées, variées.`;
     // recipe.image reste vide : la photo est générée par IA côté front via /api/generate-image
     return res.status(200).json(recipe);
   } catch (e) {
+    console.error("extract: échec", e && e.message, e && e.stack ? e.stack.split("\n")[1] : "");
     return res.status(200).json({ found: false, error: "Extraction impossible. Réessaie ou colle la description." });
   }
 }
