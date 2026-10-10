@@ -916,9 +916,47 @@ function fmtTime(s){
   if(h>0) return h+":"+String(m).padStart(2,"0")+":"+String(sec).padStart(2,"0");
   return m+":"+String(sec).padStart(2,"0");
 }
+/* ---- bouton retour du téléphone (Android) ----
+   L'appli tient dans une seule page : sans entrée d'historique, le retour
+   système quitte l'appli au lieu de revenir en arrière. On maintient donc une
+   entrée "piège" tant qu'il y a un panneau à fermer ou un écran parent où
+   revenir ; sur l'accueil elle est retirée pour que le retour quitte
+   normalement, comme dans n'importe quelle appli Android. */
+const BACK_OVERLAYS=["confirmSheet","resetSheet","forgotSheet","addSheet","collSheet","installSheet","premiumModal"]; // du plus haut au plus bas (z-index)
+const BACK_BTN={ recipe:"backBtn", cook:"exitCook", ideas:"ideasBack", shopping:"shopBack", week:"weekBack", settings:"settingsBack", convert:"convertBack" };
+let currentScreen="home", backTrapOn=false, backSuppress=0;
+function openOverlayId(){
+  for(const id of BACK_OVERLAYS){ const el=$(id); if(el && !el.classList.contains("hidden")) return id; }
+  return null;
+}
+function canGoBack(){ return !!openOverlayId() || currentScreen==="recipes" || !!BACK_BTN[currentScreen]; }
+function syncBackTrap(){
+  const need=canGoBack();
+  if(need===backTrapOn) return;
+  try{
+    if(need){ history.pushState({miseBack:1},""); backTrapOn=true; }
+    else { backTrapOn=false; backSuppress++; history.back(); }   // on reprend notre entrée
+  }catch(e){ backTrapOn=need; }
+}
+function closeOverlayById(id){
+  if(id==="confirmSheet"){ closeConfirm(false); return; }
+  if(id==="addSheet"){ closeAddSheet(); return; }
+  const el=$(id); if(el) el.classList.add("hidden");
+}
+window.addEventListener("popstate", ()=>{
+  if(backSuppress>0){ backSuppress--; return; }   // retour déclenché par nous
+  backTrapOn=false;                               // l'entrée piège vient d'être consommée
+  const ov=openOverlayId();
+  if(ov) closeOverlayById(ov);
+  else if(currentScreen==="recipes"){ renderList(); show("home"); saveView("home"); }
+  else { const b=BACK_BTN[currentScreen]; if(b && $(b)) $(b).click(); }   // même comportement que le bouton retour de l'écran
+  syncBackTrap();
+});
 function show(id){
   ["auth","home","recipes","recipe","cook","settings","ideas","shopping","convert","week"].forEach(s=>$(s).classList.toggle("hidden", s!==id));
+  currentScreen=id;
   updateNav(id);
+  syncBackTrap();
 }
 // ---- navigation persistante ----
 // le bouton "+" est une ACTION (ouvre la sheet), jamais une destination : pas d'état actif, pas de saveView.
@@ -1373,6 +1411,7 @@ function openAddSheet(fromEl){
   addSheetReturnFocus = fromEl || document.activeElement;
   setError("");
   $("addSheet").classList.remove("hidden");
+  syncBackTrap();
   showAddPanel(null);
   setTimeout(()=>{ try{ $("methodLink").focus(); }catch(e){} },40);
   document.addEventListener("keydown", addSheetKeydown);
@@ -1380,6 +1419,7 @@ function openAddSheet(fromEl){
 function closeAddSheet(){
   if($("addSheet").classList.contains("hidden")) return;
   $("addSheet").classList.add("hidden");
+  syncBackTrap();
   document.removeEventListener("keydown", addSheetKeydown);
   if(addSheetReturnFocus && addSheetReturnFocus.focus){ try{ addSheetReturnFocus.focus(); }catch(e){} }
   addSheetReturnFocus=null;
@@ -1407,11 +1447,13 @@ function askConfirm(title, desc, okLabel, cb){
   $("confirmOk").textContent=okLabel;
   confirmCb=cb; confirmReturnFocus=document.activeElement;
   $("confirmSheet").classList.remove("hidden");
+  syncBackTrap();
   setTimeout(()=>{ try{ $("confirmCancel").focus(); }catch(e){} },40);
   document.addEventListener("keydown", confirmKeydown);
 }
 function closeConfirm(ok){
   $("confirmSheet").classList.add("hidden");
+  syncBackTrap();
   document.removeEventListener("keydown", confirmKeydown);
   if(confirmReturnFocus && confirmReturnFocus.focus){ try{ confirmReturnFocus.focus(); }catch(e){} }
   confirmReturnFocus=null;
@@ -2528,14 +2570,14 @@ function openCollSheet(){
   const nw=document.createElement("button"); nw.className="coll-chip"; nw.style.borderStyle="dashed"; nw.textContent=t("collNew");
   nw.addEventListener("click",()=>{ const name=(prompt(t("collPrompt"),"")||"").trim(); if(name) assignCollection(name); });
   wrap.appendChild(nw);
-  $("collSheet").classList.remove("hidden");
+  $("collSheet").classList.remove("hidden"); syncBackTrap();
 }
 async function assignCollection(name){
   if(!recipe) return;
   recipe.collection = name||null;
   // plus d'enregistrement implicite : le bouton n'ouvre les collections que si la recette est déjà enregistrée
   updateCollLabel();
-  $("collSheet").classList.add("hidden");
+  $("collSheet").classList.add("hidden"); syncBackTrap();
   await persistRecipeChange();
   renderList();
 }
@@ -2548,7 +2590,7 @@ $("collBtn").addEventListener("click", async ()=>{
   }
   openCollSheet();
 });
-$("collClose").addEventListener("click",()=>$("collSheet").classList.add("hidden"));
+$("collClose").addEventListener("click",()=>{ $("collSheet").classList.add("hidden"); syncBackTrap(); });
 
 // ---- mode cuisson ----
 $("cookBtn").addEventListener("click",()=>{ cookStep=0; show("cook"); renderCook(); });
@@ -2995,10 +3037,10 @@ function refreshLocks(){
 PREMIUM_LOCKED.forEach(id=>{
   const el=$(id); if(!el) return;
   el.addEventListener("click",(e)=>{
-    if(!isPremium()){ e.stopImmediatePropagation(); e.preventDefault(); $("premiumModal").classList.remove("hidden"); }
+    if(!isPremium()){ e.stopImmediatePropagation(); e.preventDefault(); $("premiumModal").classList.remove("hidden"); syncBackTrap(); }
   }, true);
 });
-$("premiumClose").addEventListener("click",()=>$("premiumModal").classList.add("hidden"));
+$("premiumClose").addEventListener("click",()=>{ $("premiumModal").classList.add("hidden"); syncBackTrap(); });
 $("premiumGoSettings").addEventListener("click",()=>{ $("premiumModal").classList.add("hidden"); show("settings"); window.scrollTo(0,0); });
 $("premiumRedeem").addEventListener("click", async ()=>{
   const code=$("premiumCode").value.trim(), msg=$("premiumMsg"), btn=$("premiumRedeem");
@@ -3171,10 +3213,10 @@ function renderAuthMode(){
 $("authForgot").addEventListener("click", ()=>{
   $("forgotEmail").value = ($("authEmail").value||"").trim();
   $("forgotMsg").classList.add("hidden");
-  $("forgotSheet").classList.remove("hidden");
+  $("forgotSheet").classList.remove("hidden"); syncBackTrap();
   setTimeout(()=>$("forgotEmail").focus(), 50);
 });
-$("forgotClose").addEventListener("click", ()=>$("forgotSheet").classList.add("hidden"));
+$("forgotClose").addEventListener("click", ()=>{ $("forgotSheet").classList.add("hidden"); syncBackTrap(); });
 $("forgotSend").addEventListener("click", async ()=>{
   const email=($("forgotEmail").value||"").trim().toLowerCase();
   const msg=$("forgotMsg");
@@ -3197,12 +3239,12 @@ $("resetSave").addEventListener("click", async ()=>{
   try{
     const { error } = await sb.auth.updateUser({ password: pw });
     if(error){ msg.textContent="Erreur, réessaie."; msg.classList.remove("hidden"); return; }
-    $("resetSheet").classList.add("hidden"); $("resetPw").value="";
+    $("resetSheet").classList.add("hidden"); syncBackTrap(); $("resetPw").value="";
     const { data } = await sb.auth.getSession();
     if(data && data.session){ await onSignedIn(data.session); }
   }catch(e){ msg.textContent="Erreur, réessaie."; msg.classList.remove("hidden"); }
 });
-if(sb){ sb.auth.onAuthStateChange((event)=>{ if(event==="PASSWORD_RECOVERY"){ $("resetSheet").classList.remove("hidden"); } }); }
+if(sb){ sb.auth.onAuthStateChange((event)=>{ if(event==="PASSWORD_RECOVERY"){ $("resetSheet").classList.remove("hidden"); syncBackTrap(); } }); }
 $("authSwitch").addEventListener("click",()=>{ authMode=authMode==="login"?"signup":"login"; renderAuthMode(); });
 document.querySelectorAll(".eye-btn").forEach(b=>{
   b.addEventListener("click",()=>{ const inp=$(b.dataset.target); if(!inp) return; const showing=inp.type==="password"; inp.type=showing?"text":"password"; b.style.opacity=showing?"1":".55"; });
@@ -3310,11 +3352,11 @@ $("installBtn").addEventListener("click", async ()=>{
     try{ await deferredPrompt.userChoice; }catch(e){}
     deferredPrompt=null; $("installBanner").classList.add("hidden");
   } else {
-    $("installSheet").classList.remove("hidden");   // iPhone / navigateurs sans prompt natif
+    $("installSheet").classList.remove("hidden"); syncBackTrap();   // iPhone / navigateurs sans prompt natif
   }
 });
 $("installClose").addEventListener("click",()=>{ try{ localStorage.setItem("mise_install_dismissed","1"); }catch(e){} $("installBanner").classList.add("hidden"); });
-$("installSheetClose").addEventListener("click",()=>$("installSheet").classList.add("hidden"));
+$("installSheetClose").addEventListener("click",()=>{ $("installSheet").classList.add("hidden"); syncBackTrap(); });
 function refreshNotifStatus(){
   const s=$("notifStatus"); if(!s) return;
   if(!("Notification" in window)){ s.textContent=t("notifUnsupported"); return; }
@@ -3368,7 +3410,20 @@ function checkPhotoParam(){
     if(p){ pendingPhotoId=p; history.replaceState(null,"",location.pathname); }
   }catch(e){}
 }
-// ---- reprise : mémoriser / restaurer la dernière vue ----
+/* ---- reprise : mémoriser / restaurer la dernière vue ----
+   On ne reprend l'écran précédent QUE si l'appli s'est interrompue toute seule
+   (plantage, onglet tué en plein écran) : un drapeau "en cours" est levé au
+   démarrage et baissé dès que l'appli passe en arrière-plan ou se ferme. S'il
+   est encore levé au lancement suivant, la session d'avant ne s'est pas
+   terminée proprement. Une fermeture normale redémarre donc sur l'accueil. */
+let crashedLastTime=false;
+try{
+  crashedLastTime = localStorage.getItem("mise_running")==="1";
+  localStorage.setItem("mise_running","1");
+}catch(e){}
+function markRunning(on){ try{ localStorage.setItem("mise_running", on?"1":"0"); }catch(e){} }
+window.addEventListener("pagehide", ()=>markRunning(false));
+document.addEventListener("visibilitychange", ()=>markRunning(document.visibilityState!=="hidden"));
 function saveView(screen){
   try{
     localStorage.setItem("mise_lastview", JSON.stringify({
@@ -3382,6 +3437,7 @@ function saveView(screen){
 function restoreLastView(){
   let v=null;
   try{ v=JSON.parse(localStorage.getItem("mise_lastview")||"null"); }catch(e){}
+  if(!crashedLastTime) return;                            // fermeture normale -> on démarre sur l'accueil
   if(!v || !v.recipeId) return;
   if(!v.ts || (Date.now()-v.ts) > 2*3600*1000) return;   // trop vieux (>2h) -> on reste à l'accueil
   const r=allCache.find(x=>x._id===v.recipeId);
