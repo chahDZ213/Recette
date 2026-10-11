@@ -590,6 +590,16 @@
     <div style="font-size:15px;font-weight:600;margin-bottom:4px">✨ mise. premium</div>
     <div id="premiumStatus" style="font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:12px"></div>
     <div id="premiumForm">
+      <!-- Accès immédiat + renonciation aux 14 jours : les deux cases sont
+           obligatoires avant de lancer le paiement, et sont horodatées. -->
+      <label for="consentAccess" style="display:flex;gap:10px;align-items:flex-start;font-size:13px;line-height:1.45;color:var(--ink);margin-bottom:10px;cursor:pointer">
+        <input type="checkbox" id="consentAccess" style="margin-top:2px;width:18px;height:18px;flex-shrink:0;accent-color:var(--accent)" />
+        <span id="consentAccessLbl">Je demande à profiter de mise. premium <b>immédiatement</b>, dès le paiement validé.</span>
+      </label>
+      <label for="consentWaiver" style="display:flex;gap:10px;align-items:flex-start;font-size:13px;line-height:1.45;color:var(--ink);margin-bottom:14px;cursor:pointer">
+        <input type="checkbox" id="consentWaiver" style="margin-top:2px;width:18px;height:18px;flex-shrink:0;accent-color:var(--accent)" />
+        <span id="consentWaiverLbl">Je comprends que je <b>perds mon droit de rétractation de 14 jours</b> une fois l'accès ouvert.</span>
+      </label>
       <button id="premiumBuy" class="press" style="width:100%;font-size:15px;font-weight:600;padding:13px;border-radius:12px;border:none;background:var(--accent);color:#fff">✨ Passer premium — 3,99 €/mois</button>
       <div id="premiumBuyMsg" class="hidden" style="font-size:13px;color:#B4544B;margin-top:8px"></div>
       <div id="premiumOr" style="font-size:12px;color:var(--muted);margin:10px 0 8px;text-align:center">— ou avec un code d'accès —</div>
@@ -598,6 +608,11 @@
         <button id="premiumRedeem" class="press" style="font-size:14px;font-weight:600;padding:11px 16px;border-radius:11px;border:none;background:var(--accent);color:#fff;flex-shrink:0">Activer</button>
       </div>
       <div id="premiumMsg" class="hidden" style="font-size:13px;color:#B4544B;margin-top:8px"></div>
+    </div>
+    <!-- Abonné : résiliation et changement de carte en autonomie (obligatoire). -->
+    <div id="premiumManage" class="hidden">
+      <button id="premiumPortal" class="press" style="width:100%;font-size:15px;font-weight:600;padding:13px;border-radius:12px;border:1.5px solid var(--line);background:transparent;color:var(--ink)">⚙️ Gérer ou résilier mon abonnement</button>
+      <div id="premiumPortalMsg" class="hidden" style="font-size:13px;color:#B4544B;margin-top:8px"></div>
     </div>
   </div>
 
@@ -3168,7 +3183,25 @@ function refreshLocks(){
     st.style.fontWeight = p ? "600" : "400";
   }
   if(fm) fm.classList.toggle("hidden", p);
+  const mg=$("premiumManage"); if(mg) mg.classList.toggle("hidden", !p);
 }
+// Portail Stripe : résiliation et changement de carte sans passer par le support.
+$("premiumPortal").addEventListener("click", async ()=>{
+  const btn=$("premiumPortal"), msg=$("premiumPortalMsg"), lbl=btn.textContent;
+  msg.classList.add("hidden");
+  btn.disabled=true; btn.textContent="Ouverture…";
+  try{
+    const r=await fetch(PAY_API+"/portal",{
+      method:"POST",
+      headers:Object.assign({"content-type":"application/json"}, await authHeader()),
+      body:JSON.stringify({ returnUrl:location.origin+location.pathname }),
+    });
+    const d=await r.json().catch(()=>({}));
+    if(r.ok && d.url){ location.href=d.url; return; }
+    msg.textContent=(d&&d.error)||"Le portail n'est pas disponible pour le moment."; msg.classList.remove("hidden");
+  }catch(e){ msg.textContent="Le portail n'est pas disponible pour le moment."; msg.classList.remove("hidden"); }
+  btn.disabled=false; btn.textContent=lbl;
+});
 PREMIUM_LOCKED.forEach(id=>{
   const el=$(id); if(!el) return;
   el.addEventListener("click",(e)=>{
@@ -3198,12 +3231,21 @@ $("premiumBuy").addEventListener("click", async ()=>{
   let jwt=null;
   if(sb){ try{ const { data }=await sb.auth.getSession(); jwt=data&&data.session&&data.session.access_token; }catch(e){} }
   if(!jwt){ toast(t("premiumNeedLogin")); showAuth(); return; }
+  const cA=$("consentAccess"), cW=$("consentWaiver");
+  if(!(cA && cA.checked && cW && cW.checked)){
+    msg.textContent="Coche les deux cases pour continuer."; msg.classList.remove("hidden");
+    (cA && !cA.checked ? cA : cW).focus();
+    return;
+  }
   btn.disabled=true; btn.textContent=t("payChecking");
   try{
     const r=await fetch(PAY_API+"/checkout",{
       method:"POST",
       headers:{"content-type":"application/json", authorization:"Bearer "+jwt},
-      body:JSON.stringify({app:"mise", plan:"premium_month", returnUrl:location.origin+location.pathname})
+      body:JSON.stringify({
+        app:"mise", plan:"premium_month", returnUrl:location.origin+location.pathname,
+        consents:{ immediateAccess:true, withdrawalWaiver:true },
+      })
     });
     const d=await r.json().catch(()=>({}));
     if(r.ok && d.url){ location.href=d.url; return; }   // → page Stripe hébergée
