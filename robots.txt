@@ -1,5 +1,6 @@
 User-agent: *
 Allow: /$
+Allow: /legal/
 Allow: /manifest.json
 Allow: /og-image.png
 
