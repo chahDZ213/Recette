@@ -15,6 +15,79 @@ const MODELE = (process.env.MISE_CLAUDE_MODEL || "").trim() || "claude-opus-5";
 const SUPADATA_KEY = process.env.SUPADATA_API_KEY;
 const YT_KEY = process.env.YOUTUBE_API_KEY; // optionnel
 
+/* ---------- Compte, premium et quotas ----------
+   Chaque appel coûte de l'argent (Claude, puis OpenAI pour la photo). Trois
+   garde-fous : il faut un compte, les fonctions payantes sont revérifiées
+   dans premium_users (le drapeau du navigateur ne décide de rien), et un
+   nombre d'appels par heure est plafonné. */
+const SB_URL = process.env.SUPABASE_URL || "https://hpejfttwocclmqdtdiok.supabase.co";
+const SB_ANON = process.env.SUPABASE_ANON_KEY || "sb_publishable_vXQvAJWpR0kKwQ-Fo9aWLw__0x3B7k5";
+
+// Plafonds par compte et par heure glissante.
+const LIMITS = { free: 20, premium: 120 };
+
+/* Compteur en mémoire de l'instance. Une fonction serverless est recyclée et
+   répliquée : ce plafond ne remplace pas un quota en base, mais il coupe net
+   le cas qui coûte vraiment cher — une boucle qui martèle l'endpoint, servie
+   par une instance déjà chaude. */
+const hits = new Map(); // userId -> number[] (horodatages)
+const WINDOW_MS = 3600_000;
+function rateLimited(userId, max) {
+  const now = Date.now();
+  const list = (hits.get(userId) || []).filter((t) => now - t < WINDOW_MS);
+  if (list.length >= max) { hits.set(userId, list); return true; }
+  list.push(now);
+  hits.set(userId, list);
+  if (hits.size > 5000) { for (const k of hits.keys()) { hits.delete(k); if (hits.size <= 2500) break; } }
+  return false;
+}
+
+async function supabaseUserId(req) {
+  const jwt = (req.headers.authorization || "").replace(/^Bearer\s+/i, "");
+  if (!jwt) return null;
+  try {
+    const u = await fetch(SB_URL + "/auth/v1/user", {
+      headers: { apikey: SB_ANON, authorization: "Bearer " + jwt },
+    });
+    if (!u.ok) return null;
+    return (await u.json()).id || null;
+  } catch { return null; }
+}
+
+// Lecture de premium_users avec la clé service_role : c'est la seule source
+// de vérité. Sans clé configurée on renvoie null = « on ne sait pas ».
+async function isPremiumUser(userId) {
+  const svc = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+  if (!svc || !userId) return null;
+  try {
+    const r = await fetch(
+      `${SB_URL}/rest/v1/premium_users?user_id=eq.${encodeURIComponent(userId)}&select=active`,
+      { headers: { apikey: svc, authorization: "Bearer " + svc } }
+    );
+    if (!r.ok) return null;
+    const rows = await r.json();
+    return Array.isArray(rows) && rows.length > 0 && rows[0].active === true;
+  } catch { return null; }
+}
+
+// Active le premium d'un compte (code cadeau) côté serveur, pour qu'il survive
+// au changement d'appareil et passe les vérifications ci-dessus.
+async function grantPremium(userId, plan) {
+  const svc = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+  if (!svc || !userId) return false;
+  try {
+    const r = await fetch(SB_URL + "/rest/v1/premium_users?on_conflict=user_id", {
+      method: "POST",
+      headers: {
+        apikey: svc, authorization: "Bearer " + svc,
+        "content-type": "application/json", prefer: "resolution=merge-duplicates",
+      },
+      body: JSON.stringify({ user_id: userId, active: true, plan, updated_at: new Date().toISOString() }),
+    });
+    return r.ok;
+  } catch { return false; }
+}
+
 const INSTRUCTIONS = `Tu renvoies UNIQUEMENT un objet JSON, sans aucun texte autour, sans backticks. Format exact :
 {
   "found": true,
@@ -332,6 +405,36 @@ export default async function handler(req, res) {
       return res.status(200).json({ found: false, error: "Image trop lourde (max ~8 Mo)." });
     }
 
+    /* ---- compte requis, premium vérifié, quota horaire ----
+       Tout ce qui suit appelle un modèle payant. On exige donc un compte
+       (un script anonyme ne peut plus faire tourner la facture), on
+       revérifie le premium côté serveur pour les fonctions payantes, et on
+       plafonne le nombre d'appels par heure. */
+    const userId = await supabaseUserId(req);
+    if (!userId) {
+      return res.status(401).json({ found: false, error: "Connecte-toi pour utiliser cette fonction." });
+    }
+    const premium = await isPremiumUser(userId);
+
+    // Code cadeau : validé puis enregistré côté serveur, pour qu'il suive le compte.
+    if (body.redeemCode && typeof body.redeemCode === "string") {
+      const codes = (process.env.PREMIUM_CODES || "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+      const ok = codes.includes(body.redeemCode.trim().toLowerCase());
+      if (ok) await grantPremium(userId, "code");
+      return res.status(200).json({ premiumOk: ok });
+    }
+
+    // Fonctions réservées au premium. premium === null = clé service_role
+    // absente : on ne bloque pas sur une configuration incomplète.
+    const wantsPremium = !!(body.ideas || body.fridge || body.create);
+    if (wantsPremium && premium === false) {
+      return res.status(402).json({ found: false, ideas: [], ingredients: "", error: "Cette fonction fait partie de mise. premium." });
+    }
+
+    if (rateLimited(userId, premium ? LIMITS.premium : LIMITS.free)) {
+      return res.status(429).json({ found: false, ideas: [], ingredients: "", error: "Trop de demandes d'affilée. Réessaie dans quelques minutes." });
+    }
+
     // 0.2) Traduction d'une recette existante vers la langue de l'app
     if (body.translate && body.recipe && typeof body.recipe === "object") {
       try {
@@ -372,12 +475,7 @@ Exactement 4 idées, variées.`;
       }
     }
 
-    // 0.4) Activation d'un code premium (codes dans PREMIUM_CODES, séparés par des virgules)
-    if (body.redeemCode && typeof body.redeemCode === "string") {
-      const codes = (process.env.PREMIUM_CODES || "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
-      const ok = codes.includes(body.redeemCode.trim().toLowerCase());
-      return res.status(200).json({ premiumOk: ok });
-    }
+    // 0.4) Le code premium est traité plus haut (il exige un compte et s'enregistre en base).
 
     // 0.5) Photo de frigo/placard -> liste d'ingrédients (pour l'écran Idées)
     if (body.fridge && typeof body.fridge === "string" && body.fridge.startsWith("data:image")) {

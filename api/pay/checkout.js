@@ -27,7 +27,28 @@ export default async function handler(req, res) {
   const fallback = (process.env.PUBLIC_BASE_URL || "https://recette-xi.vercel.app").replace(/\/$/, "") + "/";
   const returnUrl = safeReturnUrl(body.returnUrl, fallback);
 
-  const metadata = { app, plan, ...(userId ? { userId } : {}) };
+  /* Consentements obligatoires avant un abonnement à accès immédiat (UK
+     Consumer Contracts Regulations 2013) : la personne demande à en profiter
+     tout de suite ET renonce par là même à ses 14 jours de rétractation.
+     Sans les deux, pas de session. Ils sont horodatés et rangés dans les
+     métadonnées Stripe, qui les conserve et les rend exportables : c'est la
+     preuve à produire en cas de contestation de paiement. */
+  const c = body.consents || {};
+  const consentRequired = product.mode === "subscription" || product.mode === "payment";
+  if (consentRequired && !(c.immediateAccess === true && c.withdrawalWaiver === true)) {
+    return res.status(400).json({ error: "Les deux cases doivent être cochées pour continuer." });
+  }
+  const consentAt = new Date().toISOString();
+
+  const metadata = {
+    app, plan,
+    ...(userId ? { userId } : {}),
+    ...(consentRequired ? {
+      consent_immediate_access: "true",
+      consent_withdrawal_waiver: "true",
+      consent_at: consentAt,
+    } : {}),
+  };
   const priceData = {
     currency: product.currency,
     unit_amount: product.amount,
@@ -48,6 +69,11 @@ export default async function handler(req, res) {
       // Recopie les métadonnées sur l'abonnement : permet au webhook de retrouver
       // l'utilisateur lors d'une résiliation (customer.subscription.deleted).
       ...(product.mode === "subscription" ? { subscription_data: { metadata } } : {}),
+    }, {
+      /* Clé d'idempotence : un double-clic ou un renvoi réseau ne doit pas
+         créer deux sessions de paiement. Même minute + même compte + même
+         produit = Stripe renvoie la session déjà créée. */
+      idempotencyKey: ["co", app, plan, userId || "anon", consentAt.slice(0, 16)].join(":"),
     });
     return res.status(200).json({ url: session.url, sessionId: session.id });
   } catch (e) {

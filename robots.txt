@@ -1,0 +1,20 @@
+User-agent: *
+Allow: /$
+Allow: /legal/
+Allow: /manifest.json
+Allow: /og-image.png
+
+# Espaces privés ou outils internes : pas d'indexation.
+Disallow: /api/
+Disallow: /print/
+Disallow: /budget/
+Disallow: /qcm/
+Disallow: /calforge/
+Disallow: /pay-retour.html
+
+# Les liens de partage de recette portent un identifiant : rien à indexer.
+Disallow: /?r=
+Disallow: /?photo=
+Disallow: /?creer=
+
+Sitemap: https://recette-xi.vercel.app/sitemap.xml

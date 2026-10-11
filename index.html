@@ -3,16 +3,62 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>mise.</title>
+<title>mise. — la recette, sans le bouton pause</title>
+<meta name="description" content="Importe une recette depuis une vidéo ou un lien, ajuste les portions d'un geste et cuisine en mains libres : étapes lues à voix haute, minuteurs intégrés, liste de courses automatique." />
+<link rel="canonical" href="https://recette-xi.vercel.app/" />
 <link rel="manifest" href="/manifest.json" />
 <script defer src="/_vercel/insights/script.js"></script>
-<meta name="theme-color" content="#E9DFCC" />
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#E9DFCC" />
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1C1614" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="mise." />
+<link rel="icon" href="/icon-192.png" sizes="192x192" type="image/png" />
+<link rel="icon" href="/icon-512.png" sizes="512x512" type="image/png" />
 <link rel="apple-touch-icon" href="/icon-192.png" />
+<!-- aperçu des liens partagés (WhatsApp, iMessage, LinkedIn…) -->
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="mise." />
+<meta property="og:url" content="https://recette-xi.vercel.app/" />
+<meta property="og:title" content="mise. — la recette, sans le bouton pause" />
+<meta property="og:description" content="Importe une recette depuis une vidéo ou un lien, ajuste les portions d'un geste et cuisine en mains libres." />
+<meta property="og:image" content="https://recette-xi.vercel.app/og-image.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="mise. — la recette, sans le bouton pause" />
+<meta property="og:locale" content="fr_FR" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="mise. — la recette, sans le bouton pause" />
+<meta name="twitter:description" content="Importe une recette depuis une vidéo ou un lien, ajuste les portions d'un geste et cuisine en mains libres." />
+<meta name="twitter:image" content="https://recette-xi.vercel.app/og-image.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://recette-xi.vercel.app/#org",
+      "name": "montappli",
+      "legalName": "Chahine Meftout trading as montappli",
+      "url": "https://recette-xi.vercel.app/"
+    },
+    {
+      "@type": "SoftwareApplication",
+      "name": "mise.",
+      "applicationCategory": "LifestyleApplication",
+      "operatingSystem": "Web, iOS, Android",
+      "url": "https://recette-xi.vercel.app/",
+      "description": "Importe une recette depuis une vidéo ou un lien, ajuste les portions et cuisine en mains libres.",
+      "inLanguage": ["fr", "en"],
+      "publisher": { "@id": "https://recette-xi.vercel.app/#org" }
+    }
+  ]
+}
+</script>
 <style>
   /* ---- thème CLAIR (beige) ---- */
   :root{
@@ -283,6 +329,9 @@
   <p id="authError" class="hidden rise" style="font-size:14px;color:var(--accent);margin-top:14px;line-height:1.5"></p>
   <p id="authForgot" class="hidden" style="margin-top:16px;font-size:14px;color:var(--muted);cursor:pointer;text-decoration:underline">Mot de passe oublié ?</p>
   <p id="authSwitch" style="margin-top:24px;font-size:15px;color:var(--muted);cursor:pointer">Déjà un compte ? <b style="color:var(--ink)">Se connecter</b></p>
+  <p id="authLegal" style="margin-top:22px;font-size:12.5px;color:var(--muted);line-height:1.5">
+    En créant un compte, tu acceptes les <a href="/legal/#cgu" style="color:var(--accent)">conditions générales</a> et la <a href="/legal/#confidentialite" style="color:var(--accent)">politique de confidentialité</a>. Il faut avoir 16 ans révolus.
+  </p>
 </section>
 
 <!-- ACCUEIL -->
@@ -544,6 +593,16 @@
     <div style="font-size:15px;font-weight:600;margin-bottom:4px">✨ mise. premium</div>
     <div id="premiumStatus" style="font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:12px"></div>
     <div id="premiumForm">
+      <!-- Accès immédiat + renonciation aux 14 jours : les deux cases sont
+           obligatoires avant de lancer le paiement, et sont horodatées. -->
+      <label for="consentAccess" style="display:flex;gap:10px;align-items:flex-start;font-size:13px;line-height:1.45;color:var(--ink);margin-bottom:10px;cursor:pointer">
+        <input type="checkbox" id="consentAccess" style="margin-top:2px;width:18px;height:18px;flex-shrink:0;accent-color:var(--accent)" />
+        <span id="consentAccessLbl">Je demande à profiter de mise. premium <b>immédiatement</b>, dès le paiement validé.</span>
+      </label>
+      <label for="consentWaiver" style="display:flex;gap:10px;align-items:flex-start;font-size:13px;line-height:1.45;color:var(--ink);margin-bottom:14px;cursor:pointer">
+        <input type="checkbox" id="consentWaiver" style="margin-top:2px;width:18px;height:18px;flex-shrink:0;accent-color:var(--accent)" />
+        <span id="consentWaiverLbl">Je comprends que je <b>perds mon droit de rétractation de 14 jours</b> une fois l'accès ouvert.</span>
+      </label>
       <button id="premiumBuy" class="press" style="width:100%;font-size:15px;font-weight:600;padding:13px;border-radius:12px;border:none;background:var(--accent);color:#fff">✨ Passer premium — 3,99 €/mois</button>
       <div id="premiumBuyMsg" class="hidden" style="font-size:13px;color:#B4544B;margin-top:8px"></div>
       <div id="premiumOr" style="font-size:12px;color:var(--muted);margin:10px 0 8px;text-align:center">— ou avec un code d'accès —</div>
@@ -553,13 +612,37 @@
       </div>
       <div id="premiumMsg" class="hidden" style="font-size:13px;color:#B4544B;margin-top:8px"></div>
     </div>
+    <!-- Abonné : résiliation et changement de carte en autonomie (obligatoire). -->
+    <div id="premiumManage" class="hidden">
+      <button id="premiumPortal" class="press" style="width:100%;font-size:15px;font-weight:600;padding:13px;border-radius:12px;border:1.5px solid var(--line);background:transparent;color:var(--ink)">⚙️ Gérer ou résilier mon abonnement</button>
+      <div id="premiumPortalMsg" class="hidden" style="font-size:13px;color:#B4544B;margin-top:8px"></div>
+    </div>
   </div>
 
   <button id="shareAppBtn" class="press" style="width:100%;text-align:left;font-size:15px;font-weight:600;padding:15px;border-radius:12px;border:none;background:var(--accent);color:#fff;margin-bottom:16px">📲 Partager mise. à un ami</button>
 
   <button id="convertBtn" class="press" style="width:100%;text-align:left;font-size:15px;font-weight:600;padding:15px;border-radius:12px;border:1.5px solid var(--line);background:transparent;color:var(--ink);margin-bottom:16px">🥄 Cuisiner sans balance</button>
 
-  <button id="logoutBtn" class="press" style="width:100%;font-size:16px;font-weight:600;padding:15px;border-radius:12px;border:1.5px solid var(--line);background:transparent;color:var(--ink)">Se déconnecter / changer de compte</button>
+  <button id="logoutBtn" class="press" style="width:100%;font-size:16px;font-weight:600;padding:15px;border-radius:12px;border:1.5px solid var(--line);background:transparent;color:var(--ink);margin-bottom:24px">Se déconnecter / changer de compte</button>
+
+  <div class="card" style="border:1.5px solid var(--line);border-radius:14px;padding:16px;margin-bottom:16px">
+    <div id="dataCardTitle" class="mono" style="font-size:15px;font-weight:700;margin-bottom:4px">Mes données</div>
+    <div id="dataCardDesc" style="font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:14px">Récupère une copie de tout ce que mise. conserve sur toi, ou efface ton compte définitivement.</div>
+    <button id="exportDataBtn" class="press" style="width:100%;text-align:left;font-size:15px;font-weight:600;padding:14px;border-radius:12px;border:1.5px solid var(--line);background:transparent;color:var(--ink);margin-bottom:10px">⬇️ Exporter mes données</button>
+    <button id="deleteAccountBtn" class="press" style="width:100%;text-align:left;font-size:15px;font-weight:600;padding:14px;border-radius:12px;border:1.5px solid #C0492F;background:transparent;color:#C0492F">🗑️ Supprimer mon compte</button>
+    <div id="dataMsg" role="status" aria-live="polite" class="hidden" style="font-size:13px;color:var(--muted);margin-top:12px;line-height:1.5"></div>
+  </div>
+
+  <p id="legalLinks" style="font-size:13px;color:var(--muted);line-height:1.8;text-align:center;margin-bottom:10px">
+    <a href="/legal/#cgu" style="color:var(--muted)">Conditions générales</a> ·
+    <a href="/legal/#confidentialite" style="color:var(--muted)">Confidentialité</a> ·
+    <a href="/legal/#cookies" style="color:var(--muted)">Cookies</a> ·
+    <a href="/legal/#retractation" style="color:var(--muted)">Remboursement</a><br>
+    <a href="/legal/#mentions" style="color:var(--muted)">Mentions légales</a> ·
+    <a href="/legal/#reclamations" style="color:var(--muted)">Réclamations</a> ·
+    <a href="/legal/#accessibilite" style="color:var(--muted)">Accessibilité</a>
+  </p>
+  <p id="copyright" style="font-size:12px;color:var(--muted);text-align:center;opacity:.8">© <span id="copyYear">2026</span> Chahine Meftout trading as montappli</p>
 </section>
 
 <!-- RECETTE -->
@@ -1292,13 +1375,28 @@ const STR={
 };
 function t(k){ const L=STR[curLang]||STR.fr; return (L[k]!=null)?L[k]:STR.fr[k]; }
 function catName(c){ const m=t("cats"); return (m&&m[c])||c; }
+// Jeton de session Supabase : le serveur s'en sert pour identifier le compte,
+// appliquer les quotas et vérifier le premium sur les fonctions payantes.
+async function authHeader(){
+  try{
+    if(!sb) return {};
+    const { data }=await sb.auth.getSession();
+    const tok=data && data.session && data.session.access_token;
+    return tok ? { authorization:"Bearer "+tok } : {};
+  }catch(e){ return {}; }
+}
 async function callBackend(payload){
   try{ payload.lang=curLang; }catch(e){}
   // timeout : évite un overlay bloqué indéfiniment si le serveur ne répond jamais
   const ctrl=new AbortController();
   const to=setTimeout(()=>ctrl.abort(), 75000);
   try{
-    const r=await fetch(BACKEND_URL,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(payload),signal:ctrl.signal});
+    const r=await fetch(BACKEND_URL,{
+      method:"POST",
+      headers:Object.assign({"content-type":"application/json"}, await authHeader()),
+      body:JSON.stringify(payload),
+      signal:ctrl.signal,
+    });
     return await r.json();
   } finally { clearTimeout(to); }
 }
@@ -1639,7 +1737,7 @@ $("createBtn").addEventListener("click", async ()=>{
   const demande="Crée une recette de cuisine complète, réaliste et savoureuse à partir de cette demande. Invente un titre approprié, donne des ingrédients avec des quantités et des étapes claires. Demande de l'utilisateur :\n\n"+d;
   $("createBtn").disabled=true; const lbl=$("createBtn").textContent; $("createBtn").textContent="Création…"; showLoadOverlay(true, CREATE_STEPS);
   try{
-    const r=await callBackend({text:demande});
+    const r=await callBackend({text:demande, create:true});   // create:true -> fonction premium, revérifiée côté serveur
     if(!r.found) setError(r.error||"Je n'ai pas réussi à créer cette recette. Reformule ta demande.");
     else { await addToHistory(r); loadRecipe(r); generatePhotoFor(r); $("createText").value=""; }
   }catch(e){ setError("Le serveur n'a pas répondu."); }
@@ -1959,6 +2057,68 @@ function renderConv(){
   b.innerHTML=CONV.map(r=>`<tr style="border-top:1px solid var(--line)"><td style="padding:10px 6px;font-weight:500">${r[0]}</td><td style="padding:10px 6px;text-align:center;color:var(--muted)">${r[1]}</td><td style="padding:10px 6px;text-align:center;color:var(--muted)">${r[2]}</td><td style="padding:10px 6px;text-align:center;color:var(--muted)">${r[3]}</td></tr>`).join("");
   b.dataset.done="1";
 }
+/* ---- droits RGPD : portabilité et effacement ----
+   L'export rassemble ce qui est dans le compte (recettes, partages) ET ce qui
+   ne vit que sur l'appareil (courses, planning, collections, préférences) :
+   une copie partielle ne vaudrait rien. */
+function dataMsg(txt){ const el=$("dataMsg"); if(!el) return; if(!txt){ el.classList.add("hidden"); return; } el.textContent=txt; el.classList.remove("hidden"); }
+$("exportDataBtn").addEventListener("click", async ()=>{
+  const btn=$("exportDataBtn"), lbl=btn.textContent;
+  btn.disabled=true; btn.textContent="Préparation…"; dataMsg("");
+  try{
+    const local={};
+    try{ for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k && k.indexOf("mise_")===0 && k!=="mise_premium") local[k]=localStorage.getItem(k); } }catch(e){}
+    let recipes=[], shares=[];
+    if(sb && currentUserId){
+      try{ const r=await sb.from("recipes").select("*").eq("user_id",currentUserId); recipes=r.data||[]; }catch(e){}
+      try{ const s=await sb.from("shares").select("*").eq("user_id",currentUserId); shares=s.data||[]; }catch(e){}
+    }
+    const dump={
+      exporte_le:new Date().toISOString(),
+      application:"mise.",
+      compte:{ email:currentUser||null, identifiant:currentUserId||null },
+      recettes:recipes,
+      partages:shares,
+      donnees_de_l_appareil:local,
+      note:"Les photos de plats sont des fichiers hébergés : leurs adresses figurent dans chaque recette.",
+    };
+    const blob=new Blob([JSON.stringify(dump,null,2)],{type:"application/json"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url; a.download="mes-donnees-mise-"+new Date().toISOString().slice(0,10)+".json";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>{ try{ URL.revokeObjectURL(url); }catch(e){} }, 4000);
+    dataMsg("Export téléchargé : "+recipes.length+" recette(s) et tes réglages.");
+  }catch(e){ dataMsg("L'export a échoué. Réessaie."); }
+  btn.disabled=false; btn.textContent=lbl;
+});
+$("deleteAccountBtn").addEventListener("click", ()=>{
+  askConfirm(
+    "Supprimer ton compte ?",
+    "Tes recettes, tes photos et ton compte seront effacés définitivement. Cette action est irréversible — pense à exporter tes données avant.",
+    "Supprimer",
+    async ()=>{
+      const btn=$("deleteAccountBtn"), lbl=btn.textContent;
+      btn.disabled=true; btn.textContent="Suppression…"; dataMsg("");
+      try{
+        const r=await fetch("/api/account",{
+          method:"POST",
+          headers:Object.assign({"content-type":"application/json"}, await authHeader()),
+          body:JSON.stringify({action:"delete"}),
+        });
+        const d=await r.json().catch(()=>({}));
+        if(r.ok && d.deleted){
+          try{ Object.keys(localStorage).filter(k=>k.indexOf("mise_")===0).forEach(k=>localStorage.removeItem(k)); }catch(e){}
+          try{ if(sb) await sb.auth.signOut(); }catch(e){}
+          location.replace("/");
+          return;
+        }
+        dataMsg(d.error||"La suppression a échoué. Réessaie.");
+      }catch(e){ dataMsg("La suppression a échoué. Réessaie."); }
+      btn.disabled=false; btn.textContent=lbl;
+    }
+  );
+});
 $("convertBtn").addEventListener("click", ()=>{ renderConv(); show("convert"); window.scrollTo(0,0); });
 $("convertBack").addEventListener("click", ()=>show("settings"));
 $("shareAppBtn").addEventListener("click", async ()=>{
@@ -2677,8 +2837,12 @@ let ttsAudio=null, ttsSeq=0;
 const ttsCache=new Map();   // texte -> URL d'objet audio (petites étapes, ~24 entrées max)
 async function fetchTtsUrl(text){
   if(ttsCache.has(text)) return ttsCache.get(text);
-  const r=await fetch("/api/tts",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({text,lang:curLang})});
-  if(r.status===501){ ttsAvailable=false; return null; }
+  const r=await fetch("/api/tts",{
+    method:"POST",
+    headers:Object.assign({"content-type":"application/json"}, await authHeader()),
+    body:JSON.stringify({text,lang:curLang}),
+  });
+  if(r.status===501 || r.status===401){ ttsAvailable=false; return null; }   // non configuré ou hors session : voix du navigateur
   if(!r.ok) throw new Error("tts "+r.status);
   const u=URL.createObjectURL(await r.blob());
   if(ttsCache.size>24){ const k=ttsCache.keys().next().value; try{ URL.revokeObjectURL(ttsCache.get(k)); }catch(e){} ttsCache.delete(k); }
@@ -3018,6 +3182,9 @@ $("resetTheme").addEventListener("click",()=>{
 // ---- mise. premium ----
 function isPremium(){ try{ return localStorage.getItem("mise_premium")==="1"; }catch(e){ return false; } }
 const PREMIUM_LOCKED=["ideasOpen","photoIdea","createToggle"];
+// L'année du copyright se met à jour seule : figée, elle fait paraître
+// l'application abandonnée dès le 1er janvier.
+try{ const cy=$("copyYear"); if(cy) cy.textContent=new Date().getFullYear(); }catch(e){}
 function refreshLocks(){
   const p=isPremium();
   PREMIUM_LOCKED.forEach(id=>{
@@ -3033,7 +3200,25 @@ function refreshLocks(){
     st.style.fontWeight = p ? "600" : "400";
   }
   if(fm) fm.classList.toggle("hidden", p);
+  const mg=$("premiumManage"); if(mg) mg.classList.toggle("hidden", !p);
 }
+// Portail Stripe : résiliation et changement de carte sans passer par le support.
+$("premiumPortal").addEventListener("click", async ()=>{
+  const btn=$("premiumPortal"), msg=$("premiumPortalMsg"), lbl=btn.textContent;
+  msg.classList.add("hidden");
+  btn.disabled=true; btn.textContent="Ouverture…";
+  try{
+    const r=await fetch(PAY_API+"/portal",{
+      method:"POST",
+      headers:Object.assign({"content-type":"application/json"}, await authHeader()),
+      body:JSON.stringify({ returnUrl:location.origin+location.pathname }),
+    });
+    const d=await r.json().catch(()=>({}));
+    if(r.ok && d.url){ location.href=d.url; return; }
+    msg.textContent=(d&&d.error)||"Le portail n'est pas disponible pour le moment."; msg.classList.remove("hidden");
+  }catch(e){ msg.textContent="Le portail n'est pas disponible pour le moment."; msg.classList.remove("hidden"); }
+  btn.disabled=false; btn.textContent=lbl;
+});
 PREMIUM_LOCKED.forEach(id=>{
   const el=$(id); if(!el) return;
   el.addEventListener("click",(e)=>{
@@ -3063,12 +3248,21 @@ $("premiumBuy").addEventListener("click", async ()=>{
   let jwt=null;
   if(sb){ try{ const { data }=await sb.auth.getSession(); jwt=data&&data.session&&data.session.access_token; }catch(e){} }
   if(!jwt){ toast(t("premiumNeedLogin")); showAuth(); return; }
+  const cA=$("consentAccess"), cW=$("consentWaiver");
+  if(!(cA && cA.checked && cW && cW.checked)){
+    msg.textContent="Coche les deux cases pour continuer."; msg.classList.remove("hidden");
+    (cA && !cA.checked ? cA : cW).focus();
+    return;
+  }
   btn.disabled=true; btn.textContent=t("payChecking");
   try{
     const r=await fetch(PAY_API+"/checkout",{
       method:"POST",
       headers:{"content-type":"application/json", authorization:"Bearer "+jwt},
-      body:JSON.stringify({app:"mise", plan:"premium_month", returnUrl:location.origin+location.pathname})
+      body:JSON.stringify({
+        app:"mise", plan:"premium_month", returnUrl:location.origin+location.pathname,
+        consents:{ immediateAccess:true, withdrawalWaiver:true },
+      })
     });
     const d=await r.json().catch(()=>({}));
     if(r.ok && d.url){ location.href=d.url; return; }   // → page Stripe hébergée
@@ -3095,18 +3289,31 @@ async function handlePayReturn(){
     else toast(t("payNotPaid"));
   }catch(e){ toast(t("payNotPaid")); }
 }
-// À la connexion : si le compte est premium côté serveur (table premium_users, RLS lecture
-// de sa propre ligne), on synchronise l'appareil. Un premium par code reste local (jamais écrasé).
+/* À la connexion, le serveur fait foi : la table premium_users décide, et le
+   drapeau local n'est qu'un cache. On le RETIRE aussi quand le compte n'est
+   pas premium — sinon il suffisait d'écrire mise_premium=1 dans la console
+   pour débloquer les fonctions payantes. Les fonctions payantes sont de toute
+   façon revérifiées côté serveur à chaque appel : ce cache ne sert plus qu'à
+   afficher les cadenas au bon endroit. */
 async function syncPremiumFromCloud(){
   if(!sb || !currentUserId) return;
   try{
-    const { data }=await sb.from("premium_users").select("active").eq("user_id",currentUserId).maybeSingle();
-    if(data && data.active){ try{ localStorage.setItem("mise_premium","1"); }catch(e){} refreshLocks(); }
+    const { data, error }=await sb.from("premium_users").select("active").eq("user_id",currentUserId).maybeSingle();
+    if(error) return;                       // réseau ou RLS : on ne touche à rien
+    const active=!!(data && data.active);
+    try{
+      if(active) localStorage.setItem("mise_premium","1");
+      else localStorage.removeItem("mise_premium");
+    }catch(e){}
+    refreshLocks();
   }catch(e){}
 }
 
 // ---- langue (i18n) — application (étapes 1 & 2) ----
 function applyLang(){
+  // l'attribut lang du document suit la langue choisie : les lecteurs d'écran
+  // et la synthèse vocale changent de voix avec elle.
+  try{ document.documentElement.lang = (curLang==="en") ? "en" : "fr"; }catch(e){}
   const set=(id,key,html)=>{ const el=$(id); if(!el) return; if(html) el.innerHTML=t(key); else el.textContent=t(key); };
   // accueil (étape 1)
   set("heroTitle","heroTitle",true);
