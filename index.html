@@ -605,7 +605,15 @@
 
   <button id="convertBtn" class="press" style="width:100%;text-align:left;font-size:15px;font-weight:600;padding:15px;border-radius:12px;border:1.5px solid var(--line);background:transparent;color:var(--ink);margin-bottom:16px">🥄 Cuisiner sans balance</button>
 
-  <button id="logoutBtn" class="press" style="width:100%;font-size:16px;font-weight:600;padding:15px;border-radius:12px;border:1.5px solid var(--line);background:transparent;color:var(--ink)">Se déconnecter / changer de compte</button>
+  <button id="logoutBtn" class="press" style="width:100%;font-size:16px;font-weight:600;padding:15px;border-radius:12px;border:1.5px solid var(--line);background:transparent;color:var(--ink);margin-bottom:24px">Se déconnecter / changer de compte</button>
+
+  <div class="card" style="border:1.5px solid var(--line);border-radius:14px;padding:16px;margin-bottom:16px">
+    <div id="dataCardTitle" class="mono" style="font-size:15px;font-weight:700;margin-bottom:4px">Mes données</div>
+    <div id="dataCardDesc" style="font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:14px">Récupère une copie de tout ce que mise. conserve sur toi, ou efface ton compte définitivement.</div>
+    <button id="exportDataBtn" class="press" style="width:100%;text-align:left;font-size:15px;font-weight:600;padding:14px;border-radius:12px;border:1.5px solid var(--line);background:transparent;color:var(--ink);margin-bottom:10px">⬇️ Exporter mes données</button>
+    <button id="deleteAccountBtn" class="press" style="width:100%;text-align:left;font-size:15px;font-weight:600;padding:14px;border-radius:12px;border:1.5px solid #C0492F;background:transparent;color:#C0492F">🗑️ Supprimer mon compte</button>
+    <div id="dataMsg" role="status" aria-live="polite" class="hidden" style="font-size:13px;color:var(--muted);margin-top:12px;line-height:1.5"></div>
+  </div>
 </section>
 
 <!-- RECETTE -->
@@ -2020,6 +2028,68 @@ function renderConv(){
   b.innerHTML=CONV.map(r=>`<tr style="border-top:1px solid var(--line)"><td style="padding:10px 6px;font-weight:500">${r[0]}</td><td style="padding:10px 6px;text-align:center;color:var(--muted)">${r[1]}</td><td style="padding:10px 6px;text-align:center;color:var(--muted)">${r[2]}</td><td style="padding:10px 6px;text-align:center;color:var(--muted)">${r[3]}</td></tr>`).join("");
   b.dataset.done="1";
 }
+/* ---- droits RGPD : portabilité et effacement ----
+   L'export rassemble ce qui est dans le compte (recettes, partages) ET ce qui
+   ne vit que sur l'appareil (courses, planning, collections, préférences) :
+   une copie partielle ne vaudrait rien. */
+function dataMsg(txt){ const el=$("dataMsg"); if(!el) return; if(!txt){ el.classList.add("hidden"); return; } el.textContent=txt; el.classList.remove("hidden"); }
+$("exportDataBtn").addEventListener("click", async ()=>{
+  const btn=$("exportDataBtn"), lbl=btn.textContent;
+  btn.disabled=true; btn.textContent="Préparation…"; dataMsg("");
+  try{
+    const local={};
+    try{ for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k && k.indexOf("mise_")===0 && k!=="mise_premium") local[k]=localStorage.getItem(k); } }catch(e){}
+    let recipes=[], shares=[];
+    if(sb && currentUserId){
+      try{ const r=await sb.from("recipes").select("*").eq("user_id",currentUserId); recipes=r.data||[]; }catch(e){}
+      try{ const s=await sb.from("shares").select("*").eq("user_id",currentUserId); shares=s.data||[]; }catch(e){}
+    }
+    const dump={
+      exporte_le:new Date().toISOString(),
+      application:"mise.",
+      compte:{ email:currentUser||null, identifiant:currentUserId||null },
+      recettes:recipes,
+      partages:shares,
+      donnees_de_l_appareil:local,
+      note:"Les photos de plats sont des fichiers hébergés : leurs adresses figurent dans chaque recette.",
+    };
+    const blob=new Blob([JSON.stringify(dump,null,2)],{type:"application/json"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url; a.download="mes-donnees-mise-"+new Date().toISOString().slice(0,10)+".json";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>{ try{ URL.revokeObjectURL(url); }catch(e){} }, 4000);
+    dataMsg("Export téléchargé : "+recipes.length+" recette(s) et tes réglages.");
+  }catch(e){ dataMsg("L'export a échoué. Réessaie."); }
+  btn.disabled=false; btn.textContent=lbl;
+});
+$("deleteAccountBtn").addEventListener("click", ()=>{
+  askConfirm(
+    "Supprimer ton compte ?",
+    "Tes recettes, tes photos et ton compte seront effacés définitivement. Cette action est irréversible — pense à exporter tes données avant.",
+    "Supprimer",
+    async ()=>{
+      const btn=$("deleteAccountBtn"), lbl=btn.textContent;
+      btn.disabled=true; btn.textContent="Suppression…"; dataMsg("");
+      try{
+        const r=await fetch("/api/account",{
+          method:"POST",
+          headers:Object.assign({"content-type":"application/json"}, await authHeader()),
+          body:JSON.stringify({action:"delete"}),
+        });
+        const d=await r.json().catch(()=>({}));
+        if(r.ok && d.deleted){
+          try{ Object.keys(localStorage).filter(k=>k.indexOf("mise_")===0).forEach(k=>localStorage.removeItem(k)); }catch(e){}
+          try{ if(sb) await sb.auth.signOut(); }catch(e){}
+          location.replace("/");
+          return;
+        }
+        dataMsg(d.error||"La suppression a échoué. Réessaie.");
+      }catch(e){ dataMsg("La suppression a échoué. Réessaie."); }
+      btn.disabled=false; btn.textContent=lbl;
+    }
+  );
+});
 $("convertBtn").addEventListener("click", ()=>{ renderConv(); show("convert"); window.scrollTo(0,0); });
 $("convertBack").addEventListener("click", ()=>show("settings"));
 $("shareAppBtn").addEventListener("click", async ()=>{
