@@ -3,16 +3,62 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>mise.</title>
+<title>mise. — la recette, sans le bouton pause</title>
+<meta name="description" content="Importe une recette depuis une vidéo ou un lien, ajuste les portions d'un geste et cuisine en mains libres : étapes lues à voix haute, minuteurs intégrés, liste de courses automatique." />
+<link rel="canonical" href="https://recette-xi.vercel.app/" />
 <link rel="manifest" href="/manifest.json" />
 <script defer src="/_vercel/insights/script.js"></script>
-<meta name="theme-color" content="#E9DFCC" />
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#E9DFCC" />
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1C1614" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="mise." />
+<link rel="icon" href="/icon-192.png" sizes="192x192" type="image/png" />
+<link rel="icon" href="/icon-512.png" sizes="512x512" type="image/png" />
 <link rel="apple-touch-icon" href="/icon-192.png" />
+<!-- aperçu des liens partagés (WhatsApp, iMessage, LinkedIn…) -->
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="mise." />
+<meta property="og:url" content="https://recette-xi.vercel.app/" />
+<meta property="og:title" content="mise. — la recette, sans le bouton pause" />
+<meta property="og:description" content="Importe une recette depuis une vidéo ou un lien, ajuste les portions d'un geste et cuisine en mains libres." />
+<meta property="og:image" content="https://recette-xi.vercel.app/og-image.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="mise. — la recette, sans le bouton pause" />
+<meta property="og:locale" content="fr_FR" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="mise. — la recette, sans le bouton pause" />
+<meta name="twitter:description" content="Importe une recette depuis une vidéo ou un lien, ajuste les portions d'un geste et cuisine en mains libres." />
+<meta name="twitter:image" content="https://recette-xi.vercel.app/og-image.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://recette-xi.vercel.app/#org",
+      "name": "montappli",
+      "legalName": "Chahine Meftout trading as montappli",
+      "url": "https://recette-xi.vercel.app/"
+    },
+    {
+      "@type": "SoftwareApplication",
+      "name": "mise.",
+      "applicationCategory": "LifestyleApplication",
+      "operatingSystem": "Web, iOS, Android",
+      "url": "https://recette-xi.vercel.app/",
+      "description": "Importe une recette depuis une vidéo ou un lien, ajuste les portions et cuisine en mains libres.",
+      "inLanguage": ["fr", "en"],
+      "publisher": { "@id": "https://recette-xi.vercel.app/#org" }
+    }
+  ]
+}
+</script>
 <style>
   /* ---- thème CLAIR (beige) ---- */
   :root{
@@ -3107,6 +3153,9 @@ async function syncPremiumFromCloud(){
 
 // ---- langue (i18n) — application (étapes 1 & 2) ----
 function applyLang(){
+  // l'attribut lang du document suit la langue choisie : les lecteurs d'écran
+  // et la synthèse vocale changent de voix avec elle.
+  try{ document.documentElement.lang = (curLang==="en") ? "en" : "fr"; }catch(e){}
   const set=(id,key,html)=>{ const el=$(id); if(!el) return; if(html) el.innerHTML=t(key); else el.textContent=t(key); };
   // accueil (étape 1)
   set("heroTitle","heroTitle",true);
