@@ -1338,13 +1338,28 @@ const STR={
 };
 function t(k){ const L=STR[curLang]||STR.fr; return (L[k]!=null)?L[k]:STR.fr[k]; }
 function catName(c){ const m=t("cats"); return (m&&m[c])||c; }
+// Jeton de session Supabase : le serveur s'en sert pour identifier le compte,
+// appliquer les quotas et vérifier le premium sur les fonctions payantes.
+async function authHeader(){
+  try{
+    if(!sb) return {};
+    const { data }=await sb.auth.getSession();
+    const tok=data && data.session && data.session.access_token;
+    return tok ? { authorization:"Bearer "+tok } : {};
+  }catch(e){ return {}; }
+}
 async function callBackend(payload){
   try{ payload.lang=curLang; }catch(e){}
   // timeout : évite un overlay bloqué indéfiniment si le serveur ne répond jamais
   const ctrl=new AbortController();
   const to=setTimeout(()=>ctrl.abort(), 75000);
   try{
-    const r=await fetch(BACKEND_URL,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(payload),signal:ctrl.signal});
+    const r=await fetch(BACKEND_URL,{
+      method:"POST",
+      headers:Object.assign({"content-type":"application/json"}, await authHeader()),
+      body:JSON.stringify(payload),
+      signal:ctrl.signal,
+    });
     return await r.json();
   } finally { clearTimeout(to); }
 }
@@ -1685,7 +1700,7 @@ $("createBtn").addEventListener("click", async ()=>{
   const demande="Crée une recette de cuisine complète, réaliste et savoureuse à partir de cette demande. Invente un titre approprié, donne des ingrédients avec des quantités et des étapes claires. Demande de l'utilisateur :\n\n"+d;
   $("createBtn").disabled=true; const lbl=$("createBtn").textContent; $("createBtn").textContent="Création…"; showLoadOverlay(true, CREATE_STEPS);
   try{
-    const r=await callBackend({text:demande});
+    const r=await callBackend({text:demande, create:true});   // create:true -> fonction premium, revérifiée côté serveur
     if(!r.found) setError(r.error||"Je n'ai pas réussi à créer cette recette. Reformule ta demande.");
     else { await addToHistory(r); loadRecipe(r); generatePhotoFor(r); $("createText").value=""; }
   }catch(e){ setError("Le serveur n'a pas répondu."); }
@@ -2723,8 +2738,12 @@ let ttsAudio=null, ttsSeq=0;
 const ttsCache=new Map();   // texte -> URL d'objet audio (petites étapes, ~24 entrées max)
 async function fetchTtsUrl(text){
   if(ttsCache.has(text)) return ttsCache.get(text);
-  const r=await fetch("/api/tts",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({text,lang:curLang})});
-  if(r.status===501){ ttsAvailable=false; return null; }
+  const r=await fetch("/api/tts",{
+    method:"POST",
+    headers:Object.assign({"content-type":"application/json"}, await authHeader()),
+    body:JSON.stringify({text,lang:curLang}),
+  });
+  if(r.status===501 || r.status===401){ ttsAvailable=false; return null; }   // non configuré ou hors session : voix du navigateur
   if(!r.ok) throw new Error("tts "+r.status);
   const u=URL.createObjectURL(await r.blob());
   if(ttsCache.size>24){ const k=ttsCache.keys().next().value; try{ URL.revokeObjectURL(ttsCache.get(k)); }catch(e){} ttsCache.delete(k); }
@@ -3141,13 +3160,23 @@ async function handlePayReturn(){
     else toast(t("payNotPaid"));
   }catch(e){ toast(t("payNotPaid")); }
 }
-// À la connexion : si le compte est premium côté serveur (table premium_users, RLS lecture
-// de sa propre ligne), on synchronise l'appareil. Un premium par code reste local (jamais écrasé).
+/* À la connexion, le serveur fait foi : la table premium_users décide, et le
+   drapeau local n'est qu'un cache. On le RETIRE aussi quand le compte n'est
+   pas premium — sinon il suffisait d'écrire mise_premium=1 dans la console
+   pour débloquer les fonctions payantes. Les fonctions payantes sont de toute
+   façon revérifiées côté serveur à chaque appel : ce cache ne sert plus qu'à
+   afficher les cadenas au bon endroit. */
 async function syncPremiumFromCloud(){
   if(!sb || !currentUserId) return;
   try{
-    const { data }=await sb.from("premium_users").select("active").eq("user_id",currentUserId).maybeSingle();
-    if(data && data.active){ try{ localStorage.setItem("mise_premium","1"); }catch(e){} refreshLocks(); }
+    const { data, error }=await sb.from("premium_users").select("active").eq("user_id",currentUserId).maybeSingle();
+    if(error) return;                       // réseau ou RLS : on ne touche à rien
+    const active=!!(data && data.active);
+    try{
+      if(active) localStorage.setItem("mise_premium","1");
+      else localStorage.removeItem("mise_premium");
+    }catch(e){}
+    refreshLocks();
   }catch(e){}
 }
 

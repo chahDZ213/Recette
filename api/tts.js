@@ -16,6 +16,29 @@ const KEY = process.env.ELEVENLABS_API_KEY;
 const VOICE = (process.env.ELEVENLABS_VOICE_ID || "").trim() || "21m00Tcm4TlvDq8ikWAM";
 const MODEL = (process.env.ELEVENLABS_MODEL || "").trim() || "eleven_multilingual_v2";
 
+// ElevenLabs facture au caractère : compte obligatoire et plafond horaire.
+const SB_URL = process.env.SUPABASE_URL || "https://hpejfttwocclmqdtdiok.supabase.co";
+const SB_ANON = process.env.SUPABASE_ANON_KEY || "sb_publishable_vXQvAJWpR0kKwQ-Fo9aWLw__0x3B7k5";
+const MAX_PER_HOUR = 300;   // large : une recette longue = quelques dizaines d'étapes lues
+const hits = new Map();
+function rateLimited(userId) {
+  const now = Date.now();
+  const list = (hits.get(userId) || []).filter((t) => now - t < 3600_000);
+  if (list.length >= MAX_PER_HOUR) { hits.set(userId, list); return true; }
+  list.push(now); hits.set(userId, list);
+  if (hits.size > 5000) { for (const k of hits.keys()) { hits.delete(k); if (hits.size <= 2500) break; } }
+  return false;
+}
+async function supabaseUserId(req) {
+  const jwt = (req.headers.authorization || "").replace(/^Bearer\s+/i, "");
+  if (!jwt) return null;
+  try {
+    const u = await fetch(SB_URL + "/auth/v1/user", { headers: { apikey: SB_ANON, authorization: "Bearer " + jwt } });
+    if (!u.ok) return null;
+    return (await u.json()).id || null;
+  } catch { return null; }
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Méthode non autorisée" });
   // même protection d'origine que /api/extract
@@ -27,6 +50,9 @@ export default async function handler(req, res) {
     }
   }
   if (!KEY) return res.status(501).json({ error: "Voix premium non configurée" });
+  const userId = await supabaseUserId(req);
+  if (!userId) return res.status(401).json({ error: "Connexion requise" });
+  if (rateLimited(userId)) return res.status(429).json({ error: "Trop de lectures d'affilée. Réessaie plus tard." });
   try {
     const body = req.body || {};
     const text = (typeof body.text === "string" ? body.text : "").trim().slice(0, 900);
