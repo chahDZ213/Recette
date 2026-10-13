@@ -2101,19 +2101,14 @@ $("deleteAccountBtn").addEventListener("click", ()=>{
       const btn=$("deleteAccountBtn"), lbl=btn.textContent;
       btn.disabled=true; btn.textContent="Suppression…"; dataMsg("");
       try{
-        const r=await fetch("/api/account",{
-          method:"POST",
-          headers:Object.assign({"content-type":"application/json"}, await authHeader()),
-          body:JSON.stringify({action:"delete"}),
-        });
-        const d=await r.json().catch(()=>({}));
-        if(r.ok && d.deleted){
+        const d=await callBackend({deleteAccount:true});
+        if(d && d.deleted){
           try{ Object.keys(localStorage).filter(k=>k.indexOf("mise_")===0).forEach(k=>localStorage.removeItem(k)); }catch(e){}
           try{ if(sb) await sb.auth.signOut(); }catch(e){}
           location.replace("/");
           return;
         }
-        dataMsg(d.error||"La suppression a échoué. Réessaie.");
+        dataMsg((d&&d.error)||"La suppression a échoué. Réessaie.");
       }catch(e){ dataMsg("La suppression a échoué. Réessaie."); }
       btn.disabled=false; btn.textContent=lbl;
     }
@@ -3208,7 +3203,8 @@ $("premiumPortal").addEventListener("click", async ()=>{
   msg.classList.add("hidden");
   btn.disabled=true; btn.textContent="Ouverture…";
   try{
-    const r=await fetch(PAY_API+"/portal",{
+    // POST sur /status = portail client (GET = état d'une session de paiement)
+    const r=await fetch(PAY_API+"/status",{
       method:"POST",
       headers:Object.assign({"content-type":"application/json"}, await authHeader()),
       body:JSON.stringify({ returnUrl:location.origin+location.pathname }),
