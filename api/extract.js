@@ -70,6 +70,62 @@ async function isPremiumUser(userId) {
   } catch { return null; }
 }
 
+/* ---------- Droit à l'effacement ----------
+   Hébergé ici plutôt que dans sa propre fonction : le plan Vercel plafonne le
+   nombre de fonctions serverless, et ce fichier porte déjà les autres actions
+   liées au compte (code cadeau, traduction, idées). */
+const BUCKET = "recipe-images";
+function svcHeaders(extra) {
+  const k = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+  return Object.assign({ apikey: k, authorization: "Bearer " + k }, extra || {});
+}
+// Supprime les photos générées de la personne (préfixe gen/<uid>/).
+async function deleteStoredPhotos(userId) {
+  try {
+    const list = await fetch(`${SB_URL}/storage/v1/object/list/${BUCKET}`, {
+      method: "POST",
+      headers: svcHeaders({ "content-type": "application/json" }),
+      body: JSON.stringify({ prefix: `gen/${userId}`, limit: 1000 }),
+    });
+    if (!list.ok) return;
+    const files = await list.json();
+    const names = (Array.isArray(files) ? files : [])
+      .map((f) => f && f.name).filter(Boolean)
+      .map((n) => `gen/${userId}/${n}`);
+    if (!names.length) return;
+    await fetch(`${SB_URL}/storage/v1/object/${BUCKET}`, {
+      method: "DELETE",
+      headers: svcHeaders({ "content-type": "application/json" }),
+      body: JSON.stringify({ prefixes: names }),
+    });
+  } catch (e) { console.error("compte/photos:", e && e.message); }
+}
+async function deleteRows(table, userId) {
+  try {
+    const r = await fetch(`${SB_URL}/rest/v1/${table}?user_id=eq.${encodeURIComponent(userId)}`, {
+      method: "DELETE",
+      headers: svcHeaders({ prefer: "return=minimal" }),
+    });
+    if (!r.ok) console.error("compte/" + table + ":", r.status, (await r.text()).slice(0, 200));
+    return r.ok;
+  } catch (e) { console.error("compte/" + table + ":", e && e.message); return false; }
+}
+// Efface photos, données puis le compte lui-même. Irréversible.
+async function deleteAccount(userId) {
+  await deleteStoredPhotos(userId);
+  await deleteRows("shares", userId);
+  await deleteRows("recipes", userId);
+  await deleteRows("premium_users", userId);
+  const del = await fetch(`${SB_URL}/auth/v1/admin/users/${encodeURIComponent(userId)}`, {
+    method: "DELETE", headers: svcHeaders(),
+  });
+  if (!del.ok) {
+    console.error("compte/auth:", del.status, (await del.text()).slice(0, 300));
+    return false;
+  }
+  return true;
+}
+
 // Active le premium d'un compte (code cadeau) côté serveur, pour qu'il survive
 // au changement d'appareil et passe les vérifications ci-dessus.
 async function grantPremium(userId, plan) {
@@ -415,6 +471,18 @@ export default async function handler(req, res) {
       return res.status(401).json({ found: false, error: "Connecte-toi pour utiliser cette fonction." });
     }
     const premium = await isPremiumUser(userId);
+
+    // Droit à l'effacement (RGPD) : efface tout et supprime le compte.
+    if (body.deleteAccount === true) {
+      if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        console.error("compte: SUPABASE_SERVICE_ROLE_KEY manquante");
+        return res.status(501).json({ error: "Suppression non configurée sur ce serveur." });
+      }
+      const done = await deleteAccount(userId);
+      return done
+        ? res.status(200).json({ deleted: true })
+        : res.status(502).json({ error: "Les données ont été effacées, mais le compte n'a pas pu être supprimé. Réessaie." });
+    }
 
     // Code cadeau : validé puis enregistré côté serveur, pour qu'il suive le compte.
     if (body.redeemCode && typeof body.redeemCode === "string") {
