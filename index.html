@@ -281,7 +281,12 @@
 
   @media (prefers-reduced-motion:reduce){ .rise{animation:none;} .ing-qty{transition:none;} }
 </style>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- supabase-js servi depuis notre propre domaine, version figée.
+     Il était chargé depuis un CDN sur une plage de versions ouverte (@2) :
+     une seule requête tierce qui échoue et plus personne ne peut se connecter,
+     puisque tout le compte en dépend. En local, il bénéficie du cache de
+     l'app, ne part chez personne, et ne peut plus changer dans notre dos. -->
+<script src="/vendor/supabase-js-2.117.3.js"></script>
 </head>
 <body>
 
@@ -330,7 +335,7 @@
   <p id="authForgot" class="hidden" style="margin-top:16px;font-size:14px;color:var(--muted);cursor:pointer;text-decoration:underline">Mot de passe oublié ?</p>
   <p id="authSwitch" style="margin-top:24px;font-size:15px;color:var(--muted);cursor:pointer">Déjà un compte ? <b style="color:var(--ink)">Se connecter</b></p>
   <p id="authLegal" style="margin-top:22px;font-size:12.5px;color:var(--muted);line-height:1.5">
-    En créant un compte, tu acceptes les <a href="/legal/#cgu" style="color:var(--accent)">conditions générales</a> et la <a href="/legal/#confidentialite" style="color:var(--accent)">politique de confidentialité</a>. Il faut avoir 16 ans révolus.
+    En créant un compte, tu acceptes les <a href="/legal/#cgu" style="color:var(--accent)">conditions générales</a> et la <a href="/legal/#confidentialite" style="color:var(--accent)">politique de confidentialité</a>.
   </p>
 </section>
 
@@ -2476,6 +2481,9 @@ const SB_KEY="sb_publishable_vXQvAJWpR0kKwQ-Fo9aWLw__0x3B7k5";
 let sb=null;
 try{ sb=window.supabase.createClient(SB_URL, SB_KEY, {auth:{persistSession:true, autoRefreshToken:true}}); }
 catch(e){ console.error("Supabase init:", e); }
+// Si la librairie n'a pas pu être chargée, l'app ne peut rien faire de son
+// compte : on le dit clairement plutôt que de laisser un message générique.
+if(!sb) console.error("Supabase indisponible : /vendor/supabase-js-2.117.3.js n'a pas été chargé.");
 let currentUser=null, currentUserId=null;
 
 // ---- recettes (Supabase + cache mémoire) ----

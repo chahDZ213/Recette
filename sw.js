@@ -1,8 +1,14 @@
 // sw.js — service worker minimal (network-first)
-const CACHE = "mise-v63";
+const CACHE = "mise-v64";
 
 self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(["/", "/index.html"])).catch(() => {}));
+  // supabase-js est mis en cache dès l'installation : sans lui, aucune
+  // connexion au compte n'est possible, même avec la page déjà chargée.
+  e.waitUntil(
+    caches.open(CACHE)
+      .then((c) => c.addAll(["/", "/index.html", "/vendor/supabase-js-2.117.3.js"]))
+      .catch(() => {})
+  );
   self.skipWaiting();
 });
 
@@ -13,6 +19,16 @@ self.addEventListener("activate", (e) => {
 self.addEventListener("fetch", (e) => {
   // Ne pas intercepter les appels API (POST vers /api/extract)
   if (e.request.method !== "GET") return;
+
+  /* Ne jamais intercepter ce qui ne vient pas de notre domaine. Une réponse
+     d'un autre domaine est opaque : cache.put() la refuse, et sur Safari le
+     clone jamais consommé peut bloquer la réponse — un script tiers finit
+     alors par arriver vide, sans la moindre erreur visible. Le navigateur
+     gère très bien ces requêtes tout seul. */
+  let sameOrigin = false;
+  try { sameOrigin = new URL(e.request.url).origin === self.location.origin; } catch (_) {}
+  if (!sameOrigin) return;
+
   e.respondWith(
     fetch(e.request)
       .then((res) => {
