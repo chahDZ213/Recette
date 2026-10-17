@@ -317,10 +317,20 @@ async function askClaude(source) {
 }
 
 // --- Lecture d'une image (capture d'écran, photo d'un texte) via Claude vision ---
-async function askClaudeVision(dataUrl) {
-  const m = /^data:(image\/[a-zA-Z0-9.+-]+);base64,([\s\S]+)$/.exec(dataUrl || "");
-  if (!m) throw new Error("image invalide");
-  const mediaType = m[1], b64 = m[2];
+// Transforme une liste de data URLs en blocs image pour l'API.
+function imageBlocks(list) {
+  const blocks = [];
+  for (const dataUrl of list) {
+    const m = /^data:(image\/[a-zA-Z0-9.+-]+);base64,([\s\S]+)$/.exec(dataUrl || "");
+    if (!m) continue;
+    blocks.push({ type: "image", source: { type: "base64", media_type: m[1], data: m[2] } });
+  }
+  if (!blocks.length) throw new Error("image invalide");
+  return blocks;
+}
+
+async function callVision(list, instruction, maxTokens) {
+  const blocks = imageBlocks(list);
   const r = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -330,20 +340,43 @@ async function askClaudeVision(dataUrl) {
     },
     body: JSON.stringify({
       model: MODELE,
-      max_tokens: 1500,
-      messages: [{
-        role: "user",
-        content: [
-          { type: "image", source: { type: "base64", media_type: mediaType, data: b64 } },
-          { type: "text", text: `Cette image contient une recette de cuisine (capture d'écran, photo d'un texte, d'une page de livre ou d'une liste d'ingrédients). Lis tout son contenu et structure-le en recette.\n\n${INSTRUCTIONS}` },
-        ],
-      }],
+      max_tokens: maxTokens || 2200,
+      messages: [{ role: "user", content: [...blocks, { type: "text", text: instruction }] }],
     }),
   });
   const data = await r.json();
   if (!r.ok || data.error) { console.error("extract/vision: erreur API", r.status, JSON.stringify(data.error || data).slice(0, 500)); throw new Error("api claude"); }
   const text = (data.content || []).filter((b) => b.type === "text").map((b) => b.text).join("\n");
   return extractJSON(text);
+}
+
+/* Plusieurs images d'une même recette : titre sur l'une, ingrédients sur une
+   autre, étapes sur une troisième — ou un commentaire qui porte la recette que
+   la description ne donne pas. Elles sont lues ENSEMBLE, dans l'ordre reçu. */
+async function askClaudeVision(list) {
+  const n = list.length;
+  const intro = n > 1
+    ? `Ces ${n} images montrent UNE SEULE ET MÊME recette, en plusieurs morceaux et dans l'ordre (par exemple : le titre et la photo du plat, puis la liste des ingrédients, puis les étapes, ou encore un commentaire qui donne la recette). Lis-les toutes et combine-les en une seule recette complète. Ne produis PAS une recette par image. Si deux images se recouvrent, ne compte pas deux fois les mêmes ingrédients ou les mêmes étapes.`
+    : `Cette image contient une recette de cuisine (capture d'écran, photo d'un texte, d'une page de livre ou d'une liste d'ingrédients). Lis tout son contenu et structure-le en recette.`;
+  return callVision(list, `${intro}\n\n${INSTRUCTIONS}`, 2200);
+}
+
+/* Lecture d'une liste d'ingrédients seule, pour remplir les quantités d'une
+   recette déjà importée. On ne renvoie QUE les ingrédients : le reste de la
+   recette existe déjà et ne doit pas être réécrit. */
+async function readIngredients(list) {
+  const instruction = `Ces images montrent une liste d'ingrédients (capture d'écran, photo d'un livre, d'une étiquette ou d'un commentaire). Relève chaque ingrédient avec sa quantité.
+
+Tu renvoies UNIQUEMENT un objet JSON, sans aucun texte autour, sans backticks. Format exact :
+{"baseServings": 4, "ingredients": [{"name": "farine", "amount": 250, "unit": "g", "category": "Épicerie"}]}
+
+Règles :
+- "amount" est un nombre, ou null si la quantité n'est pas indiquée. N'INVENTE JAMAIS une quantité absente : mets null.
+- Recopie EXACTEMENT les chiffres lus. "unit" peut être null (ex: oeufs, gousses).
+- "category" vaut EXACTEMENT une de ces valeurs : "Frais", "Viandes & poissons", "Crémerie", "Épicerie", "Épices", "Autre".
+- "baseServings" = nombre de personnes si les images l'indiquent, sinon null.
+- Si aucune liste d'ingrédients n'est lisible, renvoie {"ingredients": []}.`;
+  return callVision(list, instruction, 1600);
 }
 
 // --- Lecture d'une page web de recette (Marmiton, 750g, blogs...) ---
@@ -457,8 +490,18 @@ export default async function handler(req, res) {
     // garde-fous sur la taille des entrées (protège la fonction et la facture API)
     if (typeof url === "string") { url = unwrapGoogleUrl(url.trim().slice(0, 2000)); }
     if (typeof text === "string") { text = text.slice(0, 30000); }
-    if (typeof imgInput === "string" && imgInput.length > 11_000_000) {
-      return res.status(200).json({ found: false, error: "Image trop lourde (max ~8 Mo)." });
+    /* Images : une seule (image) ou plusieurs (images[]). Vercel refuse les
+       corps de requête au-delà de ~4,5 Mo, et le base64 gonfle de 33 % — d'où
+       un plafond global volontairement en dessous. Le navigateur réduit déjà
+       chaque photo avant l'envoi. */
+    const MAX_IMAGES = 6, MAX_TOTAL = 3_600_000;
+    let imgList = Array.isArray(body.images) ? body.images.filter((s) => typeof s === "string") : [];
+    if (!imgList.length && typeof imgInput === "string" && imgInput.startsWith("data:image")) imgList = [imgInput];
+    if (imgList.length > MAX_IMAGES) {
+      return res.status(200).json({ found: false, error: `Trop de photos d'un coup (${MAX_IMAGES} au maximum).` });
+    }
+    if (imgList.reduce((n, s) => n + s.length, 0) > MAX_TOTAL) {
+      return res.status(200).json({ found: false, error: "Photos trop lourdes au total. Réessaie avec moins de photos." });
     }
 
     /* ---- compte requis, premium vérifié, quota horaire ----
@@ -555,9 +598,22 @@ Exactement 4 idées, variées.`;
       }
     }
 
-    // 1) Image (capture d'écran / photo d'un texte) -> Claude vision
-    if (imgInput && typeof imgInput === "string" && imgInput.startsWith("data:image")) {
-      const recipe = await askClaudeVision(imgInput);
+    // 0.6) Photo(s) d'une liste d'ingrédients -> remplit une recette existante
+    if (body.readIngredients === true) {
+      if (!imgList.length) return res.status(200).json({ ingredients: [], error: "Aucune photo reçue." });
+      try {
+        const out = await readIngredients(imgList);
+        const list = Array.isArray(out && out.ingredients) ? out.ingredients : [];
+        return res.status(200).json({ ingredients: list, baseServings: (out && out.baseServings) || null });
+      } catch (e) {
+        console.error("extract/ingredients:", e && e.message);
+        return res.status(200).json({ ingredients: [], error: "Je n'ai pas réussi à lire cette liste. Essaie une photo plus nette." });
+      }
+    }
+
+    // 1) Image(s) (captures d'écran / photos d'un texte) -> Claude vision
+    if (imgList.length) {
+      const recipe = await askClaudeVision(imgList);
       return res.status(200).json(recipe);
     }
 

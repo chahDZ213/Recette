@@ -760,7 +760,11 @@
     </button>
     <span id="editIngTitle" class="mono" style="font-size:22px;font-weight:700">Modifier</span>
   </div>
-  <div id="editIngHint" style="font-size:13px;color:var(--muted);margin-bottom:16px">Quantité · unité · ingrédient</div>
+  <div id="editIngHint" style="font-size:13px;color:var(--muted);margin-bottom:12px">Quantité · unité · ingrédient</div>
+  <!-- Remplir les quantités depuis une photo plutôt qu'à la main -->
+  <button id="editScanBtn" class="press" style="width:100%;font-size:14px;font-weight:600;padding:12px;border-radius:11px;border:1.5px solid var(--accent);background:transparent;color:var(--accent);margin-bottom:12px">📷 Lire les quantités sur une photo</button>
+  <input type="file" id="editScanInput" accept="image/*" multiple style="display:none" />
+  <div id="editScanMsg" role="status" aria-live="polite" class="hidden" style="font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:12px"></div>
   <div id="editList" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch"></div>
   <button id="editAdd" class="press" style="width:100%;font-size:14px;font-weight:600;padding:11px;border-radius:10px;border:1.5px dashed var(--line);background:transparent;color:var(--muted);margin:6px 0 14px">+ Ajouter un ingrédient</button>
   <div style="display:flex;gap:10px">
@@ -864,7 +868,7 @@
         <button id="createBtn" class="press" style="margin-top:10px;width:100%;font-size:16px;font-weight:600;padding:14px 20px;border-radius:12px;border:none;background:var(--accent);color:#fff">✨ Créer la recette</button>
       </div>
     </div>
-    <input type="file" id="recipeImgInput" accept="image/*" style="display:none" />
+    <input type="file" id="recipeImgInput" accept="image/*" multiple style="display:none" />
   </div>
 </div>
 
@@ -1140,7 +1144,7 @@ const STR={
   manualToggle:"Coller un texte de recette", manualPh:"Ingrédients : 250g de farine…\nÉtapes : 1. Mélanger…", manualBtn:"Importer la recette",
   createToggle:"Créer une recette avec l'IA", createDesc:"Décris ce que tu veux cuisiner, mise. te génère la recette complète avec un titre.", createPh:"Ex : un gâteau au yaourt moelleux pour 6, sans beurre…", createBtn:"✨ Créer la recette",
   dictate:"🎤 Dicter", listening:"● En écoute…",
-  imgPickLabel:"Scanner une recette", imgPickDesc:"Prends une photo ou importe une capture d'écran",
+  imgPickLabel:"Scanner une recette", imgPickDesc:"Une ou plusieurs photos — titre, ingrédients, étapes : mise. les assemble",
   tabSaved:"Enregistrées", tabHistory:"Récentes", searchPh:"Rechercher un plat, un ingrédient…",
   emptySaved:"Aucune recette enregistrée. Ouvre une recette et appuie sur le marque-page 🔖.", emptyHistory:"Aucune recette récente. Ajoute ta première recette avec le bouton ＋ !",
   emptySearch:(q)=>`Aucune recette ne correspond à « ${q} ».`,
@@ -1229,6 +1233,7 @@ const STR={
   collNone:"Aucune", collNew:"+ Nouvelle", collPrompt:"Nom de la collection (Dessert, Salé, Rapide…) :", collCloseBtn:"Fermer",
   editIngTitle:"Modifier", editIngHint:"Quantité · unité · ingrédient",
   editAddBtn:"+ Ajouter un ingrédient", editResetBtn:"Valeurs d'origine", editSaveBtn:"Enregistrer",
+  editScanBtn:"📷 Lire les quantités sur une photo",
   editUnitPh:"unité", editNamePh:"ingrédient",
   noteEdTitle:"Ma note",
   notePh:"Ex : cuire 2 min de plus, mettre moins de sucre, top avec du sirop d'érable…",
@@ -1276,7 +1281,7 @@ const STR={
   manualToggle:"Paste a recipe text", manualPh:"Ingredients: 250g flour…\nSteps: 1. Mix…", manualBtn:"Import the recipe",
   createToggle:"Create a recipe with AI", createDesc:"Describe what you want to cook — mise. generates the full recipe with a title.", createPh:"E.g.: a soft yogurt cake for 6, butter-free…", createBtn:"✨ Create the recipe",
   dictate:"🎤 Dictate", listening:"● Listening…",
-  imgPickLabel:"Scan a recipe", imgPickDesc:"Take a photo or import a screenshot",
+  imgPickLabel:"Scan a recipe", imgPickDesc:"One or several photos — title, ingredients, steps: mise. puts them together",
   tabSaved:"Saved", tabHistory:"Recent", searchPh:"Search a dish, an ingredient…",
   emptySaved:"No saved recipes yet. Open a recipe and tap the bookmark 🔖.", emptyHistory:"No recent recipes. Add your first one with the ＋ button!",
   emptySearch:(q)=>`No recipe matches “${q}”.`,
@@ -1365,6 +1370,7 @@ const STR={
   collNone:"None", collNew:"+ New", collPrompt:"Collection name (Dessert, Savory, Quick…):", collCloseBtn:"Close",
   editIngTitle:"Edit", editIngHint:"Amount · unit · ingredient",
   editAddBtn:"+ Add an ingredient", editResetBtn:"Original values", editSaveBtn:"Save",
+  editScanBtn:"📷 Read the amounts from a photo",
   editUnitPh:"unit", editNamePh:"ingredient",
   noteEdTitle:"My note",
   notePh:"E.g.: cook 2 more min, use less sugar, great with maple syrup…",
@@ -1692,19 +1698,31 @@ async function generateIdea(idea, ing){
   if(err) setIdeaMsg(err);
 }
 $("imgPickBtn").addEventListener("click", ()=> $("recipeImgInput").click());
+/* Plusieurs captures d'un coup : le titre est rarement sur la même capture
+   que les ingrédients, et les étapes débordent souvent sur un second écran.
+   Elles partent ensemble et sont lues comme une seule recette. */
+const MAX_SCAN=6;
+async function compressAll(files, maxDim, quality){
+  const out=[];
+  for(const f of files){ try{ out.push(await fileToCompressed(f, maxDim, quality)); }catch(e){} }
+  return out;
+}
 $("recipeImgInput").addEventListener("change", async (e)=>{
   setError("");
-  const f=e.target.files && e.target.files[0];
+  const files=[...(e.target.files||[])];
   e.target.value="";
-  if(!f) return;
+  if(!files.length) return;
+  if(files.length>MAX_SCAN){ setError(`${MAX_SCAN} photos au maximum d'un coup.`); return; }
   showLoadOverlay(true, IMAGE_STEPS);
   let ok=null, err=null;
   try{
-    const dataUrl=await fileToCompressed(f, 1600, 0.82);   // bonne netteté pour lire le texte
-    const r=await callBackend({image:dataUrl});
-    if(!r.found) err=r.error||"Je n'ai pas trouvé de recette dans cette image. Essaie une image plus nette.";
+    // netteté suffisante pour lire du texte, allégée quand il y a plusieurs photos
+    const images=await compressAll(files, files.length>2?1400:1600, files.length>2?0.78:0.82);
+    if(!images.length) throw new Error("aucune image lisible");
+    const r=await callBackend({images});
+    if(!r.found) err=r.error||"Je n'ai pas trouvé de recette dans ces photos. Essaie des images plus nettes.";
     else ok=r;
-  }catch(e2){ err="Impossible de lire cette image. Réessaie."; }
+  }catch(e2){ err="Impossible de lire ces photos. Réessaie."; }
   if(ok){ await addToHistory(ok); loadRecipe(ok); generatePhotoFor(ok); }
   showLoadOverlay(false);
   if(err) setError(err);
@@ -2439,6 +2457,62 @@ $("editIngBtn").addEventListener("click", ()=>{ if(recipe){ fillEditFrom(recipe.
 $("editIngBack").addEventListener("click", ()=>$("editIng").classList.add("hidden"));
 $("editAdd").addEventListener("click", ()=>addEditRow("","","","Autre"));
 $("editReset").addEventListener("click", ()=>{ if(recipe&&recipe.original) fillEditFrom(recipe.original); });
+
+/* Remplir les quantités depuis une photo (liste d'ingrédients, commentaire,
+   page de livre). On complète les lignes existantes dont le nom correspond au
+   lieu de tout remplacer : les lignes déjà renseignées à la main sont
+   conservées, et seuls les ingrédients vraiment nouveaux sont ajoutés. */
+function editScanMsg(txt, erreur){
+  const el=$("editScanMsg"); if(!el) return;
+  if(!txt){ el.classList.add("hidden"); return; }
+  el.textContent=txt; el.style.color=erreur?"#C0492F":"var(--muted)"; el.classList.remove("hidden");
+}
+function normNom(s){
+  return (s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"")
+    .replace(/[^a-z0-9]+/g," ").trim();
+}
+$("editScanBtn").addEventListener("click", ()=> $("editScanInput").click());
+$("editScanInput").addEventListener("change", async (e)=>{
+  const files=[...(e.target.files||[])];
+  e.target.value="";
+  if(!files.length) return;
+  if(files.length>MAX_SCAN){ editScanMsg(`${MAX_SCAN} photos au maximum d'un coup.`, true); return; }
+  const btn=$("editScanBtn"), lbl=btn.textContent;
+  btn.disabled=true; btn.textContent="Lecture…"; editScanMsg("");
+  try{
+    const images=await compressAll(files, files.length>2?1400:1600, files.length>2?0.78:0.82);
+    if(!images.length) throw new Error("aucune image lisible");
+    const r=await callBackend({readIngredients:true, images});
+    const lus=(r && Array.isArray(r.ingredients)) ? r.ingredients : [];
+    if(!lus.length){ editScanMsg((r&&r.error)||"Aucun ingrédient lisible sur cette photo.", true); }
+    else{
+      // index des lignes déjà présentes, par nom normalisé
+      const rows=[...$("editList").querySelectorAll(".edit-row")];
+      const index=new Map();
+      rows.forEach(row=>{ const n=normNom(row.querySelector(".ei-name").value); if(n && !index.has(n)) index.set(n,row); });
+      let remplis=0, ajoutes=0;
+      lus.forEach(ing=>{
+        if(ing.amount==null) return;                    // rien de chiffré à reporter
+        const montant=String(Math.round(ing.amount*100)/100);
+        const row=index.get(normNom(ing.name));
+        if(row){
+          row.querySelector(".ei-amt").value=montant;
+          const u=row.querySelector(".ei-unit");
+          if(ing.unit) u.value=ing.unit;
+          remplis++;
+        }else{
+          addEditRow(montant, ing.unit||"", ing.name||"", ing.category||"Autre");
+          ajoutes++;
+        }
+      });
+      const bouts=[];
+      if(remplis) bouts.push(remplis+" quantité"+(remplis>1?"s":"")+" remplie"+(remplis>1?"s":""));
+      if(ajoutes) bouts.push(ajoutes+" ingrédient"+(ajoutes>1?"s":"")+" ajouté"+(ajoutes>1?"s":""));
+      editScanMsg(bouts.length ? bouts.join(", ")+". Vérifie puis enregistre." : "Aucune quantité chiffrée sur cette photo.", !bouts.length);
+    }
+  }catch(e2){ editScanMsg("Impossible de lire cette photo. Réessaie.", true); }
+  btn.disabled=false; btn.textContent=lbl;
+});
 $("editSave").addEventListener("click", async ()=>{
   const rows=[...$("editList").querySelectorAll(".edit-row")];
   const newIngs=[];
@@ -3388,6 +3462,7 @@ function applyLang(){
   set("collSheetTitle","collSheetTitle"); set("collSheetDesc","collSheetDesc"); set("collClose","collCloseBtn");
   set("editIngTitle","editIngTitle"); set("editIngHint","editIngHint");
   set("editAdd","editAddBtn"); set("editReset","editResetBtn"); set("editSave","editSaveBtn");
+  set("editScanBtn","editScanBtn");
   set("noteEdTitle","noteEdTitle"); if($("noteText")) $("noteText").placeholder=t("notePh");
   set("noteSave","noteSaveBtn");
   // mode cuisson

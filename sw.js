@@ -1,5 +1,5 @@
 // sw.js — service worker minimal (network-first)
-const CACHE = "mise-v64";
+const CACHE = "mise-v65";
 
 self.addEventListener("install", (e) => {
   // supabase-js est mis en cache dès l'installation : sans lui, aucune
