@@ -1,6 +1,8 @@
-// api/pay/webhook.js — Webhook Stripe (MODE TEST). À configurer dans le dashboard Stripe :
+// api/pay/webhook.js — Webhook Stripe. À configurer dans le dashboard Stripe, UNE FOIS PAR MODE
+// (le secret whsec_ du mode test ne vaut pas en live et inversement) :
 //   Développeurs → Webhooks → Ajouter un endpoint → https://<domaine>/api/pay/webhook
-//   Événements : checkout.session.completed, customer.subscription.deleted
+//   Événements : checkout.session.completed, invoice.paid, invoice.payment_failed,
+//                customer.subscription.updated, customer.subscription.deleted
 // puis coller le secret (whsec_…) dans STRIPE_WEBHOOK_SECRET (Vercel).
 // La signature exige le corps BRUT → bodyParser désactivé.
 import { cors, getStripe, setMisePremium } from "./_lib.js";
