@@ -1,8 +1,8 @@
-// api/pay/checkout.js — Crée une session Stripe Checkout (MODE TEST) pour l'une des apps
-// du catalogue (mise. / Metria / LTVTC Topo). Reçoit { app, plan, returnUrl } et renvoie
+// api/pay/checkout.js — Crée une session Stripe Checkout pour l'une des apps
+// du catalogue (mise. / Kcalcul / Créno / ExaGe…). Reçoit { app, plan, returnUrl } et renvoie
 // { url, sessionId } : le client redirige l'utilisateur vers `url` (page Stripe hébergée).
-// Carte de test : 4242 4242 4242 4242, date future, CVC quelconque.
-import { CATALOG, cors, getStripe, safeReturnUrl, supabaseUserId, withParams } from "./_lib.js";
+// Test (sk_test_) : carte 4242 4242 4242 4242. Live (sk_live_) : prix du catalogue Stripe.
+import { CATALOG, LIVE_MODE, cors, getStripe, safeReturnUrl, supabaseUserId, withParams } from "./_lib.js";
 
 export default async function handler(req, res) {
   if (cors(req, res)) return;
@@ -43,25 +43,37 @@ export default async function handler(req, res) {
   const metadata = {
     app, plan,
     ...(userId ? { userId } : {}),
+    ...(product.accessMonths ? { access_months: String(product.accessMonths) } : {}),
     ...(consentRequired ? {
       consent_immediate_access: "true",
       consent_withdrawal_waiver: "true",
       consent_at: consentAt,
     } : {}),
   };
-  const priceData = {
-    currency: product.currency,
-    unit_amount: product.amount,
-    product_data: { name: product.name, ...(product.description ? { description: product.description } : {}) },
-    ...(product.mode === "subscription"
-      ? { recurring: { interval: product.interval, interval_count: product.intervalCount || 1 } }
-      : {}),
-  };
+
+  /* En live, on facture le prix du catalogue Stripe (price_…) : le montant, la
+     devise et le libellé viennent de Stripe, donc un changement de tarif se fait
+     dans le dashboard sans redéployer, et le portail client sait proposer les
+     autres paliers du même produit. En test ces IDs n'existent pas, d'où le
+     repli sur un prix inline. */
+  const lineItem = LIVE_MODE && product.price
+    ? { price: product.price, quantity: 1 }
+    : {
+        quantity: 1,
+        price_data: {
+          currency: product.currency,
+          unit_amount: product.amount,
+          product_data: { name: product.name, ...(product.description ? { description: product.description } : {}) },
+          ...(product.mode === "subscription"
+            ? { recurring: { interval: product.interval, interval_count: product.intervalCount || 1 } }
+            : {}),
+        },
+      };
 
   try {
     const session = await stripe.checkout.sessions.create({
       mode: product.mode,
-      line_items: [{ price_data: priceData, quantity: 1 }],
+      line_items: [lineItem],
       success_url: withParams(returnUrl, "pay=success&session_id={CHECKOUT_SESSION_ID}"),
       cancel_url: withParams(returnUrl, "pay=cancel"),
       metadata,
