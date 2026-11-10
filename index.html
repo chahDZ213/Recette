@@ -608,7 +608,7 @@
         <input type="checkbox" id="consentWaiver" style="margin-top:2px;width:18px;height:18px;flex-shrink:0;accent-color:var(--accent)" />
         <span id="consentWaiverLbl">Je comprends que je <b>perds mon droit de rétractation de 14 jours</b> une fois l'accès ouvert.</span>
       </label>
-      <button id="premiumBuy" class="press" style="width:100%;font-size:15px;font-weight:600;padding:13px;border-radius:12px;border:none;background:var(--accent);color:#fff">✨ Passer premium — 3,99 €/mois</button>
+      <button id="premiumBuy" class="press" style="width:100%;font-size:15px;font-weight:600;padding:13px;border-radius:12px;border:none;background:var(--accent);color:#fff">✨ Passer premium — 2,99 £/mois</button>
       <div id="premiumBuyMsg" class="hidden" style="font-size:13px;color:#B4544B;margin-top:8px"></div>
       <div id="premiumOr" style="font-size:12px;color:var(--muted);margin:10px 0 8px;text-align:center">— ou avec un code d'accès —</div>
       <div style="display:flex;gap:8px">
@@ -1212,7 +1212,7 @@ const STR={
   premiumActive:"✓ Premium actif sur cet appareil",
   premiumPitch:"Débloque les idées recettes, le menu de la semaine, la photo du frigo et la création de recettes par IA.",
   premiumCodePh:"Code d'accès", premiumRedeemBtn:"Activer", premiumChecking:"Vérification…", premiumBadCode:"Code invalide.",
-  premiumBuyBtn:"✨ Passer premium — 3,99 €/mois", premiumOr:"— ou avec un code d'accès —",
+  premiumBuyBtn:"✨ Passer premium — 2,99 £/mois", premiumOr:"— ou avec un code d'accès —",
   premiumBuyErr:"Impossible d'ouvrir le paiement. Réessaie.", premiumNeedLogin:"Connecte-toi d'abord pour passer premium.",
   payChecking:"Vérification du paiement…", payThanks:"Paiement confirmé — premium activé ✨",
   payCancelled:"Paiement annulé.", payNotPaid:"Paiement non confirmé. Réessaie depuis les réglages.",
@@ -1349,7 +1349,7 @@ const STR={
   premiumActive:"✓ Premium active on this device",
   premiumPitch:"Unlock recipe ideas, the weekly menu, the fridge photo and AI recipe creation.",
   premiumCodePh:"Access code", premiumRedeemBtn:"Activate", premiumChecking:"Checking…", premiumBadCode:"Invalid code.",
-  premiumBuyBtn:"✨ Go premium — €3.99/month", premiumOr:"— or with an access code —",
+  premiumBuyBtn:"✨ Go premium — £2.99/month", premiumOr:"— or with an access code —",
   premiumBuyErr:"Couldn't open the payment page. Please try again.", premiumNeedLogin:"Log in first to go premium.",
   payChecking:"Checking your payment…", payThanks:"Payment confirmed — premium unlocked ✨",
   payCancelled:"Payment cancelled.", payNotPaid:"Payment not confirmed. Try again from the settings.",
@@ -3318,7 +3318,9 @@ $("premiumRedeem").addEventListener("click", async ()=>{
 });
 refreshLocks();
 
-// ---- premium via Stripe Checkout (MODE TEST — carte 4242 4242 4242 4242) ----
+// ---- premium via Stripe Checkout ----
+// En test (clé sk_test_ côté serveur) : carte 4242 4242 4242 4242, date future, CVC libre.
+// En live : le prix facturé est celui du catalogue Stripe, pas celui écrit ici.
 const PAY_API="/api/pay";
 $("premiumBuy").addEventListener("click", async ()=>{
   const btn=$("premiumBuy"), msg=$("premiumBuyMsg");
