@@ -1212,6 +1212,7 @@ const STR={
   premiumActive:"✓ Premium actif sur cet appareil",
   premiumPitch:"Débloque les idées recettes, le menu de la semaine, la photo du frigo et la création de recettes par IA.",
   premiumCodePh:"Code d'accès", premiumRedeemBtn:"Activer", premiumChecking:"Vérification…", premiumBadCode:"Code invalide.",
+  premiumPasEnregistre:"Ton code est bon, mais l'activation n'a pas pu être enregistrée. Réessaie dans un instant.",
   premiumBuyBtn:"✨ Passer premium — 2,99 £/mois", premiumOr:"— ou avec un code d'accès —",
   premiumBuyErr:"Impossible d'ouvrir le paiement. Réessaie.", premiumNeedLogin:"Connecte-toi d'abord pour passer premium.",
   payChecking:"Vérification du paiement…", payThanks:"Paiement confirmé — premium activé ✨",
@@ -1351,6 +1352,7 @@ const STR={
   premiumActive:"✓ Premium active on this device",
   premiumPitch:"Unlock recipe ideas, the weekly menu, the fridge photo and AI recipe creation.",
   premiumCodePh:"Access code", premiumRedeemBtn:"Activate", premiumChecking:"Checking…", premiumBadCode:"Invalid code.",
+  premiumPasEnregistre:"Your code is valid, but the activation could not be saved. Please try again in a moment.",
   premiumBuyBtn:"✨ Go premium — £2.99/month", premiumOr:"— or with an access code —",
   premiumBuyErr:"Couldn't open the payment page. Please try again.", premiumNeedLogin:"Log in first to go premium.",
   payChecking:"Checking your payment…", payThanks:"Payment confirmed — premium unlocked ✨",
@@ -3517,11 +3519,21 @@ $("premiumRedeem").addEventListener("click", async ()=>{
   if(!code) return;
   msg.classList.add("hidden");
   btn.disabled=true; btn.textContent=t("premiumChecking");
-  let ok=false;
-  try{ const r=await callBackend({redeemCode:code}); ok=!!(r&&r.premiumOk); }catch(e){}
+  let ok=false, codeValide=false;
+  try{
+    const r=await callBackend({redeemCode:code});
+    ok=!!(r&&r.premiumOk);
+    codeValide=!!(r&&r.codeValide);
+  }catch(e){}
   btn.disabled=false; btn.textContent=t("premiumRedeemBtn");
   if(ok){ try{ localStorage.setItem("mise_premium","1"); }catch(e){} $("premiumCode").value=""; refreshLocks(); }
-  else { msg.textContent=t("premiumBadCode"); msg.classList.remove("hidden"); }
+  else {
+    /* Un code bon mais non enregistré n'est pas un « code invalide » : le dire
+       ainsi envoyait l'utilisateur chercher un problème qui n'existe pas, puis
+       lui faisait perdre son premium à la réouverture sans explication. */
+    msg.textContent=t(codeValide ? "premiumPasEnregistre" : "premiumBadCode");
+    msg.classList.remove("hidden");
+  }
 });
 refreshLocks();
 
@@ -3582,18 +3594,28 @@ async function handlePayReturn(){
    pour débloquer les fonctions payantes. Les fonctions payantes sont de toute
    façon revérifiées côté serveur à chaque appel : ce cache ne sert plus qu'à
    afficher les cadenas au bon endroit. */
+/* Le serveur, et lui seul, dit si le compte est premium.
+   La version précédente interrogeait `premium_users` depuis le navigateur. Sous
+   RLS, une ligne qu'aucune politique n'autorise à lire ne remonte pas — et pas
+   comme une erreur : comme zéro ligne. Le client en concluait « pas premium » et
+   effaçait le drapeau local. D'où le symptôme : le code marche, le premium
+   s'affiche, puis il a disparu à la réouverture suivante.
+   Le serveur lit avec la clé service_role, qui ignore la RLS. Trois réponses :
+   true (premium), false (pas premium), null (je ne sais pas — clé absente,
+   réseau coupé). Seul un `false` franc autorise à effacer le drapeau. */
 async function syncPremiumFromCloud(){
-  if(!sb || !currentUserId) return;
+  if(!currentUserId) return;
+  let etat=null;
   try{
-    const { data, error }=await sb.from("premium_users").select("active").eq("user_id",currentUserId).maybeSingle();
-    if(error) return;                       // réseau ou RLS : on ne touche à rien
-    const active=!!(data && data.active);
-    try{
-      if(active) localStorage.setItem("mise_premium","1");
-      else localStorage.removeItem("mise_premium");
-    }catch(e){}
-    refreshLocks();
+    const r=await callBackend({ premiumStatus:true });
+    etat=(r && typeof r.premium==="boolean") ? r.premium : null;
+  }catch(e){ return; }
+  if(etat===null) return;                   // dans le doute, on ne retire rien
+  try{
+    if(etat) localStorage.setItem("mise_premium","1");
+    else localStorage.removeItem("mise_premium");
   }catch(e){}
+  refreshLocks();
 }
 
 // ---- langue (i18n) — application (étapes 1 & 2) ----
