@@ -44,10 +44,34 @@ POST /api/extract ────────────────────�
    ┌─────────────────────────────────────────────┘
    ▼
 Frontend : affichage recette → Supabase (historique + sauvegarde)
+   │                              └─ miroir localStorage (lecture hors ligne)
    │
    └─ Mode cuisson : minuteurs, voix, wake lock,
                      push différé (QStash → /api/send-push)
 ```
+
+### Où vivent les données
+
+| Donnée | Où | Suit le compte ? |
+|---|---|---|
+| Recettes, favoris, collections, photos | table `recipes` (Supabase), **plus** un miroir local | oui |
+| Statut premium | table `premium_users`, source de vérité unique ; `mise_premium` n'est qu'un cache d'affichage, revérifié côté serveur à chaque appel payant | oui |
+| Partages | table `shares` | oui |
+| Liste de courses, menu de la semaine, thème, langue | `localStorage` | **non** |
+
+Le miroir des recettes (`mise_recipes_<identifiant du compte>`) est une copie de
+la dernière réponse du serveur. Il existe pour une raison précise : sans lui,
+une lecture qui n'aboutit pas affichait une bibliothèque vide, et une
+bibliothèque vide ne se distingue pas d'une perte de données. Trois règles le
+tiennent honnête — il n'est écrit qu'**après** une lecture réussie, donc un
+échec réseau ne peut pas l'effacer ; il est rangé sous l'identifiant du compte,
+donc deux comptes sur le même navigateur ne se mélangent pas ; les photos
+personnelles en sont retirées, parce que le quota du navigateur se compte en
+mégaoctets et que ces photos sont déjà dans le compte.
+
+Conséquence pratique : **une recette ne se perd pas en changeant de téléphone**.
+Il suffit de se reconnecter avec la même adresse e-mail. Ce qui disparaît, c'est
+ce que le tableau ci-dessus marque « non ».
 
 ---
 
@@ -139,7 +163,8 @@ Les contributions sont les bienvenues !
 - **Vidéos sans sous-titres** : rien à extraire automatiquement — le mode texte libre prend le relais.
 - **Instagram / TikTok / Facebook** : couverture via Supadata ; les vidéos sans légende ni sous-titres restent difficiles.
 - **Traduction en masse** : ~5–10 s par recette ; avec 50 recettes, compter plusieurs minutes (toast de progression affiché).
-- **Premium côté client uniquement** : le statut premium est actuellement stocké en `localStorage` — à migrer côté serveur avant toute monétisation sérieuse.
+- **Hors ligne, en lecture seule** : le miroir local (voir ci-dessus) affiche les recettes sans réseau, mais une modification faite dans cet état n'est pas renvoyée au serveur et sera recouverte à la prochaine lecture.
+- **Courses, menu de la semaine et préférences restent sur l'appareil** : ils ne sont pas rattachés au compte, donc un changement de téléphone les perd. Les recettes, elles, suivent le compte.
 
 ---
 

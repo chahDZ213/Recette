@@ -1215,6 +1215,7 @@ const STR={
   premiumBuyBtn:"✨ Passer premium — 2,99 £/mois", premiumOr:"— ou avec un code d'accès —",
   premiumBuyErr:"Impossible d'ouvrir le paiement. Réessaie.", premiumNeedLogin:"Connecte-toi d'abord pour passer premium.",
   payChecking:"Vérification du paiement…", payThanks:"Paiement confirmé — premium activé ✨",
+  recettesHorsLigne:"Pas de réseau — voici la copie de tes recettes gardée sur cet appareil.",
   payCancelled:"Paiement annulé.", payNotPaid:"Paiement non confirmé. Réessaie depuis les réglages.",
   premModalTitle:"Fonction Premium",
   premModalDesc:"Cette fonction fait partie de <b>mise. premium</b>. Débloque-la depuis les réglages : abonnement ou code d'accès.",
@@ -1352,6 +1353,7 @@ const STR={
   premiumBuyBtn:"✨ Go premium — £2.99/month", premiumOr:"— or with an access code —",
   premiumBuyErr:"Couldn't open the payment page. Please try again.", premiumNeedLogin:"Log in first to go premium.",
   payChecking:"Checking your payment…", payThanks:"Payment confirmed — premium unlocked ✨",
+  recettesHorsLigne:"No connection — showing the copy of your recipes kept on this device.",
   payCancelled:"Payment cancelled.", payNotPaid:"Payment not confirmed. Try again from the settings.",
   premModalTitle:"Premium feature",
   premModalDesc:"This feature is part of <b>mise. premium</b>. Unlock it from the settings: subscription or access code.",
@@ -2090,7 +2092,7 @@ $("exportDataBtn").addEventListener("click", async ()=>{
   btn.disabled=true; btn.textContent="Préparation…"; dataMsg("");
   try{
     const local={};
-    try{ for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k && k.indexOf("mise_")===0 && k!=="mise_premium") local[k]=localStorage.getItem(k); } }catch(e){}
+    try{ for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k && k.indexOf("mise_")===0 && k!=="mise_premium" && k.indexOf("mise_recipes_")!==0) local[k]=localStorage.getItem(k); } }catch(e){}
     let recipes=[], shares=[];
     if(sb && currentUserId){
       try{ const r=await sb.from("recipes").select("*").eq("user_id",currentUserId); recipes=r.data||[]; }catch(e){}
@@ -2563,19 +2565,93 @@ let currentUser=null, currentUserId=null;
 // ---- recettes (Supabase + cache mémoire) ----
 let allCache=[];
 function getSaved(){ return allCache; }
+
+/* ---- miroir local des recettes ----
+   Les recettes vivent dans Supabase, attachées au compte : elles suivent déjà
+   le changement de téléphone. Ce qui manquait, c'est une copie sur l'appareil.
+   Sans elle, une lecture qui n'aboutit pas — avion, métro, serveur
+   indisponible, session expirée — affichait une bibliothèque vide, et une
+   bibliothèque vide ne se distingue pas d'une perte de données : on croit tout
+   avoir perdu alors que rien n'a bougé côté serveur.
+
+   Trois règles tiennent ce miroir honnête :
+   - il est écrit UNIQUEMENT après une lecture réussie du serveur, donc un
+     échec réseau ne peut jamais l'effacer ;
+   - il est rangé sous l'identifiant du compte, donc deux comptes sur le même
+     navigateur ne voient pas les recettes de l'autre ;
+   - les photos personnelles (des data: URI de plusieurs centaines de Ko) en
+     sont retirées : le navigateur ne concède que quelques Mo, et ces photos
+     sont de toute façon dans le compte. Hors ligne la carte montre son
+     emplacement vide, pas une recette manquante.                            */
+const MIROIR_MAX=300;                 // au-delà, c'est l'historique le plus ancien qui saute
+let cloudFiable=false;                // vrai dès qu'une lecture du serveur a abouti
+let miroirTimer=null;
+
+function cleMiroir(){ return currentUserId ? "mise_recipes_"+currentUserId : null; }
+
+function allegerPourMiroir(r){
+  const c={...r};
+  delete c._dbid;                     // identifiant de ligne : il revient du serveur
+  if(typeof c.image==="string" && c.image.startsWith("data:")) c.image=null;
+  return c;
+}
+
+function ecrireMiroir(){
+  const cle=cleMiroir(); if(!cle) return;
+  let liste=(allCache||[]).slice(0,MIROIR_MAX).map(allegerPourMiroir);
+  // Le quota du navigateur n'est pas annoncé : on écrit, et si ça déborde on
+  // garde la moitié la plus récente plutôt que de ne rien garder du tout.
+  for(;;){
+    try{ localStorage.setItem(cle, JSON.stringify({ v:1, maj:Date.now(), recettes:liste })); return; }
+    catch(e){
+      if(liste.length<=10){ try{ localStorage.removeItem(cle); }catch(_e){} return; }
+      liste=liste.slice(0, Math.floor(liste.length/2));
+    }
+  }
+}
+
+function planifierMiroir(){
+  if(!cloudFiable) return;            // tant que le serveur n'a pas parlé, on n'écrit rien
+  clearTimeout(miroirTimer);
+  miroirTimer=setTimeout(ecrireMiroir, 600);   // renderList() est appelé à chaque frappe
+}
+
+function lireMiroir(){
+  const cle=cleMiroir(); if(!cle) return null;
+  try{
+    const brut=localStorage.getItem(cle); if(!brut) return null;
+    const d=JSON.parse(brut);
+    const l=(d && Array.isArray(d.recettes)) ? d.recettes : (Array.isArray(d) ? d : null);
+    return (l && l.length) ? l : null;
+  }catch(e){ return null; }
+}
+
 async function loadRecipesFromDB(){
-  allCache=[];
-  if(sb && currentUserId){
-    try{
-      const { data, error } = await sb.from("recipes").select("id,data,fav,saved,created_at").order("created_at",{ascending:false});
-      if(error) throw error;
-      allCache=(data||[]).map(row=>({ ...(row.data||{}), _dbid:row.id, fav:!!row.fav, saved:!!row.saved, _ts:new Date(row.created_at).getTime() }));
-    }catch(e){ console.warn("Chargement recettes:", e); }
+  cloudFiable=false;
+  // 1. le miroir d'abord : la bibliothèque est à l'écran sans attendre le réseau
+  const miroir=lireMiroir();
+  allCache=miroir||[];
+  if(miroir) renderList();
+  if(!(sb && currentUserId)){ renderList(); return; }
+  // 2. puis le serveur, qui fait foi
+  try{
+    const { data, error } = await sb.from("recipes").select("id,data,fav,saved,created_at").order("created_at",{ascending:false});
+    if(error) throw error;
+    allCache=(data||[]).map(row=>({ ...(row.data||{}), _dbid:row.id, fav:!!row.fav, saved:!!row.saved, _ts:new Date(row.created_at).getTime() }));
+    cloudFiable=true;
+    ecrireMiroir();
+  }catch(e){
+    console.warn("Chargement recettes:", e);
+    // On dit ce qui se passe : « rien ne s'affiche » est le pire des messages.
+    if(miroir) toast(t("recettesHorsLigne"));
+    else allCache=[];
   }
   renderList();
   // les recettes qui ne sont pas dans la langue de l'app sont traduites automatiquement,
   // même sans changement de langue (ex: recette anglaise alors que l'app est déjà en français).
-  translateAllRecipes();
+  // Jamais sur le miroir : la traduction s'enregistre côté serveur, et sans
+  // serveur elle serait refaite — donc repayée — au prochain lancement.
+  if(cloudFiable) translateAllRecipes();
 }
 // ajoute automatiquement une recette fraîchement décodée à l'historique
 async function addToHistory(r){
@@ -2678,6 +2754,7 @@ $("searchInput").addEventListener("input",(e)=>{ searchQuery=e.target.value.trim
 $("tabSaved").addEventListener("click",()=>{ listTab="saved"; renderList(); });
 $("tabHistory").addEventListener("click",()=>{ listTab="history"; renderList(); });
 function renderList(){
+  planifierMiroir();          // toute modification de allCache passe par ici
   renderHomeRecent();
   $("tabSaved").classList.toggle("active", listTab==="saved");
   $("tabHistory").classList.toggle("active", listTab==="history");
@@ -3844,6 +3921,9 @@ $("notifBtn").addEventListener("click", async ()=>{
 });
 $("logoutBtn").addEventListener("click", async ()=>{
   if(sb){ try{ await sb.auth.signOut(); }catch(e){} }
+  // Avant de vider allCache : sinon le prochain renderList() recopierait une
+  // liste vide par-dessus le miroir, et la reconnexion repartirait de zéro.
+  cloudFiable=false;
   currentUser=null; currentUserId=null; allCache=[];
   showAuth();
 });
