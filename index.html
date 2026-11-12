@@ -612,7 +612,7 @@
       <div id="premiumBuyMsg" class="hidden" style="font-size:13px;color:#B4544B;margin-top:8px"></div>
       <div id="premiumOr" style="font-size:12px;color:var(--muted);margin:10px 0 8px;text-align:center">— ou avec un code d'accès —</div>
       <div style="display:flex;gap:8px">
-        <input type="text" id="premiumCode" placeholder="Code d'accès" autocomplete="off" autocapitalize="characters" style="flex:1;min-width:0;font-family:inherit;font-size:15px;padding:11px 13px;border-radius:11px;border:1.5px solid var(--line);background:var(--paper);color:var(--ink);outline:none" />
+        <input type="text" id="premiumCode" placeholder="Code d'accès" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" style="flex:1;min-width:0;font-family:inherit;font-size:15px;padding:11px 13px;border-radius:11px;border:1.5px solid var(--line);background:var(--paper);color:var(--ink);outline:none" />
         <button id="premiumRedeem" class="press" style="font-size:14px;font-weight:600;padding:11px 16px;border-radius:11px;border:none;background:var(--accent);color:#fff;flex-shrink:0">Activer</button>
       </div>
       <div id="premiumMsg" class="hidden" style="font-size:13px;color:#B4544B;margin-top:8px"></div>
@@ -842,7 +842,7 @@
 
     <div id="addPanelLink" class="hidden">
       <label id="urlLabel" for="url" style="display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:8px">LIEN VIDÉO OU SITE</label>
-      <input id="url" placeholder="YouTube, TikTok, Marmiton, Google, blog…" style="margin-bottom:14px" />
+      <input id="url" placeholder="YouTube, TikTok, Marmiton, Google, blog…" autocapitalize="off" autocorrect="off" spellcheck="false" style="margin-bottom:14px" />
       <div id="preview" class="hidden rise" style="display:flex;gap:13px;align-items:center;margin-bottom:16px;padding:11px 14px;background:var(--cream);border-radius:14px;border:1px solid var(--line)">
         <span id="platIcon" class="plat-badge"></span>
         <span id="detectLabel" role="status" style="font-size:14px;color:var(--green);font-weight:600">Vidéo détectée ✓</span>
