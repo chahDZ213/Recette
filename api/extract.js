@@ -116,6 +116,10 @@ async function deleteAccount(userId) {
   await deleteRows("shares", userId);
   await deleteRows("recipes", userId);
   await deleteRows("premium_users", userId);
+  // Courses, note libre et menu de la semaine. La contrainte ON DELETE CASCADE
+  // les emporterait avec le compte auth, mais l'effacement doit tenir même si
+  // la suppression du compte échoue à l'étape suivante.
+  await deleteRows("mise_prefs", userId);
   const del = await fetch(`${SB_URL}/auth/v1/admin/users/${encodeURIComponent(userId)}`, {
     method: "DELETE", headers: svcHeaders(),
   });

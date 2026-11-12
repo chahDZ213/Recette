@@ -1216,6 +1216,7 @@ const STR={
   premiumBuyErr:"Impossible d'ouvrir le paiement. Réessaie.", premiumNeedLogin:"Connecte-toi d'abord pour passer premium.",
   payChecking:"Vérification du paiement…", payThanks:"Paiement confirmé — premium activé ✨",
   recettesHorsLigne:"Pas de réseau — voici la copie de tes recettes gardée sur cet appareil.",
+  weekPlatIndispo:"Plat indisponible hors ligne",
   payCancelled:"Paiement annulé.", payNotPaid:"Paiement non confirmé. Réessaie depuis les réglages.",
   premModalTitle:"Fonction Premium",
   premModalDesc:"Cette fonction fait partie de <b>mise. premium</b>. Débloque-la depuis les réglages : abonnement ou code d'accès.",
@@ -1354,6 +1355,7 @@ const STR={
   premiumBuyErr:"Couldn't open the payment page. Please try again.", premiumNeedLogin:"Log in first to go premium.",
   payChecking:"Checking your payment…", payThanks:"Payment confirmed — premium unlocked ✨",
   recettesHorsLigne:"No connection — showing the copy of your recipes kept on this device.",
+  weekPlatIndispo:"Dish unavailable offline",
   payCancelled:"Payment cancelled.", payNotPaid:"Payment not confirmed. Try again from the settings.",
   premModalTitle:"Premium feature",
   premModalDesc:"This feature is part of <b>mise. premium</b>. Unlock it from the settings: subscription or access code.",
@@ -1974,12 +1976,129 @@ function ingEmoji(name){
   }
   return "";
 }
+/* ---- contenus rattachés au compte ----
+   Les recettes suivaient le compte ; les courses, la note libre et le menu de
+   la semaine, non. Un client qui change de téléphone les perdait — pour un
+   abonnement payant, c'est une promesse rompue.
+
+   Ils vont désormais dans `mise_prefs` (une ligne par compte, un document
+   JSON), tout en restant dans le navigateur : le local répond tout de suite et
+   hors ligne, le cloud fait voyager.
+
+   Chaque clé porte sa propre date de modification. Sans cela, modifier les
+   courses sur le téléphone et le menu sur l'ordinateur aurait fait disparaître
+   l'un des deux : le dernier qui écrit aurait emporté tout le document. Clé par
+   clé, le plus récent gagne, et les deux appareils gardent leur apport.
+
+   Volontairement absents : thème, couleur d'accent, fond, langue, dernière vue.
+   Ce sont des réglages d'appareil — un téléphone en sombre et un ordinateur en
+   clair est un choix, pas une anomalie à réparer. La langue reste locale aussi :
+   la synchroniser déclencherait une retraduction payante de la bibliothèque au
+   premier lancement sur le nouvel appareil.                                   */
+const CLES_SYNC=["mise_shopping","mise_shopping_note","mise_week"];
+let prefsIndisponibles=false;   // table pas encore créée : on reste local, sans se répéter
+let pousseeTimer=null;
+
+function cleHorodatage(cle){ return "mise_maj_"+cle; }
+
+/* Date de modification locale d'une clé. Une valeur présente sans horodatage
+   vient d'avant cette synchro : on la date à 1 — plus vieux que tout ce qui
+   sera écrit ensuite, mais plus récent que « rien », pour qu'elle monte au
+   cloud au lieu d'être ignorée. */
+function horodatageLocal(cle){
+  try{
+    const h=parseInt(localStorage.getItem(cleHorodatage(cle))||"0",10);
+    if(h>0) return h;
+    return localStorage.getItem(cle)!=null ? 1 : 0;
+  }catch(e){ return 0; }
+}
+
+/* Écrit une valeur et l'horodate — sauf si elle n'a pas changé. renderShopping()
+   et renderWeek() réécrivent la même chose à chaque affichage (dédoublonnage,
+   élagage) : horodater là-dessus aurait fait passer un simple affichage pour
+   une modification, et un appareil juste consulté aurait écrasé le travail de
+   l'autre. */
+function enregistrerSync(cle, valeur){
+  let avant=null; try{ avant=localStorage.getItem(cle); }catch(e){}
+  if(avant===valeur) return;
+  try{
+    localStorage.setItem(cle, valeur);
+    localStorage.setItem(cleHorodatage(cle), String(Date.now()));
+  }catch(e){ return; }
+  planifierPoussee();
+}
+
+function planifierPoussee(){
+  if(prefsIndisponibles || !(sb && currentUserId)) return;
+  clearTimeout(pousseeTimer);
+  pousseeTimer=setTimeout(pousserPrefs, 1500);   // on coche dix articles d'affilée : un seul envoi
+}
+
+function noterPrefsIndisponibles(e){
+  const code=(e && (e.code||e.status))||"";
+  // 42P01 : table absente. PGRST205 : table inconnue du cache de schéma.
+  if(code==="42P01" || code==="PGRST205"){
+    prefsIndisponibles=true;
+    console.info("mise_prefs absente : courses et menu restent sur l'appareil. Appliquer supabase/0001_mise_prefs.sql.");
+  } else {
+    console.warn("Synchro des contenus:", e);   // réseau : on retentera à la prochaine modification
+  }
+}
+
+async function pousserPrefs(){
+  if(prefsIndisponibles || !(sb && currentUserId)) return;
+  const donnees={};
+  for(const cle of CLES_SYNC){
+    let v=null; try{ v=localStorage.getItem(cle); }catch(e){}
+    if(v==null) continue;
+    donnees[cle]={ v, maj:horodatageLocal(cle) };
+  }
+  try{
+    const { error }=await sb.from("mise_prefs")
+      .upsert({ user_id:currentUserId, donnees, maj_at:new Date().toISOString() }, { onConflict:"user_id" });
+    if(error) throw error;
+  }catch(e){ noterPrefsIndisponibles(e); }
+}
+
+/* À la connexion : clé par clé, le plus récent des deux côtés gagne.
+   Appelée APRÈS le chargement des recettes — renderWeek() élague les jours qui
+   pointent vers une recette absente, et sur une bibliothèque pas encore
+   chargée il aurait effacé la semaine tout juste reçue. */
+async function fusionnerPrefs(){
+  if(prefsIndisponibles || !(sb && currentUserId)) return;
+  let distant={};
+  try{
+    const { data, error }=await sb.from("mise_prefs").select("donnees").eq("user_id",currentUserId).maybeSingle();
+    if(error) throw error;
+    distant=(data && data.donnees) || {};
+  }catch(e){ noterPrefsIndisponibles(e); return; }
+
+  let recu=false, localPlusRecent=false;
+  for(const cle of CLES_SYNC){
+    const d=distant[cle];
+    const majDistante=(d && typeof d.maj==="number") ? d.maj : 0;
+    const majLocale=horodatageLocal(cle);
+    if(d && typeof d.v==="string" && majDistante>majLocale){
+      try{
+        localStorage.setItem(cle, d.v);
+        localStorage.setItem(cleHorodatage(cle), String(majDistante));
+        recu=true;
+      }catch(e){}
+    } else if(majLocale>majDistante){
+      localPlusRecent=true;
+    }
+  }
+  // Les écrans concernés peuvent être déjà à l'affichage : on les redessine.
+  if(recu){ try{ renderShopping(); }catch(e){} try{ renderWeek(); }catch(e){} }
+  if(localPlusRecent) pousserPrefs();
+}
+
 // ---- liste de courses ----
 function getShopping(){ try{ return JSON.parse(localStorage.getItem("mise_shopping")||"[]"); }catch(e){ return []; } }
-function setShopping(a){ try{ localStorage.setItem("mise_shopping", JSON.stringify(a)); }catch(e){} }
+function setShopping(a){ enregistrerSync("mise_shopping", JSON.stringify(a)); }
 // ---- ma liste (note libre, façon bloc-notes) ----
 function getShopNote(){ try{ return localStorage.getItem("mise_shopping_note")||""; }catch(e){ return ""; } }
-function setShopNote(v){ try{ localStorage.setItem("mise_shopping_note", v); }catch(e){} }
+function setShopNote(v){ enregistrerSync("mise_shopping_note", v); }
 let shopNoteTimer=null;
 function initShopNote(){
   const ta=$("shopNote"); if(!ta) return;
@@ -2093,10 +2212,11 @@ $("exportDataBtn").addEventListener("click", async ()=>{
   try{
     const local={};
     try{ for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k && k.indexOf("mise_")===0 && k!=="mise_premium" && k.indexOf("mise_recipes_")!==0) local[k]=localStorage.getItem(k); } }catch(e){}
-    let recipes=[], shares=[];
+    let recipes=[], shares=[], contenus=[];
     if(sb && currentUserId){
       try{ const r=await sb.from("recipes").select("*").eq("user_id",currentUserId); recipes=r.data||[]; }catch(e){}
       try{ const s=await sb.from("shares").select("*").eq("user_id",currentUserId); shares=s.data||[]; }catch(e){}
+      try{ const c=await sb.from("mise_prefs").select("*").eq("user_id",currentUserId); contenus=c.data||[]; }catch(e){}
     }
     const dump={
       exporte_le:new Date().toISOString(),
@@ -2104,6 +2224,7 @@ $("exportDataBtn").addEventListener("click", async ()=>{
       compte:{ email:currentUser||null, identifiant:currentUserId||null },
       recettes:recipes,
       partages:shares,
+      courses_et_menu:contenus,
       donnees_de_l_appareil:local,
       note:"Les photos de plats sont des fichiers hébergés : leurs adresses figurent dans chaque recette.",
     };
@@ -2305,10 +2426,10 @@ async function translateAllRecipes(){
 // ---- menu de la semaine ----
 const WEEK_DAYS=["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"];
 function getWeek(){ try{ const w=JSON.parse(localStorage.getItem("mise_week")||"{}"); return (w&&typeof w==="object")?w:{}; }catch(e){ return {}; } }
-function setWeek(w){ try{ localStorage.setItem("mise_week", JSON.stringify(w)); }catch(e){} }
+function setWeek(w){ enregistrerSync("mise_week", JSON.stringify(w)); }
 let pickDay=null;
 function weekThumb(r,size){
-  return r.image
+  return (r && r.image)
     ? `<img src="${esc(r.image)}" loading="lazy" alt="" style="width:${size}px;height:${size}px;border-radius:9px;object-fit:cover;flex-shrink:0;background:var(--cream)">`
     : `<span style="width:${size}px;height:${size}px;border-radius:9px;background:var(--cream);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:${Math.round(size*0.45)}px">🍽️</span>`;
 }
@@ -2320,7 +2441,11 @@ function renderWeek(){
   box.innerHTML="";
   let total=0;
   WEEK_DAYS.forEach((name,d)=>{
-    let ids=(w[d]||[]).filter(id=>allCache.some(r=>r._id===id));
+    /* Un jour qui pointe vers une recette supprimée est retiré — mais
+       seulement quand le serveur a répondu. Sur une bibliothèque vide parce
+       que le réseau a manqué, cet élagage effaçait toute la semaine, et
+       l'effacement, lui, était bien enregistré. */
+    let ids=cloudFiable ? (w[d]||[]).filter(id=>allCache.some(r=>r._id===id)) : (w[d]||[]);
     if(ids.length!==(w[d]||[]).length){ w[d]=ids; setWeek(w); }
     total+=ids.length;
     const card=document.createElement("div");
@@ -2331,9 +2456,14 @@ function renderWeek(){
     </div>`;
     ids.forEach(id=>{
       const r=allCache.find(x=>x._id===id);
-      inner+=`<div class="wk-row" data-id="${esc(id)}" style="display:flex;align-items:center;gap:10px;padding:8px 0;cursor:pointer">
+      /* Un identifiant qui ne se résout pas : la bibliothèque n'est pas encore
+         chargée (hors ligne). On garde la place du plat et on le dit, au lieu
+         de lire `r.title` sur `undefined` — ce qui interrompait le rendu et
+         laissait le reste de la semaine invisible. */
+      const titre = r ? r.title : t("weekPlatIndispo");
+      inner+=`<div class="wk-row" data-id="${esc(id)}" style="display:flex;align-items:center;gap:10px;padding:8px 0${r?";cursor:pointer":";opacity:.55"}">
         ${weekThumb(r,38)}
-        <span style="flex:1;font-size:14px;font-weight:500;line-height:1.3">${esc(r.title)}</span>
+        <span style="flex:1;font-size:14px;font-weight:500;line-height:1.3">${esc(titre)}</span>
         <button class="wk-del press" data-day="${d}" data-id="${esc(id)}" aria-label="retirer" style="width:28px;height:28px;border-radius:8px;border:none;background:transparent;color:var(--muted);font-size:14px;flex-shrink:0">✕</button>
       </div>`;
     });
@@ -3657,6 +3787,7 @@ async function onSignedIn(session){
   maybeShowInstall();
   syncPremiumFromCloud();   // premium Stripe rattaché au compte (non bloquant)
   await loadRecipesFromDB();
+  await fusionnerPrefs();   // après les recettes : voir le commentaire de fusionnerPrefs()
   if(pendingPhotoId){ const id=pendingPhotoId; pendingPhotoId=null; openPhotoForRecipe(id); }
   else { restoreLastView(); }
 }
@@ -3924,6 +4055,13 @@ $("logoutBtn").addEventListener("click", async ()=>{
   // Avant de vider allCache : sinon le prochain renderList() recopierait une
   // liste vide par-dessus le miroir, et la reconnexion repartirait de zéro.
   cloudFiable=false;
+  /* Les contenus du compte quittent l'appareil avec le compte : sinon la
+     liste de courses du précédent connecté accueillait le suivant, et son
+     horodatage, plus récent, l'aurait poussée dans le compte du suivant.
+     Le miroir des recettes, lui, est rangé sous l'identifiant du compte :
+     il peut rester, et la reconnexion est alors immédiate. */
+  try{ CLES_SYNC.forEach(c=>{ localStorage.removeItem(c); localStorage.removeItem(cleHorodatage(c)); }); }catch(e){}
+  prefsIndisponibles=false;
   currentUser=null; currentUserId=null; allCache=[];
   showAuth();
 });

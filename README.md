@@ -57,7 +57,8 @@ Frontend : affichage recette → Supabase (historique + sauvegarde)
 | Recettes, favoris, collections, photos | table `recipes` (Supabase), **plus** un miroir local | oui |
 | Statut premium | table `premium_users`, source de vérité unique ; `mise_premium` n'est qu'un cache d'affichage, revérifié côté serveur à chaque appel payant | oui |
 | Partages | table `shares` | oui |
-| Liste de courses, menu de la semaine, thème, langue | `localStorage` | **non** |
+| Liste de courses, « ma liste », menu de la semaine | table `mise_prefs`, **plus** le `localStorage` | oui |
+| Thème, couleur d'accent, fond, langue, dernière vue | `localStorage` | **non**, volontairement |
 
 Le miroir des recettes (`mise_recipes_<identifiant du compte>`) est une copie de
 la dernière réponse du serveur. Il existe pour une raison précise : sans lui,
@@ -69,9 +70,29 @@ donc deux comptes sur le même navigateur ne se mélangent pas ; les photos
 personnelles en sont retirées, parce que le quota du navigateur se compte en
 mégaoctets et que ces photos sont déjà dans le compte.
 
-Conséquence pratique : **une recette ne se perd pas en changeant de téléphone**.
-Il suffit de se reconnecter avec la même adresse e-mail. Ce qui disparaît, c'est
-ce que le tableau ci-dessus marque « non ».
+`mise_prefs` porte une ligne par compte et un seul document JSON, où **chaque
+clé a sa propre date de modification** :
+
+```json
+{ "mise_shopping": { "v": "[…]", "maj": 1763000000000 },
+  "mise_week":     { "v": "{…}", "maj": 1763000000000 } }
+```
+
+Sans cet horodatage par clé, modifier les courses sur le téléphone et le menu
+sur l'ordinateur aurait fait disparaître l'un des deux : le dernier qui écrit
+aurait emporté tout le document. Clé par clé, le plus récent gagne, et les deux
+appareils gardent leur apport. La fusion a lieu à la connexion ; ensuite une
+modification part vers le compte après 1,5 s de calme, pour que cocher dix
+articles d'affilée ne fasse qu'un seul envoi.
+
+Ce qui ne suit **pas** le compte ne le suit pas par choix : un téléphone en
+sombre et un ordinateur en clair est un réglage, pas une anomalie à réparer. La
+langue reste locale pour la même raison et une de plus — la synchroniser
+déclencherait une retraduction, donc une dépense d'API, de toute la
+bibliothèque au premier lancement sur le nouvel appareil.
+
+Conséquence pratique : **plus rien ne se perd en changeant de téléphone**. Il
+suffit de se reconnecter avec la même adresse e-mail.
 
 ---
 
@@ -89,6 +110,8 @@ mise/
 │  ├─ schedule-push.js  ← Planifie un push différé via QStash
 │  ├─ send-push.js      ← Appelé par QStash, envoie le push (protégé par SEND_SECRET)
 │  └─ cancel-push.js    ← Annule un push planifié
+├─ supabase/
+│  └─ 0001_mise_prefs.sql  ← Table des contenus rattachés au compte (RLS incluse)
 ├─ PROJECT_CONTEXT.md   ← Documentation de référence (architecture détaillée)
 └─ README.md            ← ce fichier
 ```
@@ -96,6 +119,11 @@ mise/
 ---
 
 ## 🚀 Déploiement (Vercel — recommandé)
+
+> **Migration à appliquer une fois** : coller `supabase/0001_mise_prefs.sql`
+> dans Supabase → SQL Editor du projet mise. Sans elle, l'application marche,
+> mais courses et menu de la semaine restent sur l'appareil. Le script est
+> rejouable sans dommage.
 
 1. **Fork / clone** ce dépôt sur GitHub.
 2. Sur [Vercel](https://vercel.com) : **New Project** → importe le dépôt.  
@@ -163,8 +191,9 @@ Les contributions sont les bienvenues !
 - **Vidéos sans sous-titres** : rien à extraire automatiquement — le mode texte libre prend le relais.
 - **Instagram / TikTok / Facebook** : couverture via Supadata ; les vidéos sans légende ni sous-titres restent difficiles.
 - **Traduction en masse** : ~5–10 s par recette ; avec 50 recettes, compter plusieurs minutes (toast de progression affiché).
-- **Hors ligne, en lecture seule** : le miroir local (voir ci-dessus) affiche les recettes sans réseau, mais une modification faite dans cet état n'est pas renvoyée au serveur et sera recouverte à la prochaine lecture.
-- **Courses, menu de la semaine et préférences restent sur l'appareil** : ils ne sont pas rattachés au compte, donc un changement de téléphone les perd. Les recettes, elles, suivent le compte.
+- **Hors ligne, les recettes sont en lecture seule** : le miroir local (voir ci-dessus) les affiche sans réseau, mais une modification faite dans cet état n'est pas renvoyée au serveur et sera recouverte à la prochaine lecture. Les courses et le menu, eux, se rattrapent : ils repartent vers le compte dès que le réseau revient.
+- **La fusion des courses et du menu n'a lieu qu'à la connexion**, pas en continu : deux appareils ouverts en même temps ne se voient pas l'un l'autre avant un rechargement.
+- **Tant que `supabase/0001_mise_prefs.sql` n'est pas appliqué**, courses et menu restent sur l'appareil : l'application le détecte (code `42P01`), le note une fois en console et continue sans erreur visible.
 
 ---
 
