@@ -531,12 +531,30 @@ export default async function handler(req, res) {
         : res.status(502).json({ error: "Les données ont été effacées, mais le compte n'a pas pu être supprimé. Réessaie." });
     }
 
+    /* État du premium, lu avec la clé service_role.
+       Le client lisait premium_users directement : sous RLS, une ligne qu'aucune
+       politique n'autorise à lire ne remonte pas — sans erreur, zéro ligne. Le
+       client en concluait « pas premium » et effaçait le drapeau local. Le
+       premium s'évaporait donc à la réouverture, alors que la ligne existait.
+       Ici la clé service_role ignore la RLS, et `null` dit « je ne sais pas »,
+       ce qui n'autorise aucun effacement. */
+    if (body.premiumStatus) {
+      return res.status(200).json({ premium: await isPremiumUser(userId) });
+    }
+
     // Code cadeau : validé puis enregistré côté serveur, pour qu'il suive le compte.
     if (body.redeemCode && typeof body.redeemCode === "string") {
       const codes = (process.env.PREMIUM_CODES || "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
       const ok = codes.includes(body.redeemCode.trim().toLowerCase());
-      if (ok) await grantPremium(userId, "code");
-      return res.status(200).json({ premiumOk: ok });
+      if (!ok) return res.status(200).json({ premiumOk: false });
+      /* On ne répond « activé » que si l'enregistrement a vraiment eu lieu.
+         Avant, la réponse ne disait que « le code est bon » : si grantPremium
+         échouait — clé service_role absente, POST refusé — l'utilisateur lisait
+         « premium activé ✨», et le premium disparaissait à la réouverture, quand
+         le serveur, lui, n'avait jamais rien enregistré. */
+      const enregistre = await grantPremium(userId, "code");
+      if (!enregistre) console.error("premium: code valide mais enregistrement impossible pour", userId);
+      return res.status(200).json({ premiumOk: enregistre, codeValide: true, enregistre });
     }
 
     // Fonctions réservées au premium. premium === null = clé service_role
