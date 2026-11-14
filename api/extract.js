@@ -132,20 +132,60 @@ async function deleteAccount(userId) {
 
 // Active le premium d'un compte (code cadeau) côté serveur, pour qu'il survive
 // au changement d'appareil et passe les vérifications ci-dessus.
+/**
+ * Ouvre le premium d'un compte, définitivement.
+ *
+ * Deux leçons payées comptant.
+ *
+ * 1. L'upsert `on_conflict=user_id` exige une contrainte d'unicité sur la
+ *    colonne. Sans elle, PostgREST répond 42P10 et n'écrit rien. On fait donc
+ *    un UPDATE, et un INSERT seulement s'il n'a touché aucune ligne : ça marche
+ *    avec ou sans contrainte, et deux appels simultanés produisent au pire un
+ *    insert refusé sur une ligne déjà bonne.
+ *
+ * 2. L'ancienne version renvoyait un booléen nu et avalait la réponse. Quand
+ *    l'écriture a commencé à échouer en production, le journal disait
+ *    « impossible » sans jamais dire pourquoi — et il a fallu un aller-retour
+ *    de plus pour l'apprendre. Le statut et le corps de la réponse sont
+ *    désormais tracés : c'est Supabase qui explique, pas nous qui devinons.
+ */
 async function grantPremium(userId, plan) {
   const svc = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
-  if (!svc || !userId) return false;
+  if (!userId) { console.error("premium: aucun compte"); return false; }
+  if (!svc) { console.error("premium: SUPABASE_SERVICE_ROLE_KEY absente"); return false; }
+
+  const entetes = {
+    apikey: svc, authorization: "Bearer " + svc,
+    "content-type": "application/json",
+  };
+  const ligne = { active: true, plan, updated_at: new Date().toISOString() };
+
+  const dire = async (etape, r) => {
+    const corps = await r.text().catch(() => "");
+    console.error(`premium: ${etape} a repondu ${r.status} ${corps.slice(0, 300)}`);
+  };
+
   try {
-    const r = await fetch(SB_URL + "/rest/v1/premium_users?on_conflict=user_id", {
-      method: "POST",
-      headers: {
-        apikey: svc, authorization: "Bearer " + svc,
-        "content-type": "application/json", prefer: "resolution=merge-duplicates",
-      },
-      body: JSON.stringify({ user_id: userId, active: true, plan, updated_at: new Date().toISOString() }),
+    const maj = await fetch(
+      `${SB_URL}/rest/v1/premium_users?user_id=eq.${encodeURIComponent(userId)}`,
+      { method: "PATCH", headers: { ...entetes, prefer: "return=representation" },
+        body: JSON.stringify(ligne) },
+    );
+    if (!maj.ok) { await dire("PATCH", maj); return false; }
+    // `return=representation` rend les lignes modifiées : vide = compte absent.
+    const touchees = await maj.json().catch(() => []);
+    if (Array.isArray(touchees) && touchees.length > 0) return true;
+
+    const ajout = await fetch(SB_URL + "/rest/v1/premium_users", {
+      method: "POST", headers: entetes,
+      body: JSON.stringify({ user_id: userId, ...ligne }),
     });
-    return r.ok;
-  } catch { return false; }
+    if (!ajout.ok) { await dire("POST", ajout); return false; }
+    return true;
+  } catch (e) {
+    console.error("premium: ecriture impossible", e && e.message ? e.message : e);
+    return false;
+  }
 }
 
 const INSTRUCTIONS = `Tu renvoies UNIQUEMENT un objet JSON, sans aucun texte autour, sans backticks. Format exact :
@@ -553,7 +593,7 @@ export default async function handler(req, res) {
          « premium activé ✨», et le premium disparaissait à la réouverture, quand
          le serveur, lui, n'avait jamais rien enregistré. */
       const enregistre = await grantPremium(userId, "code");
-      if (!enregistre) console.error("premium: code valide mais enregistrement impossible pour", userId);
+      if (!enregistre) console.error("premium: code valide, compte", userId, "non enregistre");
       return res.status(200).json({ premiumOk: enregistre, codeValide: true, enregistre });
     }
 
