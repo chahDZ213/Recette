@@ -524,8 +524,22 @@ export default async function handler(req, res) {
   const allowed = (process.env.ALLOWED_ORIGINS || "").split(",").map((s) => s.trim()).filter(Boolean);
   if (allowed.length) {
     const src = req.headers.origin || req.headers.referer || "";
-    if (src && !allowed.some((a) => src.startsWith(a))) {
-      return res.status(403).json({ found: false, error: "Origine non autorisée" });
+    /* Comparaison sur l'origine seule — schéma + hôte + port — et pas en
+       préfixe de chaîne. `startsWith` laissait passer
+       https://mise.montappli.com.exemple-pirate.fr, qui commence bien par
+       l'origine autorisée mais n'a rien à voir avec elle. */
+    const origineDe = (v) => { try { return new URL(v).origin; } catch { return null; } };
+    const recue = origineDe(src);
+    const permises = new Set(allowed.map(origineDe).filter(Boolean));
+    if (src && (!recue || !permises.has(recue))) {
+      /* Tracé, et nommément : une origine oubliée dans ALLOWED_ORIGINS casse
+         toute l'application depuis ce domaine, sans que rien ne le dise. Le
+         jour où un domaine est ajouté à Vercel et pas ici, le journal le dit
+         au premier appel au lieu d'un silence de plusieurs heures. */
+      console.error("origine refusee:", recue || src, "— autorisees:", [...permises].join(", "));
+      return res.status(403).json({
+        found: false, error: "Origine non autorisée", code: "origine",
+      });
     }
   }
   try {

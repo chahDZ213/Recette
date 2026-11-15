@@ -1213,6 +1213,7 @@ const STR={
   premiumPitch:"Débloque les idées recettes, le menu de la semaine, la photo du frigo et la création de recettes par IA.",
   premiumCodePh:"Code d'accès", premiumRedeemBtn:"Activer", premiumChecking:"Vérification…", premiumBadCode:"Code invalide.",
   premiumPasEnregistre:"Ton code est bon, mais l'activation n'a pas pu être enregistrée. Réessaie dans un instant.",
+  premiumServeurInjoignable:"Le serveur n'a pas pu être joint depuis cette adresse. Ton code n'a pas été vérifié.",
   premiumBuyBtn:"✨ Passer premium — 2,99 £/mois", premiumOr:"— ou avec un code d'accès —",
   premiumBuyErr:"Impossible d'ouvrir le paiement. Réessaie.", premiumNeedLogin:"Connecte-toi d'abord pour passer premium.",
   payChecking:"Vérification du paiement…", payThanks:"Paiement confirmé — premium activé ✨",
@@ -1353,6 +1354,7 @@ const STR={
   premiumPitch:"Unlock recipe ideas, the weekly menu, the fridge photo and AI recipe creation.",
   premiumCodePh:"Access code", premiumRedeemBtn:"Activate", premiumChecking:"Checking…", premiumBadCode:"Invalid code.",
   premiumPasEnregistre:"Your code is valid, but the activation could not be saved. Please try again in a moment.",
+  premiumServeurInjoignable:"The server could not be reached from this address. Your code was not checked.",
   premiumBuyBtn:"✨ Go premium — £2.99/month", premiumOr:"— or with an access code —",
   premiumBuyErr:"Couldn't open the payment page. Please try again.", premiumNeedLogin:"Log in first to go premium.",
   payChecking:"Checking your payment…", payThanks:"Payment confirmed — premium unlocked ✨",
@@ -3519,19 +3521,26 @@ $("premiumRedeem").addEventListener("click", async ()=>{
   if(!code) return;
   msg.classList.add("hidden");
   btn.disabled=true; btn.textContent=t("premiumChecking");
-  let ok=false, codeValide=false;
+  let ok=false, codeValide=false, panneServeur=false;
   try{
     const r=await callBackend({redeemCode:code});
     ok=!!(r&&r.premiumOk);
     codeValide=!!(r&&r.codeValide);
-  }catch(e){}
+    /* Le serveur a répondu, mais pas à la question posée : 403 d'origine,
+       erreur interne, session expirée. L'ancienne version lisait l'absence de
+       `codeValide` comme « code invalide » et accusait un code parfaitement
+       bon — on a cherché du côté du code pendant que le vrai problème était
+       que l'appel n'arrivait jamais. */
+    if(!ok && !codeValide && r && r.error) panneServeur=true;
+  }catch(e){ panneServeur=true; }
   btn.disabled=false; btn.textContent=t("premiumRedeemBtn");
   if(ok){ try{ localStorage.setItem("mise_premium","1"); }catch(e){} $("premiumCode").value=""; refreshLocks(); }
   else {
     /* Un code bon mais non enregistré n'est pas un « code invalide » : le dire
        ainsi envoyait l'utilisateur chercher un problème qui n'existe pas, puis
        lui faisait perdre son premium à la réouverture sans explication. */
-    msg.textContent=t(codeValide ? "premiumPasEnregistre" : "premiumBadCode");
+    msg.textContent=t(panneServeur ? "premiumServeurInjoignable"
+      : codeValide ? "premiumPasEnregistre" : "premiumBadCode");
     msg.classList.remove("hidden");
   }
 });
