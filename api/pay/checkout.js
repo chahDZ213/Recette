@@ -80,7 +80,15 @@ export default async function handler(req, res) {
       ...(userId ? { client_reference_id: userId } : {}),
       // Recopie les métadonnées sur l'abonnement : permet au webhook de retrouver
       // l'utilisateur lors d'une résiliation (customer.subscription.deleted).
-      ...(product.mode === "subscription" ? { subscription_data: { metadata } } : {}),
+      ...(product.mode === "subscription" ? {
+        subscription_data: { metadata },
+        // Conditions du renouvellement affichées juste au-dessus du bouton de paiement
+        // (Code de la consommation, loi californienne sur le renouvellement automatique).
+        custom_text: { submit: { message:
+          "Abonnement à renouvellement automatique : le même montant est prélevé à chaque échéance " +
+          "jusqu'à résiliation. Vous pouvez résilier à tout moment, en ligne et en quelques clics, " +
+          "depuis l'application (Gérer ou résilier mon abonnement) ; l'accès reste ouvert jusqu'à la fin de la période payée." } },
+      } : {}),
     }, {
       /* Clé d'idempotence : un double-clic ou un renvoi réseau ne doit pas
          créer deux sessions de paiement. Même minute + même compte + même
